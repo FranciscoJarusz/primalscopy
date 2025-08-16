@@ -1,12 +1,29 @@
+// Reemplaza todo el contenido de nftRoutes.js con esto:
+
 const express = require('express');
-const { getCustomizationOptions, generateAndSaveNftImage } = require('../controllers/nftController');
+
+const { 
+  getCustomizationOptions, 
+  generateAndSaveNftImage, 
+  getProxiedMetadata,
+  getNftLayers // <-- IMPORTA LA NUEVA FUNCIÓN
+} = require('../controllers/nftController');
+
 
 const router = express.Router();
 
-// Ruta para obtener las opciones de personalización disponibles para un NFT específico
+// ... (tus otras rutas siguen igual) ...
+
+// AÑADE ESTA NUEVA RUTA
+router.post('/get-layers', getNftLayers);
+
+// 1. Ruta para obtener la metadata (usa la función getProxiedMetadata)
+router.get('/:nftId/metadata', getProxiedMetadata);
+
+// 2. Ruta para obtener las opciones de personalización (usa la función getCustomizationOptions)
 router.get('/:nftId/customize-options', getCustomizationOptions);
 
-// Ruta para generar y guardar la nueva imagen del NFT con las variantes seleccionadas
+// 3. Ruta para generar la imagen (usa la función generateAndSaveNftImage)
 router.post('/customize', generateAndSaveNftImage);
 
 module.exports = router;

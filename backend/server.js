@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
 const nftRoutes = require('./routes/nftRoutes');
@@ -7,26 +8,33 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Configuración de CORS más permisiva para depuración
+// CORS (permitir desde cualquier origen)
 app.use(cors({
-  origin: '*', // Permite solicitudes de cualquier origen
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Permite todos los métodos comunes
-  allowedHeaders: ['Content-Type', 'Authorization'], // Permite estos encabezados
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+// Middleware para leer JSON
 app.use(express.json());
 
+// Crear carpeta si no existe
 const GENERATED_IMAGES_PATH = path.join(__dirname, 'generated_images');
 if (!fs.existsSync(GENERATED_IMAGES_PATH)) {
-    fs.mkdirSync(GENERATED_IMAGES_PATH);
+  fs.mkdirSync(GENERATED_IMAGES_PATH);
 }
-app.use('/generated-images', express.static(GENERATED_IMAGES_PATH));
 
+// Servir imágenes generadas
+app.use('/generated_images', express.static(GENERATED_IMAGES_PATH));
+
+// Servir assets si tenés capas de imágenes
 const ASSETS_PATH = path.join(__dirname, 'assets');
 app.use('/assets', express.static(ASSETS_PATH));
 
+// Rutas de tu router
 app.use('/api/nft', nftRoutes);
 
+// Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`Backend server running on port ${PORT}`);
+  console.log(`Backend server running on http://localhost:${PORT}`);
 });
