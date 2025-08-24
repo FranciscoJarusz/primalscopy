@@ -1,29 +1,24 @@
-// Reemplaza todo el contenido de nftRoutes.js con esto:
+// routes/nftRoutes.js - VERSIÓN FINAL Y LIMPIA
 
 const express = require('express');
-
-const { 
-  getCustomizationOptions, 
-  generateAndSaveNftImage, 
-  getProxiedMetadata,
-  getNftLayers // <-- IMPORTA LA NUEVA FUNCIÓN
-} = require('../controllers/nftController');
-
-
 const router = express.Router();
 
-// ... (tus otras rutas siguen igual) ...
+// CAMBIO CLAVE: Solo importamos las funciones que SÍ existen en el controlador.
+const {
+    getCustomizationOptions,
+    generateAndSaveNftImage
+} = require('../controllers/nftController.js');
 
-// AÑADE ESTA NUEVA RUTA
-router.post('/get-layers', getNftLayers);
-
-// 1. Ruta para obtener la metadata (usa la función getProxiedMetadata)
-router.get('/:nftId/metadata', getProxiedMetadata);
-
-// 2. Ruta para obtener las opciones de personalización (usa la función getCustomizationOptions)
+// Ruta para obtener las opciones de personalización de un NFT.
+// El frontend llama a: /api/nft/:nftId/customize-options
 router.get('/:nftId/customize-options', getCustomizationOptions);
 
-// 3. Ruta para generar la imagen (usa la función generateAndSaveNftImage)
-router.post('/customize', generateAndSaveNftImage);
+// Ruta para generar la imagen final.
+// El frontend deberá llamar a: /api/nft/generate-image
+router.post('/generate-image', generateAndSaveNftImage);
+
+
+// IMPORTANTE: Ya no hay rutas para 'get-layers', 'metadata' o 'customize' porque no se usan o
+// han sido renombradas para ser más claras.
 
 module.exports = router;

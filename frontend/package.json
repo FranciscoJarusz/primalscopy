@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "axios": "^1.11.0",
+    "gif.js": "^0.2.0",
+    "gifuct-js": "^2.1.2",
     "next": "15.3.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -17,6 +19,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/gif.js": "^0.2.5",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
