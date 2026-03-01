@@ -17,7 +17,7 @@ export default function SelectorPage() {
   const [isHovered, setIsHovered] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'id' | 'name'>('id');
-  
+
   const { address, status } = useAccount();
   const { nfts, isLoading, error, balance, refreshNfts, checkSpecificNFT, isConnected } = useUserNFTs();
   const { isFirstConnection, detectionComplete } = useAutoNFTDetection();
@@ -33,15 +33,15 @@ export default function SelectorPage() {
   // Filtrar y ordenar NFTs
   const filteredAndSortedNfts = useMemo(() => {
     let filtered = nfts;
-    
+
     // Filtrar por término de búsqueda
     if (searchTerm) {
-      filtered = filtered.filter(nft => 
-        nft.tokenId.includes(searchTerm) || 
+      filtered = filtered.filter(nft =>
+        nft.tokenId.includes(searchTerm) ||
         nft.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     // Ordenar
     filtered.sort((a, b) => {
       if (sortBy === 'id') {
@@ -50,7 +50,7 @@ export default function SelectorPage() {
         return (a.name || '').localeCompare(b.name || '');
       }
     });
-    
+
     return filtered;
   }, [nfts, searchTerm, sortBy]);
 
@@ -105,7 +105,7 @@ export default function SelectorPage() {
   return (
     <main className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] text-white p-8">
       {/* Componente de estado de detección */}
-      <NFTDetectionStatus 
+      <NFTDetectionStatus
         isLoading={isLoading}
         balance={balance}
         nftsFound={nfts.length}
@@ -125,8 +125,8 @@ export default function SelectorPage() {
       {/* Network Switcher */}
       <NetworkSwitcher />
 
-    
-      
+
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
@@ -144,7 +144,7 @@ export default function SelectorPage() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={handleRefresh}
               disabled={isLoading}
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 px-4 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 disabled:transform-none"
@@ -157,7 +157,7 @@ export default function SelectorPage() {
             >
               🔍 Verificar NFT #56
             </button>
-            <button 
+            <button
               onClick={() => {
                 const base = process.env.NEXT_PUBLIC_CUSTOMIZER_URL || 'http://localhost:3002';
                 if (typeof window !== 'undefined') {
@@ -170,8 +170,8 @@ export default function SelectorPage() {
             >
               Probar con NFT #1292
             </button>
-            <button 
-              onClick={handleDisconnect} 
+            <button
+              onClick={handleDisconnect}
               className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105"
             >
               Desconectar
@@ -225,7 +225,7 @@ export default function SelectorPage() {
             <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-6 max-w-md mx-auto">
               <div className="text-red-400 text-lg mb-2">⚠️ Error</div>
               <div className="text-red-300 mb-4">{error}</div>
-              <button 
+              <button
                 onClick={handleRefresh}
                 className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold transition-all duration-200"
               >
@@ -263,14 +263,13 @@ export default function SelectorPage() {
                     )}
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                   {filteredAndSortedNfts.map((nft) => (
-                    <div 
-                      key={nft.id} 
-                      className={`relative group cursor-pointer transition-all duration-300 transform hover:scale-105 ${
-                        isHovered === nft.id ? 'scale-105' : ''
-                      }`}
+                    <div
+                      key={nft.id}
+                      className={`relative group cursor-pointer transition-all duration-300 transform hover:scale-105 ${isHovered === nft.id ? 'scale-105' : ''
+                        }`}
                       onClick={() => handleSelectNft(nft.tokenId)}
                       onMouseEnter={() => setIsHovered(nft.id)}
                       onMouseLeave={() => setIsHovered(null)}
@@ -280,8 +279,8 @@ export default function SelectorPage() {
                         {/* Imagen del NFT */}
                         <div className="aspect-square bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl mb-4 overflow-hidden relative">
                           {nft.imageUrl ? (
-                            <img 
-                              src={nft.imageUrl} 
+                            <img
+                              src={nft.imageUrl}
                               alt={nft.name || `NFT #${nft.tokenId}`}
                               className="w-full h-full object-cover"
                             />
@@ -295,7 +294,7 @@ export default function SelectorPage() {
                             #{nft.tokenId}
                           </div>
                         </div>
-                        
+
                         {/* Información del NFT */}
                         <div className="text-center">
                           <h3 className="font-bold text-lg text-white mb-1">
@@ -317,7 +316,7 @@ export default function SelectorPage() {
                 {searchTerm && filteredAndSortedNfts.length === 0 && (
                   <div className="text-center py-8">
                     <div className="text-white/60">
-                      No se encontraron NFTs que coincidan con "{searchTerm}"
+                      No se encontraron NFTs que coincidan con &quot;{searchTerm}&quot;
                     </div>
                   </div>
                 )}
