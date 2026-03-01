@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
@@ -52,7 +54,7 @@ export default function CustomizerPage() {
     // Verificar autenticación y propiedad del NFT
     useEffect(() => {
         if (status === 'loading') return;
-        
+
         if (!session || !isConnected) {
             router.push('/');
             return;
@@ -63,10 +65,10 @@ export default function CustomizerPage() {
             try {
                 const response = await fetch('/api/user/nfts');
                 if (!response.ok) throw new Error('Error verificando NFTs');
-                
+
                 const data = await response.json();
                 const userNFT = data.nfts.find((nft: NFT) => nft.tokenId === nftId);
-                
+
                 if (!userNFT) {
                     setError('No posees este NFT o no existe');
                     setLoading(false);
@@ -90,17 +92,17 @@ export default function CustomizerPage() {
             setLoading(true);
             const optionsResponse = await fetch(`${BACKEND_URL}/nft/${nftId}/customize-options`);
             if (!optionsResponse.ok) throw new Error(`Error: ${optionsResponse.status}`);
-            
+
             const data: CustomizationOptions = await optionsResponse.json();
             setCustomizationOptions(data);
-            
+
             const initialSelections: { [key: string]: string } = {};
             for (const traitType in data) {
                 const defaultVariant = data[traitType].variants.find(v => v.name === data[traitType].currentValue);
                 if (defaultVariant) initialSelections[traitType] = defaultVariant.imageUrl;
             }
             setSelectedVariants(initialSelections);
-            
+
             if (Object.keys(data).length > 0) setActiveTraitSection(Object.keys(data)[0]);
         } catch (error: unknown) {
             setError(`Falló la carga de opciones de personalización para el NFT #${nftId}.`);
@@ -186,7 +188,7 @@ export default function CustomizerPage() {
                             Personalizar: PrimaCult #{nftId}
                         </h1>
                     </div>
-                    
+
                     <div className="text-white">
                         <p className="text-sm text-blue-200">Wallet Conectada</p>
                         <p className="font-mono">{address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : ''}</p>
@@ -213,7 +215,7 @@ export default function CustomizerPage() {
                                         />
                                     ))}
                                 </div>
-                                
+
                                 <div className="mt-6 flex justify-center space-x-4">
                                     <button
                                         className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50"
@@ -235,11 +237,10 @@ export default function CustomizerPage() {
                                     {Object.keys(customizationOptions).map((traitType) => (
                                         <button
                                             key={traitType}
-                                            className={`w-full text-left p-3 rounded-lg transition-colors ${
-                                                activeTraitSection === traitType
+                                            className={`w-full text-left p-3 rounded-lg transition-colors ${activeTraitSection === traitType
                                                     ? 'bg-white text-blue-600'
                                                     : 'bg-white/10 text-white hover:bg-white/20'
-                                            }`}
+                                                }`}
                                             onClick={() => setActiveTraitSection(traitType)}
                                         >
                                             <div className="font-semibold">{traitType.toUpperCase()}</div>
@@ -261,11 +262,10 @@ export default function CustomizerPage() {
                                         {customizationOptions[activeTraitSection].variants.map((variant) => (
                                             <button
                                                 key={variant.imageUrl}
-                                                className={`p-3 rounded-lg transition-all ${
-                                                    selectedVariants[activeTraitSection] === variant.imageUrl
+                                                className={`p-3 rounded-lg transition-all ${selectedVariants[activeTraitSection] === variant.imageUrl
                                                         ? 'bg-white text-blue-600 ring-2 ring-blue-400'
                                                         : 'bg-white/10 text-white hover:bg-white/20'
-                                                }`}
+                                                    }`}
                                                 onClick={() => handleVariantChange(activeTraitSection, variant)}
                                             >
                                                 <img

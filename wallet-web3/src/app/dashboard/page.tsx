@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -20,7 +22,7 @@ export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const router = useRouter();
-  
+
   const [userNFTs, setUserNFTs] = useState<NFT[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export default function DashboardPage() {
   // Redirigir si no está autenticado
   useEffect(() => {
     if (status === 'loading') return;
-    
+
     if (!session || !isConnected) {
       router.push('/');
       return;
@@ -43,11 +45,11 @@ export default function DashboardPage() {
       try {
         setLoading(true);
         const response = await fetch('/api/user/nfts');
-        
+
         if (!response.ok) {
           throw new Error('Error al cargar NFTs');
         }
-        
+
         const data = await response.json();
         setUserNFTs(data.nfts || []);
       } catch (err) {
@@ -97,7 +99,7 @@ export default function DashboardPage() {
             <img src="/logo.png" alt="PrimaCult Logo" className="w-12 h-12" />
             <h1 className="text-3xl font-bold text-white">PrimaCult Dashboard</h1>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             <div className="text-white">
               <p className="text-sm text-blue-200">Wallet Conectada</p>
@@ -164,7 +166,7 @@ export default function DashboardPage() {
                     <div className="text-gray-400 text-4xl">#{nft.tokenId}</div>
                   )}
                 </div>
-                
+
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-white mb-2">
                     PrimaCult #{nft.tokenId}
@@ -172,7 +174,7 @@ export default function DashboardPage() {
                   <p className="text-blue-200 text-sm mb-4">
                     Token ID: {nft.tokenId}
                   </p>
-                  
+
                   <button className="w-full bg-white text-blue-600 py-2 px-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
                     Personalizar
                   </button>
