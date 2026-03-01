@@ -1,0 +1,51 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  walletAddress String @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relación con NFTs
+  nfts NFT[]
+  
+  @@map("users")
+}
+
+model NFT {
+  id          String   @id @default(cuid())
+  tokenId     String   @unique
+  contractAddress String
+  ownerAddress String
+  metadata    String?  // JSON string con metadata del NFT
+  imageUrl    String?
+  traits      String?  // JSON string con traits del NFT
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relación con usuario
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("nfts")
+}
+
+model UserSession {
+  id           String   @id @default(cuid())
+  walletAddress String
+  sessionToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  
+  @@map("user_sessions")
+}
