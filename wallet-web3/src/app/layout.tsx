@@ -3,8 +3,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-
-// Verifica que esta ruta coincida con donde guardaste el archivo del Paso 1
+import AuthProvider from "../components/AuthProvider";
 import Web3ModalProvider from "../components/Web3ModalProvider";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -22,9 +21,11 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
-        <Web3ModalProvider>
-          {children}
-        </Web3ModalProvider>
+        <AuthProvider>
+          <Web3ModalProvider>
+            {children}
+          </Web3ModalProvider>
+        </AuthProvider>
       </body>
     </html>
   );
