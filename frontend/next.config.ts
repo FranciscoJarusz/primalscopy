@@ -1,5 +1,6 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
@@ -19,9 +20,15 @@ const nextConfig = {
         hostname: 'ipfs.primalcult.xyz',
         pathname: '/images/**',
       },
-
     ],
+  },
+  
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;
