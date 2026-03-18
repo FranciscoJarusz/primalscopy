@@ -8,7 +8,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 // --- Interfaces para Tipado ---
 interface TraitVariant {
     name: string;
-    imageUrl: string;
+    imageUrl: string | null;
+    isNone?: boolean;
 }
 
 interface CustomizationOption {
@@ -21,9 +22,9 @@ interface CustomizationOptions {
 }
 
 // --- Constantes ---
-const NFT_DISPLAY_SIZE = 500;
 const THUMBNAIL_SIZE = 80;
 const LAYER_ORDER = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Effect'];
+const NONE_SELECTION = '__NONE__';
 
 // --- Componente de Contenido ---
 function CustomizerContent() {
@@ -46,6 +47,11 @@ function CustomizerContent() {
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
     const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || 'http://localhost:3001';
 
+    const getVariantSelectionValue = (variant: TraitVariant): string => {
+        if (variant.isNone) return NONE_SELECTION;
+        return variant.imageUrl || NONE_SELECTION;
+    };
+
     // Cargar datos del NFT automáticamente
     useEffect(() => {
         if (!nftId) return;
@@ -61,12 +67,20 @@ function CustomizerContent() {
                 setCustomizationOptions(data);
                 const initialSelections: { [key: string]: string } = {};
                 for (const traitType in data) {
-                    const defaultVariant = data[traitType].variants.find(v => v.name === data[traitType].currentValue);
-                    if (defaultVariant) initialSelections[traitType] = defaultVariant.imageUrl;
+                    const currentValue = (data[traitType].currentValue || '').toLowerCase();
+                    const defaultVariant = data[traitType].variants.find(variant => {
+                        if (!variant || !variant.name) return false;
+                        if (currentValue === 'none' && variant.isNone) return true;
+                        return variant.name.toLowerCase() === currentValue;
+                    });
+                    if (defaultVariant) {
+                        initialSelections[traitType] = getVariantSelectionValue(defaultVariant);
+                    }
                 }
                 setSelectedVariants(initialSelections);
-                if (Object.keys(data).length > 0) setActiveTraitSection(Object.keys(data)[0]);
-            } catch (error: unknown) {
+                const firstAvailableSection = LAYER_ORDER.find(trait => data[trait]) || Object.keys(data)[0] || null;
+                setActiveTraitSection(firstAvailableSection);
+            } catch (_error: unknown) {
                 setError(`Falló la carga de datos del NFT #${nftId}.`);
             } finally {
                 setLoading(false);
@@ -78,20 +92,26 @@ function CustomizerContent() {
     const displayedLayers = useMemo(() => {
         return LAYER_ORDER
             .map(traitType => selectedVariants[traitType])
-            .filter(Boolean)
-            .map(layerUrl => `${BACKEND_BASE_URL}${layerUrl}`);
+            .filter(layerUrl => Boolean(layerUrl) && layerUrl !== NONE_SELECTION)
+            .map(layerUrl => {
+                if (!layerUrl) return null;
+                if (layerUrl.startsWith('http://') || layerUrl.startsWith('https://')) return layerUrl;
+                return `${BACKEND_BASE_URL}${layerUrl}`;
+            })
+            .filter(Boolean) as string[];
     }, [selectedVariants, BACKEND_BASE_URL]);
 
     const allAssetsSelected = useMemo(() => {
         if (!customizationOptions) return false;
-        return Object.keys(customizationOptions).every(traitType => Boolean(selectedVariants[traitType]));
+        return Object.keys(customizationOptions).every(traitType => selectedVariants[traitType] !== undefined);
     }, [selectedVariants, customizationOptions]);
 
     const handleVariantChange = (traitType: string, variant: TraitVariant) => {
+        const nextValue = getVariantSelectionValue(variant);
         setSelectedVariants(prev => {
             const updated = { ...prev };
-            if (updated[traitType] === variant.imageUrl) delete updated[traitType];
-            else updated[traitType] = variant.imageUrl;
+            if (updated[traitType] === nextValue) delete updated[traitType];
+            else updated[traitType] = nextValue;
             return updated;
         });
     };
@@ -193,17 +213,16 @@ function CustomizerContent() {
                                 <h3 className="text-xl font-semibold mb-4 text-center">Vista Previa</h3>
                                 <div 
                                     ref={nftDisplayRef} 
-                                    className="relative mx-auto" 
-                                    style={{ width: NFT_DISPLAY_SIZE, height: NFT_DISPLAY_SIZE }}
+                                    className="relative mx-auto w-full max-w-[500px] aspect-square overflow-hidden rounded-lg"
                                 >
                                     {displayedLayers.map((layerSrc, index) => (
                                         <img 
                                             key={index} 
                                             src={layerSrc} 
                                             alt={`Capa de NFT`} 
-                                            width={NFT_DISPLAY_SIZE} 
-                                            height={NFT_DISPLAY_SIZE} 
-                                            className="absolute top-0 left-0" 
+                                            width={1000}
+                                            height={1000}
+                                            className="absolute inset-0 w-full h-full object-contain" 
                                             style={{ imageRendering: 'pixelated' }} 
                                         />
                                     ))}
@@ -227,7 +246,10 @@ function CustomizerContent() {
                                 
                                 {/* Selector de categorías */}
                                 <div className="flex flex-wrap gap-2 mb-6">
-                                    {Object.keys(customizationOptions).map((traitType) => (
+                                    {[...LAYER_ORDER, ...Object.keys(customizationOptions).filter(t => !LAYER_ORDER.includes(t))]
+                                        .filter((traitType, index, arr) => arr.indexOf(traitType) === index)
+                                        .filter((traitType) => Boolean(customizationOptions[traitType]))
+                                        .map((traitType) => (
                                         <button
                                             key={traitType}
                                             className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${
@@ -251,23 +273,36 @@ function CustomizerContent() {
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                             {customizationOptions[activeTraitSection].variants.map((variant) => (
                                                 <div
-                                                    key={variant.imageUrl}
+                                                    key={`${activeTraitSection}-${variant.name}`}
                                                     className={`cursor-pointer transition-all duration-200 transform hover:scale-105 ${
-                                                        selectedVariants[activeTraitSection] === variant.imageUrl 
+                                                        selectedVariants[activeTraitSection] === getVariantSelectionValue(variant)
                                                             ? 'ring-2 ring-blue-500 scale-105' 
                                                             : ''
                                                     }`}
                                                     onClick={() => handleVariantChange(activeTraitSection, variant)}
                                                 >
                                                     <div className="bg-white/10 rounded-lg p-2 mb-2">
-                                                        <img 
-                                                            src={`${BACKEND_BASE_URL}${variant.imageUrl}`} 
-                                                            alt={variant.name} 
-                                                            width={THUMBNAIL_SIZE} 
-                                                            height={THUMBNAIL_SIZE} 
-                                                            className="w-full h-auto rounded" 
-                                                            style={{ imageRendering: 'pixelated' }} 
-                                                        />
+                                                        {variant.isNone ? (
+                                                            <div className="w-full aspect-square rounded bg-gradient-to-br from-white/10 to-white/5 border border-white/20 flex items-center justify-center">
+                                                                <div className="text-center px-2">
+                                                                    <div className="text-xs font-semibold text-white/90 tracking-wide">NO LAYER</div>
+                                                                    <div className="text-[10px] text-white/60 mt-1">None</div>
+                                                                </div>
+                                                            </div>
+                                                        ) : variant.imageUrl ? (
+                                                            <img 
+                                                                src={variant.imageUrl.startsWith('http') ? variant.imageUrl : `${BACKEND_BASE_URL}${variant.imageUrl}`}
+                                                                alt={variant.name} 
+                                                                width={THUMBNAIL_SIZE} 
+                                                                height={THUMBNAIL_SIZE} 
+                                                                className="w-full aspect-square object-cover rounded" 
+                                                                style={{ imageRendering: 'pixelated' }} 
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full aspect-square rounded bg-white/10 flex items-center justify-center text-xs text-white/70">
+                                                                {variant.name}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <p className="text-center text-sm font-medium">{variant.name}</p>
                                                 </div>
