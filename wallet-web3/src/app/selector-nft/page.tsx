@@ -55,11 +55,13 @@ export default function SelectorPage() {
   }, [nfts, searchTerm, sortBy]);
 
   const handleSelectNft = (tokenId: string) => {
+    
     const base = process.env.NEXT_PUBLIC_CUSTOMIZER_URL || 'http://localhost:3002';
-    if (typeof window !== 'undefined') {
-      window.location.href = `${base}/?tokenId=${tokenId}`;
-    } else {
+
+    if (process.env.NODE_ENV === 'production' || base.includes(window.location.hostname)) {
       router.push(`/customizer?tokenId=${tokenId}`);
+    } else {
+      window.location.href = `${base}/customizer?tokenId=${tokenId}`;
     }
   };
 
