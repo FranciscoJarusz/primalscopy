@@ -13,6 +13,29 @@ interface Nft {
   metadata?: any;
 }
 
+const extractTokenId = (item: any): string | null => {
+  const candidate = item?.result ?? item?.value ?? item;
+
+  if (typeof candidate === 'bigint' || typeof candidate === 'number') {
+    return String(candidate);
+  }
+
+  if (typeof candidate === 'string') {
+    return candidate;
+  }
+
+  if (candidate && typeof candidate === 'object') {
+    if (typeof candidate.hex === 'string') {
+      return BigInt(candidate.hex).toString();
+    }
+    if (typeof candidate._hex === 'string') {
+      return BigInt(candidate._hex).toString();
+    }
+  }
+
+  return null;
+};
+
 export const useUserNFTs = () => {
   const { address, isConnected } = useAccount();
   const [nfts, setNfts] = useState<Nft[]>([]);
@@ -85,6 +108,16 @@ export const useUserNFTs = () => {
     return [];
   }, []);
 
+  const loadNftMetadata = useCallback(async (tokenId: string) => {
+    try {
+      const response = await fetch(`/api/user/nft-metadata?tokenId=${tokenId}`);
+      if (!response.ok) return null;
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }, []);
+
   // Efecto principal para manejar la carga de NFTs
   useEffect(() => {
     if (!isConnected || !address) {
@@ -137,33 +170,67 @@ export const useUserNFTs = () => {
     }
 
     if (tokenIdsError) {
-      setError(`Error al obtener token IDs: ${tokenIdsError.message}`);
-      setIsLoading(false);
-      return;
+      console.warn(`⚠️ Error al obtener token IDs por wagmi: ${tokenIdsError.message}`);
     }
 
     // Cargar NFTs directamente desde ApeChain
     if (balance > 0 && !balanceLoading && !tokenIdsLoading) {
       const processNfts = async () => {
         try {
-          console.log(`🔄 Cargando NFTs desde ApeChain para ${address}...`);
+
+          console.log(`🔄 Cargando NFTs para ${address}... (balance=${balance})`);
+          
+          // ESTRATEGIA: Usar el endpoint directamente, que es más confiable
           const apechainNFTs = await loadNFTsFromApeChain(address);
           
-          const formattedNfts: Nft[] = apechainNFTs.map((nft: any) => ({
-            id: nft.tokenId,
-            tokenId: nft.tokenId,
-            name: nft.name || `PrimaCult #${nft.tokenId}`,
-            imageUrl: nft.imageUrl,
-            metadata: nft.metadata ? JSON.parse(nft.metadata) : undefined
-          }));
+          if (apechainNFTs && apechainNFTs.length > 0) {
+            console.log(`✅ NFTs obtenidos del endpoint: ${apechainNFTs.length}`, apechainNFTs);
+            
+            // Formatear NFTs
+            const formattedNfts: Nft[] = apechainNFTs.map((nft: any) => ({
+              id: nft.tokenId || nft.id,
+              tokenId: String(nft.tokenId || nft.id),
+              name: nft.name || `PrimaCult #${nft.tokenId || nft.id}`,
+              imageUrl: nft.imageUrl || nft.image,
+              metadata: nft.metadata ? (typeof nft.metadata === 'string' ? JSON.parse(nft.metadata) : nft.metadata) : undefined
+            }));
 
-          setNfts(formattedNfts);
-          setLastFetchedAddress(address);
-          
-          console.log(`✅ NFTs cargados desde ApeChain: ${formattedNfts.length} NFTs para ${address}`);
+            setNfts(formattedNfts);
+            setLastFetchedAddress(address);
+            console.log(`✅ ${formattedNfts.length} NFTs disponibles para ${address}`, formattedNfts);
+          } else {
+            console.warn(`⚠️ Endpoint sin NFTs, usando fallback de token IDs de wagmi`);
+
+            const tokenIds = (tokenIdsData || [])
+              .map((item: any) => extractTokenId(item))
+              .filter((value: string | null): value is string => Boolean(value));
+
+            const uniqueTokenIds = Array.from(new Set(tokenIds));
+
+            if (uniqueTokenIds.length > 0) {
+              const metadataResults = await Promise.all(uniqueTokenIds.map((tokenId) => loadNftMetadata(tokenId)));
+
+              const fallbackNfts: Nft[] = uniqueTokenIds.map((tokenId, index) => {
+                const metadataResult = metadataResults[index];
+                return {
+                  id: tokenId,
+                  tokenId,
+                  name: metadataResult?.name || `PrimaCult #${tokenId}`,
+                  imageUrl: metadataResult?.imageUrl || '',
+                  metadata: metadataResult?.metadata,
+                };
+              });
+
+              setNfts(fallbackNfts);
+              setLastFetchedAddress(address);
+              console.log(`✅ NFTs cargados por fallback wagmi: ${fallbackNfts.length}`, fallbackNfts);
+            } else {
+              setNfts([]);
+            }
+          }
         } catch (error) {
-          console.error('Error cargando NFTs desde ApeChain:', error);
-          setError('Error al cargar los NFTs desde ApeChain');
+          console.error('Error cargando NFTs:', error);
+          setError('Error al cargar los NFTs');
         } finally {
           setIsLoading(false);
         }
@@ -189,7 +256,8 @@ export const useUserNFTs = () => {
     tokenIdsError,
     lastFetchedAddress,
     nfts.length,
-    loadNFTsFromApeChain
+    loadNFTsFromApeChain,
+    loadNftMetadata
   ]);
 
   // Función para refrescar manualmente
@@ -203,15 +271,32 @@ export const useUserNFTs = () => {
   const checkSpecificNFT = useCallback(async (tokenId: string) => {
     try {
       const response = await fetch(`/api/check-nft-ownership?tokenId=${tokenId}&address=${address}`);
-      if (response.ok) {
-        const result = await response.json();
-        console.log(`🔍 Verificación manual NFT #${tokenId}:`, result);
-        return result;
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error(`Error verificando NFT #${tokenId}:`, result);
+        return {
+          ok: false,
+          tokenId,
+          address,
+          error: result?.error || 'No se pudo verificar el NFT',
+        };
       }
+
+      console.log(`🔍 Verificación manual NFT #${tokenId}:`, result);
+      return {
+        ok: true,
+        ...result,
+      };
     } catch (error) {
       console.error(`Error verificando NFT #${tokenId}:`, error);
     }
-    return null;
+    return {
+      ok: false,
+      tokenId,
+      address,
+      error: 'Error de red al verificar el NFT',
+    };
   }, [address]);
 
   return { 

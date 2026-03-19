@@ -2,15 +2,21 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
-import { useAccount } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
 
 export default function Web3Auth() {
   const router = useRouter();
   const { open } = useWeb3Modal();
+  const { disconnect } = useDisconnect();
   const { isConnected, isConnecting, address } = useAccount();
+
+  useLayoutEffect(() => {
+    // La pantalla principal es el único punto donde se cierra completamente la sesión.
+    disconnect();
+  }, [disconnect]);
 
   // EFECTO DE REDIRECCIÓN AUTOMÁTICA
   // Se ejecuta cuando el estado de `isConnected` cambia.
@@ -30,17 +36,17 @@ export default function Web3Auth() {
           </div>
         </div>
         
-        <div className="bg-[#1322D3] p-12 rounded-3xl shadow-2xl text-center max-w-2xl w-full">
-          <h1 className="text-4xl font-bold text-white mb-4">Prima Cult</h1>
-          <p className="text-white text-0.5xl mb-2">Wardrobe <span className="text-sky-300">(BETA)</span></p>
-          <p className="text-white text-2xl mb-6">Inicia Sesión</p>
-          <p className="text-blue-200 mb-10 text-xl">Debes conectar tu wallet para continuar</p>
+        <div className="flex flex-col gap-6 bg-[#1322D3] p-12 rounded-3xl shadow-2xl text-center max-w-2xl w-full">
+          <h1 className="text-4xl font-bold text-white ">Prima Cult</h1>
+          <p className="text-white text-0.5xl ">Wardrobe <span className="text-sky-300">(BETA)</span></p>
+          <p className="text-white font-bold text-2xl">Log In</p>
+          <p className="text-blue-200 text-md">You must connect your wallet to continue</p>
           
           <button
             onClick={() => open()}
             disabled={isConnecting}
-            className="bg-white hover:bg-gray-100 text-blue-600 font-bold py-4 px-12 rounded-xl ...">
-            {isConnecting ? 'Conectando...' : 'Conectar Wallet'}
+            className="bg-white hover:scale-105 text-blue-600 font-bold py-4 px-12 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+            {isConnecting ? 'Connecting...' : 'Connect Wallet'}
           </button>
         </div>
       </div>

@@ -26,7 +26,7 @@ export const useAutoNFTDetection = () => {
         isFirstConnection: true
       }));
       
-      console.log('🔍 Iniciando detección automática de NFTs para:', address);
+      console.log('🔍 Starting automatic NFT detection for:', address);
     }
 
     // Cuando la detección se completa
@@ -37,7 +37,7 @@ export const useAutoNFTDetection = () => {
         isFirstConnection: false
       }));
       
-      console.log(`✅ Detección completada: ${nfts.length} NFTs encontrados`);
+      console.log(`✅ Detection complete: ${nfts.length} NFTs found`);
     }
 
     // Resetear cuando se desconecta

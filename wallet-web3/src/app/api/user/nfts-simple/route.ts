@@ -21,6 +21,16 @@ const NFT_ABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {"internalType": "address", "name": "owner", "type": "address"},
+      {"internalType": "uint256", "name": "index", "type": "uint256"}
+    ],
+    "name": "tokenOfOwnerByIndex",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
     "name": "ownerOf",
     "outputs": [{"internalType": "address", "name": "", "type": "address"}],
@@ -28,6 +38,17 @@ const NFT_ABI = [
     "type": "function"
   }
 ] as const;
+
+const normalizeIpfsUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('ipfs://ipfs/')) {
+    return `https://ipfs.io/ipfs/${url.replace('ipfs://ipfs/', '')}`;
+  }
+  if (url.startsWith('ipfs://')) {
+    return `https://ipfs.io/ipfs/${url.replace('ipfs://', '')}`;
+  }
+  return url;
+};
 
 // Cliente para ApeChain
 const client = createPublicClient({
@@ -98,95 +119,128 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Rango específico basado en los token IDs conocidos
-    // Empezar con un rango pequeño y expandir si es necesario
-    const searchRanges = [
-      { start: 1, end: 100 },      // Rango inicial
-      { start: 101, end: 1000 },   // Rango medio
-      { start: 1001, end: 10000 }  // Rango amplio
-    ];
-
     const nfts = [];
-    
-    for (const range of searchRanges) {
-      if (nfts.length >= nftCount) break;
-      
-      console.log(`🔍 Buscando en rango ${range.start}-${range.end}...`);
-      
-      // Verificar tokens en lotes de 10 para mejor rendimiento
-      for (let start = range.start; start <= range.end && nfts.length < nftCount; start += 10) {
-        const end = Math.min(start + 9, range.end);
-        
-        // Crear promesas para verificar múltiples tokens en paralelo
-        const promises = [];
+    const discoveredTokenIds = new Set<bigint>();
+
+    // Obtener IDs reales del dueño usando el enumerable del ERC721
+    for (let i = 0; i < nftCount; i++) {
+      let tokenId: bigint | null = null;
+
+      try {
+        tokenId = await client.readContract({
+          address: NFT_CONTRACT_ADDRESS,
+          abi: NFT_ABI,
+          functionName: 'tokenOfOwnerByIndex',
+          args: [address as `0x${string}`, BigInt(i)]
+        });
+      } catch (error) {
+        console.warn(`No se pudo obtener tokenOfOwnerByIndex(${i}):`, error);
+        continue;
+      }
+
+      if (tokenId === null) continue;
+      discoveredTokenIds.add(tokenId);
+
+      if (discoveredTokenIds.size >= nftCount) {
+        break;
+      }
+    }
+
+    // Fallback final: escanear ownerOf en un rango acotado
+    if (discoveredTokenIds.size === 0 && nftCount > 0) {
+      console.log('🔄 Fallback: escaneo ownerOf en rango 1-4000');
+
+      const maxTokenToScan = 4000;
+      const batchSize = 50;
+
+      for (let start = 1; start <= maxTokenToScan && discoveredTokenIds.size < nftCount; start += batchSize) {
+        const end = Math.min(start + batchSize - 1, maxTokenToScan);
+
+        const checks = [];
         for (let tokenId = start; tokenId <= end; tokenId++) {
-          promises.push(
+          checks.push(
             client.readContract({
               address: NFT_CONTRACT_ADDRESS,
               abi: NFT_ABI,
               functionName: 'ownerOf',
               args: [BigInt(tokenId)]
-            }).then(owner => ({ tokenId, owner }))
-            .catch(() => ({ tokenId, owner: null }))
+            })
+              .then((owner) => ({ tokenId, owner }))
+              .catch(() => null)
           );
         }
-        
-        const results = await Promise.all(promises);
-        
-        // Procesar tokens que pertenecen al usuario
-        for (const { tokenId, owner } of results) {
-          if (owner && owner.toLowerCase() === address.toLowerCase()) {
-            const tokenIdStr = tokenId.toString();
-            console.log(`✅ NFT encontrado: #${tokenIdStr}`);
 
-            // Obtener metadatos del NFT
-            let tokenURI = '';
-            let metadata: any = {};
-            let imageUrl = '';
-
-            try {
-              tokenURI = await client.readContract({
-                address: NFT_CONTRACT_ADDRESS,
-                abi: NFT_ABI,
-                functionName: 'tokenURI',
-                args: [BigInt(tokenId)]
-              });
-
-              if (tokenURI) {
-                try {
-                  const metadataResponse = await fetch(tokenURI);
-                  if (metadataResponse.ok) {
-                    metadata = await metadataResponse.json();
-                    imageUrl = metadata.image || '';
-                  }
-                } catch (error) {
-                  console.warn(`No se pudieron obtener los metadatos para el token ${tokenIdStr}:`, error);
-                }
-              }
-            } catch (error) {
-              console.warn(`No se pudo obtener tokenURI para el token ${tokenIdStr}:`, error);
-            }
-
-            nfts.push({
-              id: tokenIdStr,
-              tokenId: tokenIdStr,
-              contractAddress: NFT_CONTRACT_ADDRESS,
-              ownerAddress: address,
-              metadata: JSON.stringify(metadata),
-              imageUrl,
-              traits: metadata.attributes || [],
-              name: metadata.name || `PrimaCult #${tokenIdStr}`,
-              description: metadata.description || '',
-              tokenURI
-            });
-
-            // Si ya encontramos todos los NFTs, podemos parar
-            if (nfts.length >= nftCount) {
-              break;
-            }
+        const results = await Promise.all(checks);
+        for (const result of results) {
+          if (!result) continue;
+          if (result.owner.toLowerCase() === address.toLowerCase()) {
+            discoveredTokenIds.add(BigInt(result.tokenId));
           }
+          if (discoveredTokenIds.size >= nftCount) break;
         }
       }
+    }
+
+    for (const tokenId of discoveredTokenIds) {
+      try {
+        const owner = await client.readContract({
+          address: NFT_CONTRACT_ADDRESS,
+          abi: NFT_ABI,
+          functionName: 'ownerOf',
+          args: [tokenId]
+        });
+
+        if (owner.toLowerCase() !== address.toLowerCase()) {
+          continue;
+        }
+      } catch {
+        continue;
+      }
+
+      const tokenIdStr = tokenId.toString();
+      console.log(`✅ NFT encontrado: #${tokenIdStr}`);
+
+      let tokenURI = '';
+      let metadata: any = {};
+      let imageUrl = '';
+
+      try {
+        const rawTokenUri = await client.readContract({
+          address: NFT_CONTRACT_ADDRESS,
+          abi: NFT_ABI,
+          functionName: 'tokenURI',
+          args: [tokenId]
+        });
+
+        tokenURI = normalizeIpfsUrl(rawTokenUri);
+
+        if (tokenURI) {
+          try {
+            const metadataResponse = await fetch(tokenURI);
+            if (metadataResponse.ok) {
+              metadata = await metadataResponse.json();
+              imageUrl = normalizeIpfsUrl(metadata?.image || '');
+            }
+          } catch (error) {
+            console.warn(`No se pudieron obtener metadatos del token ${tokenIdStr}:`, error);
+          }
+        }
+      } catch (error) {
+        console.warn(`No se pudo obtener tokenURI del token ${tokenIdStr}:`, error);
+      }
+
+      nfts.push({
+        id: tokenIdStr,
+        tokenId: tokenIdStr,
+        contractAddress: NFT_CONTRACT_ADDRESS,
+        ownerAddress: address,
+        metadata: JSON.stringify(metadata),
+        imageUrl,
+        traits: metadata?.attributes || [],
+        name: metadata?.name || `PrimaCult #${tokenIdStr}`,
+        description: metadata?.description || '',
+        tokenURI
+      });
     }
 
     console.log(`✅ NFTs obtenidos: ${nfts.length} NFTs para ${address}`);
