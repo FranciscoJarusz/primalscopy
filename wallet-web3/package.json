@@ -19,6 +19,8 @@
     "@web3modal/ethereum": "^2.7.1",
     "@web3modal/wagmi": "^5.1.11",
     "ethers": "^6.11.1",
+    "gif.js": "^0.2.0",
+    "gifuct-js": "^2.1.2",
     "next": "^15.5.12",
     "next-auth": "^4.24.10",
     "pino-pretty": "^13.1.1",

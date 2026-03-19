@@ -22,6 +22,7 @@ export default function SelectorPage() {
   const { nfts, isLoading, error, balance, refreshNfts, checkSpecificNFT, isConnected } = useUserNFTs();
   const { isFirstConnection, detectionComplete } = useAutoNFTDetection();
   const [showWelcome, setShowWelcome] = useState(false);
+  const customizerBase = process.env.NEXT_PUBLIC_CUSTOMIZER_URL || 'http://localhost:3000';
 
   useEffect(() => {
     if (status === 'disconnected') {
@@ -55,13 +56,10 @@ export default function SelectorPage() {
   }, [nfts, searchTerm, sortBy]);
 
   const handleSelectNft = (tokenId: string) => {
-    
-    const base = process.env.NEXT_PUBLIC_CUSTOMIZER_URL || 'http://localhost:3002';
-
-    if (process.env.NODE_ENV === 'production' || base.includes(window.location.hostname)) {
+    if (process.env.NODE_ENV === 'production' || customizerBase.includes(window.location.hostname)) {
       router.push(`/customizer?tokenId=${tokenId}`);
     } else {
-      window.location.href = `${base}/customizer?tokenId=${tokenId}`;
+      window.location.href = `${customizerBase}/customizer?tokenId=${tokenId}`;
     }
   };
 
@@ -129,9 +127,9 @@ export default function SelectorPage() {
 
 
 
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto min-h-[calc(100vh-8rem)] flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col justify-center items-left gap-6">
           <div>
             <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
               Selecciona tu NFT
@@ -161,9 +159,8 @@ export default function SelectorPage() {
             </button>
             <button
               onClick={() => {
-                const base = process.env.NEXT_PUBLIC_CUSTOMIZER_URL || 'http://localhost:3002';
                 if (typeof window !== 'undefined') {
-                  window.location.href = `${base}/?tokenId=1292`;
+                  window.location.href = `${customizerBase}/customizer?tokenId=1292`;
                 } else {
                   router.push('/customizer?tokenId=1292');
                 }
@@ -241,7 +238,7 @@ export default function SelectorPage() {
         {!isLoading && !error && (
           <>
             {nfts.length === 0 ? (
-              <div className="text-center py-16">
+              <div className="flex flex-1 items-center justify-center py-10 text-center">
                 <div className="bg-white/5 border border-white/10 rounded-xl p-8 max-w-md mx-auto">
                   <div className="text-6xl mb-4">🎭</div>
                   <div className="text-blue-200 text-xl mb-2">No se encontraron NFTs</div>

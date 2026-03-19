@@ -3,6 +3,8 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
+import GIF from 'gif.js/dist/gif.js';
+import { parseGIF, decompressFrames } from 'gifuct-js';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 // --- Interfaces para Tipado ---
@@ -23,8 +25,19 @@ interface CustomizationOptions {
 
 // --- Constantes ---
 const THUMBNAIL_SIZE = 80;
+const GIF_EXPORT_SIZE = 2000;
 const LAYER_ORDER = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Effect'];
 const NONE_SELECTION = '__NONE__';
+
+interface GifFrame {
+    dims: { left: number; top: number; width: number; height: number };
+    delay?: number;
+    patch: Uint8ClampedArray;
+}
+
+type LoadedImageLayer = { url: string; type: 'image'; image: HTMLImageElement };
+type LoadedGifLayer = { url: string; type: 'gif'; frames: GifFrame[] };
+type LoadedLayer = LoadedImageLayer | LoadedGifLayer;
 
 // --- Componente de Contenido ---
 function CustomizerContent() {
@@ -41,6 +54,8 @@ function CustomizerContent() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [activeTraitSection, setActiveTraitSection] = useState<string | null>(null);
+    const [exportingGif, setExportingGif] = useState<boolean>(false);
+    const [exportProgress, setExportProgress] = useState<number>(0);
 
     const nftDisplayRef = useRef<HTMLDivElement>(null);
 
@@ -129,6 +144,138 @@ function CustomizerContent() {
         router.push('/selector-nft');
     };
 
+    const handleExportGif = async () => {
+        if (!allAssetsSelected) {
+            alert('Debes seleccionar una opción en cada categoría antes de exportar.');
+            return;
+        }
+
+        if (displayedLayers.length === 0) {
+            alert('No hay capas para exportar.');
+            return;
+        }
+
+        setExportingGif(true);
+        setExportProgress(0);
+
+        try {
+            const loadedLayers: LoadedLayer[] = await Promise.all(
+                displayedLayers.map(async (url) => {
+                    if (url.endsWith('.gif')) {
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            throw new Error(`No se pudo cargar la capa GIF: ${url}`);
+                        }
+
+                        const buffer = await response.arrayBuffer();
+                        const parsedGif = parseGIF(buffer);
+                        const frames = decompressFrames(parsedGif, true) as unknown as GifFrame[];
+                        return { url, type: 'gif', frames };
+                    }
+
+                    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = () => resolve(img);
+                        img.onerror = () => reject(new Error(`No se pudo cargar la imagen: ${url}`));
+                        img.src = url;
+                    });
+
+                    return { url, type: 'image', image };
+                })
+            );
+
+            const gif = new GIF({
+                workers: 2,
+                quality: 10,
+                width: GIF_EXPORT_SIZE,
+                height: GIF_EXPORT_SIZE,
+                workerScript: '/gif.worker.js'
+            });
+
+            const frameCanvas = document.createElement('canvas');
+            frameCanvas.width = GIF_EXPORT_SIZE;
+            frameCanvas.height = GIF_EXPORT_SIZE;
+            const frameCtx = frameCanvas.getContext('2d');
+
+            const patchCanvas = document.createElement('canvas');
+            const patchCtx = patchCanvas.getContext('2d');
+
+            if (!frameCtx || !patchCtx) {
+                throw new Error('No se pudo inicializar el canvas para exportación.');
+            }
+
+            const gifLayerCache = new Map<string, HTMLCanvasElement>();
+            const animatedLayers = loadedLayers.filter((layer): layer is LoadedGifLayer => layer.type === 'gif');
+            const totalFrames = animatedLayers.length > 0
+                ? Math.max(...animatedLayers.map(layer => layer.frames.length))
+                : 1;
+
+            for (let frameIndex = 0; frameIndex < totalFrames; frameIndex += 1) {
+                frameCtx.clearRect(0, 0, GIF_EXPORT_SIZE, GIF_EXPORT_SIZE);
+
+                for (const layer of loadedLayers) {
+                    if (layer.type === 'image') {
+                        frameCtx.drawImage(layer.image, 0, 0, GIF_EXPORT_SIZE, GIF_EXPORT_SIZE);
+                        continue;
+                    }
+
+                    const gifFrame = layer.frames[frameIndex % layer.frames.length];
+                    if (!gifFrame) continue;
+
+                    patchCanvas.width = gifFrame.dims.width;
+                    patchCanvas.height = gifFrame.dims.height;
+
+                    const imageData = patchCtx.createImageData(gifFrame.dims.width, gifFrame.dims.height);
+                    imageData.data.set(gifFrame.patch);
+                    patchCtx.putImageData(imageData, 0, 0);
+
+                    let layerCanvas = gifLayerCache.get(layer.url);
+                    if (!layerCanvas) {
+                        layerCanvas = document.createElement('canvas');
+                        layerCanvas.width = GIF_EXPORT_SIZE;
+                        layerCanvas.height = GIF_EXPORT_SIZE;
+                        gifLayerCache.set(layer.url, layerCanvas);
+                    }
+
+                    const layerCtx = layerCanvas.getContext('2d');
+                    if (!layerCtx) continue;
+
+                    layerCtx.drawImage(patchCanvas, gifFrame.dims.left, gifFrame.dims.top);
+                    frameCtx.drawImage(layerCanvas, 0, 0, GIF_EXPORT_SIZE, GIF_EXPORT_SIZE);
+                }
+
+                const animatedDelay = animatedLayers[0]?.frames[frameIndex % animatedLayers[0].frames.length]?.delay;
+                gif.addFrame(frameCanvas, { copy: true, delay: animatedDelay || 100 });
+                setExportProgress(((frameIndex + 1) / totalFrames) * 100);
+            }
+
+            await new Promise<void>((resolve, reject) => {
+                gif.on('finished', (blob: Blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const anchor = document.createElement('a');
+                    anchor.href = url;
+                    anchor.download = `primal-${nftId}.gif`;
+                    anchor.click();
+                    URL.revokeObjectURL(url);
+                    resolve();
+                });
+
+                gif.on('abort', () => {
+                    reject(new Error('La exportación del GIF fue abortada.'));
+                });
+
+                gif.render();
+            });
+        } catch (exportError) {
+            console.error(exportError);
+            alert('No se pudo exportar el GIF. Revisa la consola para más detalle.');
+        } finally {
+            setExportingGif(false);
+            setExportProgress(0);
+        }
+    };
+
     // Si no hay tokenId, mostrar mensaje de error
     if (!tokenIdFromUrl) {
         return (
@@ -157,14 +304,8 @@ function CustomizerContent() {
                         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                             CUSTOMIZE: PRIMAL #{nftId}
                         </h1>
-                        <p className="text-blue-200 mt-2">Personaliza tu personaje</p>
+                        <p className="text-blue-200 mt-2">Customize your character</p>
                     </div>
-                    <button 
-                        onClick={handleBackToSelection}
-                        className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-xl font-semibold transition-all duration-200"
-                    >
-                        ← Volver a la Selección
-                    </button>
                 </div>
 
                 {/* Input para cambiar NFT */}
@@ -182,7 +323,7 @@ function CustomizerContent() {
                             onClick={handleLoadNft} 
                             className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-semibold transition-all duration-200"
                         >
-                            Cargar NFT
+                            Search
                         </button>
                     </div>
                 </div>
@@ -191,7 +332,7 @@ function CustomizerContent() {
                 {loading && (
                     <div className="text-center py-16">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                        <div className="text-blue-200 text-xl">Cargando NFT...</div>
+                        <div className="text-blue-200 text-xl">NFT Loading...</div>
                     </div>
                 )}
 
@@ -210,7 +351,7 @@ function CustomizerContent() {
                         {/* Columna izquierda - Vista previa del NFT */}
                         <div className="lg:col-span-1">
                             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                                <h3 className="text-xl font-semibold mb-4 text-center">Vista Previa</h3>
+                                <h3 className="text-xl font-semibold mb-4 text-center">Preview</h3>
                                 <div 
                                     ref={nftDisplayRef} 
                                     className="relative mx-auto w-full max-w-[500px] aspect-square overflow-hidden rounded-lg"
@@ -219,7 +360,7 @@ function CustomizerContent() {
                                         <img 
                                             key={index} 
                                             src={layerSrc} 
-                                            alt={`Capa de NFT`} 
+                                            alt={`NFT Layer ${index}`} 
                                             width={1000}
                                             height={1000}
                                             className="absolute inset-0 w-full h-full object-contain" 
@@ -227,14 +368,22 @@ function CustomizerContent() {
                                         />
                                     ))}
                                 </div>
-                                <div className="text-center mt-4">
-                                    <div className={`inline-block px-4 py-2 rounded-full text-sm font-semibold ${
-                                        allAssetsSelected 
-                                            ? 'bg-green-500/20 text-green-400 border border-green-500/50' 
-                                            : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
-                                    }`}>
-                                        {allAssetsSelected ? '✅ Completado' : '⚠️ Faltan traits'}
-                                    </div>
+                                <div className="mt-5">
+                                    <button
+                                        onClick={handleExportGif}
+                                        disabled={!allAssetsSelected || exportingGif}
+                                        className={`flex w-full items-center justify-center rounded-2xl px-6 py-3 text-lg font-black uppercase tracking-[0.12em] transition-all duration-200 ${
+                                            allAssetsSelected
+                                                ? 'bg-blue-600 text-white hover:bg-blue-800'
+                                                : 'text-white/45'
+                                        } disabled:cursor-not-allowed disabled:shadow-none`}
+                                    >
+                                        {exportingGif
+                                            ? `Exporting ${Math.round(exportProgress)}%`
+                                            : allAssetsSelected
+                                                ? 'Export'
+                                                : 'Complete traits'}
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -242,7 +391,7 @@ function CustomizerContent() {
                         {/* Columna derecha - Selector de traits */}
                         <div className="lg:col-span-2">
                             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                                <h3 className="text-xl font-semibold mb-6">Personalización</h3>
+                                <h3 className="text-xl font-semibold mb-6">Customization</h3>
                                 
                                 {/* Selector de categorías */}
                                 <div className="flex flex-wrap gap-2 mb-6">
