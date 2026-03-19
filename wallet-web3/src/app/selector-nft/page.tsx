@@ -143,35 +143,31 @@ export default function SelectorPage() {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={handleRefresh}
               disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 px-4 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 disabled:transform-none"
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 disabled:transform-none text-sm sm:text-base"
             >
               {isLoading ? '🔄' : '🔄'} Refrescar
             </button>
             <button
               onClick={() => handleCheckNFT('56')}
-              className="bg-purple-600 hover:bg-purple-700 px-4 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105"
+              className="bg-purple-600 hover:bg-purple-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 text-sm sm:text-base"
             >
               🔍 Verificar NFT #56
             </button>
             <button
               onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.location.href = `${customizerBase}/customizer?tokenId=1292`;
-                } else {
-                  router.push('/customizer?tokenId=1292');
-                }
+                router.push('/customizer?tokenId=1292');
               }}
-              className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105"
+              className="bg-green-600 hover:bg-green-700 px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 text-sm sm:text-base"
             >
               Probar con NFT #1292
             </button>
             <button
               onClick={handleDisconnect}
-              className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105"
+              className="bg-red-600 hover:bg-red-700 px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 text-sm sm:text-base"
             >
               Desconectar
             </button>
