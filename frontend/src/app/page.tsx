@@ -8,7 +8,8 @@ import { parseGIF, decompressFrames } from 'gifuct-js';
 // --- Interfaces para Tipado ---
 interface TraitVariant {
     name: string;
-    imageUrl: string;
+    imageUrl: string | null;
+    isNone?: boolean;
 }
 
 interface CustomizationOption {
@@ -25,6 +26,14 @@ const NFT_DISPLAY_SIZE = 500;
 const THUMBNAIL_SIZE = 80;
 const GIF_EXPORT_SIZE = 2000;
 const LAYER_ORDER = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Effect'];
+
+const isNoneVariant = (variant: TraitVariant): boolean => {
+    if (!variant) return true;
+    if (variant.isNone) return true;
+    const normalizedName = (variant.name || '').trim().toLowerCase();
+    const normalizedUrl = (variant.imageUrl || '').trim().toLowerCase();
+    return normalizedName === 'none' || normalizedUrl.includes('/none.');
+};
 
 // --- Componente Principal ---
 export default function NftCustomizerPage() {
@@ -55,14 +64,23 @@ export default function NftCustomizerPage() {
                 const optionsResponse = await fetch(`${BACKEND_URL}/nft/${nftId}/customize-options`);
                 if (!optionsResponse.ok) throw new Error(`Error: ${optionsResponse.status}`);
                 const data: CustomizationOptions = await optionsResponse.json();
-                setCustomizationOptions(data);
+                const sanitizedData = Object.fromEntries(
+                    Object.entries(data).map(([traitType, option]) => {
+                        const variants = (option?.variants || []).filter(variant => !isNoneVariant(variant));
+                        return [traitType, { ...option, variants }];
+                    })
+                ) as CustomizationOptions;
+
+                setCustomizationOptions(sanitizedData);
                 const initialSelections: { [key: string]: string } = {};
-                for (const traitType in data) {
-                    const defaultVariant = data[traitType].variants.find(v => v.name === data[traitType].currentValue);
-                    if (defaultVariant) initialSelections[traitType] = defaultVariant.imageUrl;
+                for (const traitType in sanitizedData) {
+                    const defaultVariant =
+                        sanitizedData[traitType].variants.find(v => v.name === sanitizedData[traitType].currentValue) ||
+                        sanitizedData[traitType].variants[0];
+                    if (defaultVariant?.imageUrl) initialSelections[traitType] = defaultVariant.imageUrl;
                 }
                 setSelectedVariants(initialSelections);
-                if (Object.keys(data).length > 0) setActiveTraitSection(Object.keys(data)[0]);
+                if (Object.keys(sanitizedData).length > 0) setActiveTraitSection(Object.keys(sanitizedData)[0]);
             } catch (error: unknown) {
                 setError(`Falló la carga de datos del NFT #${nftId}.`);
             } finally {
@@ -85,6 +103,7 @@ export default function NftCustomizerPage() {
     }, [selectedVariants, customizationOptions]);
 
     const handleVariantChange = (traitType: string, variant: TraitVariant) => {
+        if (!variant.imageUrl) return;
         setSelectedVariants(prev => {
             const updated = { ...prev };
             if (updated[traitType] === variant.imageUrl) delete updated[traitType];
@@ -303,7 +322,7 @@ export default function NftCustomizerPage() {
                             {Object.keys(customizationOptions).map((traitType) => (
                                 <div key={traitType} className={`trait-category-item ${activeTraitSection === traitType ? 'active' : ''}`} onClick={() => setActiveTraitSection(traitType)}>
                                     <span className="trait-type-name">{traitType.toUpperCase()}</span>
-                                    <span className="selected-trait-value">{selectedVariants[traitType]?.split('/').pop()?.replace(/\.(png|gif)$/, '') || 'None'}</span>
+                                    <span className="selected-trait-value">{selectedVariants[traitType]?.split('/').pop()?.replace(/\.(png|gif|bmp|webp)$/i, '') || '-'}</span>
                                 </div>
                             ))}
                         </div>
@@ -313,11 +332,15 @@ export default function NftCustomizerPage() {
                                 <div className="variants-grid">
                                     {customizationOptions[activeTraitSection].variants.map((variant) => (
                                         <div
-                                            key={variant.imageUrl}
+                                            key={`${variant.name}-${variant.imageUrl || 'no-image'}`}
                                             className={`variant-item ${selectedVariants[activeTraitSection] === variant.imageUrl ? 'selected' : ''}`}
                                             onClick={() => handleVariantChange(activeTraitSection, variant)}
                                         >
-                                            <img src={`${BACKEND_BASE_URL}${variant.imageUrl}`} alt={variant.name} width={THUMBNAIL_SIZE} height={THUMBNAIL_SIZE} className="variant-thumbnail" style={{ imageRendering: 'pixelated' }} />
+                                            {variant.imageUrl ? (
+                                                <img src={`${BACKEND_BASE_URL}${variant.imageUrl}`} alt={variant.name} width={THUMBNAIL_SIZE} height={THUMBNAIL_SIZE} className="variant-thumbnail" style={{ imageRendering: 'pixelated' }} />
+                                            ) : (
+                                                <div className="variant-thumbnail" />
+                                            )}
                                             <p className="variant-name">{variant.name}</p>
                                         </div>
                                     ))}

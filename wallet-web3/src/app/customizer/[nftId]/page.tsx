@@ -26,6 +26,12 @@ interface CustomizationOptions {
 const LAYER_ORDER = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Effect'];
 const NONE_SELECTION = '__NONE__';
 
+const isNoneVariant = (variant: TraitVariant): boolean => {
+    if (!variant) return true;
+    if (variant.isNone) return true;
+    return (variant.name || '').trim().toLowerCase() === 'none';
+};
+
 interface NFT {
     id: string;
     tokenId: string;
@@ -55,10 +61,7 @@ export default function CustomizerPage() {
     const BACKEND_URL = config.BACKEND_URL;
     const BACKEND_BASE_URL = config.BACKEND_BASE_URL;
 
-    const getVariantSelectionValue = (variant: TraitVariant): string => {
-        if (variant.isNone) return NONE_SELECTION;
-        return variant.imageUrl || NONE_SELECTION;
-    };
+    const getVariantSelectionValue = (variant: TraitVariant): string => variant.imageUrl || NONE_SELECTION;
 
     // Verificar autenticación y propiedad del NFT
     useEffect(() => {
@@ -103,21 +106,27 @@ export default function CustomizerPage() {
             if (!optionsResponse.ok) throw new Error(`Error: ${optionsResponse.status}`);
 
             const data: CustomizationOptions = await optionsResponse.json();
-            setCustomizationOptions(data);
+            const sanitizedData = Object.fromEntries(
+                Object.entries(data).map(([traitType, option]) => {
+                    const variants = (option?.variants || []).filter(variant => !isNoneVariant(variant));
+                    return [traitType, { ...option, variants }];
+                })
+            ) as CustomizationOptions;
+
+            setCustomizationOptions(sanitizedData);
 
             const initialSelections: { [key: string]: string } = {};
-            for (const traitType in data) {
-                const currentValue = (data[traitType].currentValue || '').toLowerCase();
-                const defaultVariant = data[traitType].variants.find(variant => {
+            for (const traitType in sanitizedData) {
+                const currentValue = (sanitizedData[traitType].currentValue || '').toLowerCase();
+                const defaultVariant = sanitizedData[traitType].variants.find(variant => {
                     if (!variant || !variant.name) return false;
-                    if (currentValue === 'none' && variant.isNone) return true;
                     return variant.name.toLowerCase() === currentValue;
-                });
+                }) || sanitizedData[traitType].variants[0];
                 if (defaultVariant) initialSelections[traitType] = getVariantSelectionValue(defaultVariant);
             }
             setSelectedVariants(initialSelections);
 
-            const firstAvailableSection = LAYER_ORDER.find(trait => data[trait]) || Object.keys(data)[0] || null;
+            const firstAvailableSection = LAYER_ORDER.find(trait => sanitizedData[trait]) || Object.keys(sanitizedData)[0] || null;
             setActiveTraitSection(firstAvailableSection);
         } catch (_error: unknown) {
             setError(`Falló la carga de opciones de personalización para el NFT #${nftId}.`);
@@ -269,9 +278,7 @@ export default function CustomizerPage() {
                                         >
                                             <div className="font-semibold">{traitType.toUpperCase()}</div>
                                             <div className="text-sm opacity-75">
-                                                {selectedVariants[traitType] === NONE_SELECTION
-                                                    ? 'None'
-                                                    : (selectedVariants[traitType]?.split('/').pop()?.replace(/\.(png|gif|bmp|webp)$/i, '') || 'None')}
+                                                {(selectedVariants[traitType]?.split('/').pop()?.replace(/\.(png|gif|bmp|webp)$/i, '') || '-')}
                                             </div>
                                         </button>
                                     ))}
@@ -294,14 +301,7 @@ export default function CustomizerPage() {
                                                     }`}
                                                 onClick={() => handleVariantChange(activeTraitSection, variant)}
                                             >
-                                                {variant.isNone ? (
-                                                    <div className="w-full aspect-square rounded mb-2 bg-gradient-to-br from-white/10 to-white/5 border border-white/20 flex items-center justify-center">
-                                                        <div className="text-center px-2">
-                                                            <div className="text-xs font-semibold text-white/90 tracking-wide">NO LAYER</div>
-                                                            <div className="text-[10px] text-white/60 mt-1">None</div>
-                                                        </div>
-                                                    </div>
-                                                ) : variant.imageUrl ? (
+                                                {variant.imageUrl ? (
                                                     <img
                                                         src={variant.imageUrl.startsWith('http') ? variant.imageUrl : `${BACKEND_BASE_URL}${variant.imageUrl}`}
                                                         alt={variant.name}

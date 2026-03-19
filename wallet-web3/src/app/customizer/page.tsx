@@ -29,6 +29,12 @@ const GIF_EXPORT_SIZE = 2000;
 const LAYER_ORDER = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Effect'];
 const NONE_SELECTION = '__NONE__';
 
+const isNoneVariant = (variant: TraitVariant): boolean => {
+    if (!variant) return true;
+    if (variant.isNone) return true;
+    return (variant.name || '').trim().toLowerCase() === 'none';
+};
+
 interface GifFrame {
     dims: { left: number; top: number; width: number; height: number };
     delay?: number;
@@ -62,10 +68,7 @@ function CustomizerContent() {
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
     const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || 'http://localhost:3001';
 
-    const getVariantSelectionValue = (variant: TraitVariant): string => {
-        if (variant.isNone) return NONE_SELECTION;
-        return variant.imageUrl || NONE_SELECTION;
-    };
+    const getVariantSelectionValue = (variant: TraitVariant): string => variant.imageUrl || NONE_SELECTION;
 
     // Cargar datos del NFT automáticamente
     useEffect(() => {
@@ -79,21 +82,27 @@ function CustomizerContent() {
                 const optionsResponse = await fetch(`${BACKEND_URL}/nft/${nftId}/customize-options`);
                 if (!optionsResponse.ok) throw new Error(`Error: ${optionsResponse.status}`);
                 const data: CustomizationOptions = await optionsResponse.json();
-                setCustomizationOptions(data);
+                const sanitizedData = Object.fromEntries(
+                    Object.entries(data).map(([traitType, option]) => {
+                        const variants = (option?.variants || []).filter(variant => !isNoneVariant(variant));
+                        return [traitType, { ...option, variants }];
+                    })
+                ) as CustomizationOptions;
+
+                setCustomizationOptions(sanitizedData);
                 const initialSelections: { [key: string]: string } = {};
-                for (const traitType in data) {
-                    const currentValue = (data[traitType].currentValue || '').toLowerCase();
-                    const defaultVariant = data[traitType].variants.find(variant => {
+                for (const traitType in sanitizedData) {
+                    const currentValue = (sanitizedData[traitType].currentValue || '').toLowerCase();
+                    const defaultVariant = sanitizedData[traitType].variants.find(variant => {
                         if (!variant || !variant.name) return false;
-                        if (currentValue === 'none' && variant.isNone) return true;
                         return variant.name.toLowerCase() === currentValue;
-                    });
+                    }) || sanitizedData[traitType].variants[0];
                     if (defaultVariant) {
                         initialSelections[traitType] = getVariantSelectionValue(defaultVariant);
                     }
                 }
                 setSelectedVariants(initialSelections);
-                const firstAvailableSection = LAYER_ORDER.find(trait => data[trait]) || Object.keys(data)[0] || null;
+                const firstAvailableSection = LAYER_ORDER.find(trait => sanitizedData[trait]) || Object.keys(sanitizedData)[0] || null;
                 setActiveTraitSection(firstAvailableSection);
             } catch (_error: unknown) {
                 setError(`Falló la carga de datos del NFT #${nftId}.`);
@@ -255,7 +264,7 @@ function CustomizerContent() {
                     const url = URL.createObjectURL(blob);
                     const anchor = document.createElement('a');
                     anchor.href = url;
-                    anchor.download = `primal-${nftId}.gif`;
+                    anchor.download = `${nftId}.gif`;
                     anchor.click();
                     URL.revokeObjectURL(url);
                     resolve();
@@ -417,7 +426,7 @@ function CustomizerContent() {
                                 {activeTraitSection && customizationOptions[activeTraitSection] && (
                                     <div>
                                         <h4 className="text-lg font-semibold mb-4 text-blue-200">
-                                            {activeTraitSection} - {customizationOptions[activeTraitSection].currentValue}
+                                            {activeTraitSection}
                                         </h4>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                             {customizationOptions[activeTraitSection].variants.map((variant) => (
@@ -431,14 +440,7 @@ function CustomizerContent() {
                                                     onClick={() => handleVariantChange(activeTraitSection, variant)}
                                                 >
                                                     <div className="bg-white/10 rounded-lg p-2 mb-2">
-                                                        {variant.isNone ? (
-                                                            <div className="w-full aspect-square rounded bg-gradient-to-br from-white/10 to-white/5 border border-white/20 flex items-center justify-center">
-                                                                <div className="text-center px-2">
-                                                                    <div className="text-xs font-semibold text-white/90 tracking-wide">NO LAYER</div>
-                                                                    <div className="text-[10px] text-white/60 mt-1">None</div>
-                                                                </div>
-                                                            </div>
-                                                        ) : variant.imageUrl ? (
+                                                        {variant.imageUrl ? (
                                                             <img 
                                                                 src={variant.imageUrl.startsWith('http') ? variant.imageUrl : `${BACKEND_BASE_URL}${variant.imageUrl}`}
                                                                 alt={variant.name} 
