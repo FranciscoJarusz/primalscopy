@@ -45,59 +45,37 @@ function getImageFilesFromDir(dir) {
         .sort((a, b) => a.localeCompare(b));
 }
 
+function stripImageExtensions(fileName) {
+    return String(fileName || '')
+        .replace(/\.(png|gif|bmp|webp)$/i, '')
+        .replace(/\.(png|gif|bmp|webp)$/i, '');
+}
+
+function getVariantDirectories(categoryDir) {
+    return safeReadDir(categoryDir)
+        .filter(item => fs.statSync(path.join(categoryDir, item)).isDirectory())
+        .sort((a, b) => a.localeCompare(b));
+}
+
 function findVariantDirectoryByValue(categoryDir, rawValue) {
-    const directories = safeReadDir(categoryDir).filter(item => {
-        return fs.statSync(path.join(categoryDir, item)).isDirectory();
-    });
+    const directories = getVariantDirectories(categoryDir);
 
     const normalizedRawValue = normalizeKey(rawValue);
     return directories.find(dir => normalizeKey(dir) === normalizedRawValue) || null;
 }
 
-function buildVariantsForCategory(fsCategoryName) {
+function buildVariantsForDirectory(fsCategoryName, directoryName) {
+    if (!directoryName) return [];
+
     const categoryDir = path.join(ASSETS_PATH, 'traits', fsCategoryName);
-    const variantDirectories = safeReadDir(categoryDir)
-        .filter(item => fs.statSync(path.join(categoryDir, item)).isDirectory())
-        .sort((a, b) => a.localeCompare(b));
+    const targetDir = path.join(categoryDir, directoryName);
+    const files = getImageFilesFromDir(targetDir);
 
-    const variants = variantDirectories
-        .map(variantDir => {
-            const variantPath = path.join(categoryDir, variantDir);
-            const files = getImageFilesFromDir(variantPath);
-            if (files.length === 0) return null;
-
-            return {
-                name: variantDir,
-                imageUrl: `/assets/traits/${fsCategoryName}/${variantDir}/${files[0]}`,
-                isNone: false
-            };
-        })
-        .filter(Boolean);
-
-    const categoryNoneFile = path.join(categoryDir, 'none.png.bmp');
-    const globalNoneFile = path.join(ASSETS_PATH, 'traits', 'none.png.bmp');
-
-    if (fs.existsSync(categoryNoneFile)) {
-        variants.unshift({
-            name: 'None',
-            imageUrl: `/assets/traits/${fsCategoryName}/none.png.bmp`,
-            isNone: true
-        });
-    } else if (fs.existsSync(globalNoneFile)) {
-        variants.unshift({
-            name: 'None',
-            imageUrl: '/assets/traits/none.png.bmp',
-            isNone: true
-        });
-    } else {
-        variants.unshift({
-            name: 'None',
-            imageUrl: null,
-            isNone: true
-        });
-    }
-
-    return variants;
+    return files.map(file => ({
+        name: stripImageExtensions(file),
+        imageUrl: `/assets/traits/${fsCategoryName}/${directoryName}/${file}`,
+        isNone: false
+    }));
 }
 
 async function getNftMetadata(nftId) {
@@ -118,7 +96,7 @@ async function getCustomizationOptions(req, res) {
 
         const traitValuesByCategory = {};
         for (const category of CATEGORY_CONFIG) {
-            traitValuesByCategory[category.fsName] = 'None';
+            traitValuesByCategory[category.fsName] = '';
         }
 
         if (metadata) {
@@ -127,26 +105,33 @@ async function getCustomizationOptions(req, res) {
                     if (!attr || !attr.trait_type) continue;
                     const category = getCategoryFromInput(attr.trait_type);
                     if (!category) continue;
-                    traitValuesByCategory[category.fsName] = attr.value || 'None';
+                    traitValuesByCategory[category.fsName] = attr.value || '';
                 }
             } else if (typeof metadata === 'object') {
                 for (const [key, value] of Object.entries(metadata)) {
                     const category = getCategoryFromInput(key);
                     if (!category) continue;
-                    traitValuesByCategory[category.fsName] = value || 'None';
+                    traitValuesByCategory[category.fsName] = value || '';
                 }
             }
         }
 
         for (const category of CATEGORY_CONFIG) {
             const categoryDir = path.join(ASSETS_PATH, 'traits', category.fsName);
-            const variants = buildVariantsForCategory(category.fsName);
-
-            if (variants.length === 0 || !fs.existsSync(categoryDir)) continue;
+            if (!fs.existsSync(categoryDir)) continue;
 
             const rawCurrentValue = traitValuesByCategory[category.fsName];
             const matchedDir = findVariantDirectoryByValue(categoryDir, rawCurrentValue);
-            const currentValue = matchedDir || 'None';
+            const directoryCandidates = getVariantDirectories(categoryDir);
+            const selectedDirectory = matchedDir || directoryCandidates[0] || null;
+            const variants = buildVariantsForDirectory(category.fsName, selectedDirectory);
+
+            if (variants.length === 0) continue;
+
+            const matchedVariantByValue = variants.find(variant => {
+                return normalizeKey(variant.name) === normalizeKey(rawCurrentValue);
+            });
+            const currentValue = matchedVariantByValue?.name || variants[0].name;
 
             customizationOptions[category.apiName] = {
                 currentValue,
