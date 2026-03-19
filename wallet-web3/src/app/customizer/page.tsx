@@ -305,10 +305,10 @@ function CustomizerContent() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] text-white p-8">
-            <div className="max-w-7xl mx-auto">
+        <div className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] text-white px-4 py-6 sm:p-8">
+            <div className="max-w-7xl mx-auto flex flex-col gap-10">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-8">
+                <div className="flex justify-between items-center">
                     <div>
                         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                             CUSTOMIZE: PRIMAL #{nftId}
@@ -318,19 +318,19 @@ function CustomizerContent() {
                 </div>
 
                 {/* Input para cambiar NFT */}
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-8">
-                    <div className="flex gap-4 items-center">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3 sm:p-4">
+                    <div className="flex gap-2 sm:gap-4 items-center">
                         <input 
                             type="text" 
                             value={inputNftId} 
                             onChange={(e) => setInputNftId(e.target.value)} 
                             onKeyPress={handleInputKeyPress} 
-                            placeholder="Ingresa otro ID de NFT" 
-                            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-500" 
+                            placeholder="NFT ID" 
+                            className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded-lg px-3 sm:px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-500 text-sm sm:text-base" 
                         />
                         <button 
                             onClick={handleLoadNft} 
-                            className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-semibold transition-all duration-200"
+                            className="shrink-0 bg-blue-600 hover:bg-blue-700 px-4 sm:px-6 py-2 rounded-lg font-semibold transition-all duration-200 text-sm sm:text-base"
                         >
                             Search
                         </button>
@@ -356,7 +356,7 @@ function CustomizerContent() {
 
                 {/* Contenido del customizer */}
                 {!loading && !error && customizationOptions && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center justify-center">
                         {/* Columna izquierda - Vista previa del NFT */}
                         <div className="lg:col-span-1">
                             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
