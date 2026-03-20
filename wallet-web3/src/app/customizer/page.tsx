@@ -42,7 +42,7 @@ interface GifFrame {
 }
 
 type LoadedImageLayer = { url: string; type: 'image'; image: HTMLImageElement };
-type LoadedGifLayer = { url: string; type: 'gif'; frames: GifFrame[] };
+type LoadedGifLayer = { url: string; type: 'gif'; frames: GifFrame[]; origWidth: number; origHeight: number };
 type LoadedLayer = LoadedImageLayer | LoadedGifLayer;
 
 // --- Componente de Contenido ---
@@ -200,26 +200,24 @@ function CustomizerContent() {
         setExportingGif(true);
         setExportProgress(0);
 
-        // iOS Safari: canvas 2000×2000 con múltiples capas agota la RAM y Safari mata el tab.
-        // Usamos 800px en iOS. En desktop mantenemos el tamaño completo.
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        const exportSize = isIOS ? 800 : GIF_EXPORT_SIZE;
 
         try {
+            // En iOS usamos tamaño reducido para no agotar la RAM del dispositivo
+        const exportSize = isIOS ? 1200 : GIF_EXPORT_SIZE;
             const loadedLayers: LoadedLayer[] = await Promise.all(
                 displayedLayers.map(async (url) => {
                     if (url.endsWith('.gif')) {
                         const response = await fetch(url);
-                        if (!response.ok) {
-                            throw new Error(`Failed to load GIF layer: ${url}`);
-                        }
-
+                        if (!response.ok) throw new Error(`Failed to load GIF layer: ${url}`);
                         const buffer = await response.arrayBuffer();
                         const parsedGif = parseGIF(buffer);
                         const frames = decompressFrames(parsedGif, true) as unknown as GifFrame[];
-                        return { url, type: 'gif', frames };
+                        // Dimensiones originales del GIF: máximo de (left+width) y (top+height) entre todos los frames
+                        const origWidth = Math.max(...frames.map(f => f.dims.left + f.dims.width));
+                        const origHeight = Math.max(...frames.map(f => f.dims.top + f.dims.height));
+                        return { url, type: 'gif', frames, origWidth, origHeight };
                     }
-
                     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
                         const img = new Image();
                         img.crossOrigin = 'anonymous';
@@ -227,14 +225,14 @@ function CustomizerContent() {
                         img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
                         img.src = url;
                     });
-
                     return { url, type: 'image', image };
                 })
             );
 
+            // GIF animado — iOS usa 500px + 1 worker para caber en RAM, desktop usa 2000px + 2 workers
             const gif = new GIF({
                 workers: isIOS ? 1 : 2,
-                quality: 10,
+                quality: isIOS ? 15 : 10,
                 width: exportSize,
                 height: exportSize,
                 workerScript: '/gif.worker.js'
@@ -279,19 +277,19 @@ function CustomizerContent() {
 
                     let layerCanvas = gifLayerCache.get(layer.url);
                     if (!layerCanvas) {
+                        // Mantener layerCanvas en dimensiones originales del GIF para acumular patches correctamente
                         layerCanvas = document.createElement('canvas');
-                        layerCanvas.width = exportSize;
-                        layerCanvas.height = exportSize;
+                        layerCanvas.width = layer.origWidth;
+                        layerCanvas.height = layer.origHeight;
                         gifLayerCache.set(layer.url, layerCanvas);
                     }
 
                     const layerCtx = layerCanvas.getContext('2d');
                     if (!layerCtx) continue;
 
-                    // Escalar la posición del parche al tamaño de exportación
-                    const scaleX = exportSize / (gifFrame.dims.width + gifFrame.dims.left || exportSize);
-                    const scaleY = exportSize / (gifFrame.dims.height + gifFrame.dims.top || exportSize);
-                    layerCtx.drawImage(patchCanvas, gifFrame.dims.left * scaleX, gifFrame.dims.top * scaleY, gifFrame.dims.width * scaleX, gifFrame.dims.height * scaleY);
+                    // Pintar el patch en sus coordenadas originales (sin escalar)
+                    layerCtx.drawImage(patchCanvas, gifFrame.dims.left, gifFrame.dims.top);
+                    // Escalar el canvas acumulado al tamaño de exportación
                     frameCtx.drawImage(layerCanvas, 0, 0, exportSize, exportSize);
                 }
 
@@ -304,11 +302,9 @@ function CustomizerContent() {
                 gif.on('finished', (blob: Blob) => {
                     const url = URL.createObjectURL(blob);
                     if (isIOS) {
-                        // iOS Safari bloquea anchor.click() con blobs (causa reload).
-                        // window.location.href navega al archivo → Safari lo muestra
-                        // y el usuario puede guardarlo con el botón Compartir.
+                        // iOS Safari no permite anchor.click() con blobs — navegar al blob
+                        // directamente abre el GIF en Safari y el usuario lo guarda con Compartir.
                         window.location.href = url;
-                        // No revocamos inmediatamente para dar tiempo a la navegación
                         setTimeout(() => URL.revokeObjectURL(url), 60000);
                     } else {
                         const anchor = document.createElement('a');
@@ -341,13 +337,13 @@ function CustomizerContent() {
             <div className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] text-white flex items-center justify-center">
                 <div className="text-center">
                     <div className="text-6xl mb-4">⚠️</div>
-                    <div className="text-2xl text-red-400 mb-4">Token ID no especificado</div>
-                    <div className="text-blue-200 mb-6">Necesitas seleccionar un NFT primero</div>
+                    <div className="text-2xl text-red-400 mb-4">Token ID not specified</div>
+                    <div className="text-blue-200 mb-6">You need to select an NFT first</div>
                     <button 
                         onClick={handleBackToSelection}
                         className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
                     >
-                        Volver a la Selección
+                        Back to Selection
                     </button>
                 </div>
             </div>
