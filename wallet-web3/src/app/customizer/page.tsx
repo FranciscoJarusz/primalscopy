@@ -25,8 +25,7 @@ interface CustomizationOptions {
 
 // --- Constantes ---
 const THUMBNAIL_SIZE = 80;
-// iOS Safari se queda sin memoria con canvases muy grandes; reducir para móvil
-const GIF_EXPORT_SIZE = typeof window !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 800 : 2000;
+const GIF_EXPORT_SIZE = 2000;
 const LAYER_ORDER = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Effect'];
 const NONE_SELECTION = '__NONE__';
 
@@ -125,7 +124,7 @@ function CustomizerContent() {
                 const firstAvailableSection = LAYER_ORDER.find(trait => sanitizedData[trait]) || Object.keys(sanitizedData)[0] || null;
                 setActiveTraitSection(firstAvailableSection);
             } catch (_error: unknown) {
-                setError(`Falló la carga de datos del NFT #${nftId}.`);
+                setError(`Failed to load NFT #${nftId} data.`);
             } finally {
                 setLoading(false);
             }
@@ -181,12 +180,12 @@ function CustomizerContent() {
 
     const handleExportGif = async () => {
         if (!allAssetsSelected) {
-            alert('Debes seleccionar una opción en cada categoría antes de exportar.');
+            alert('You must select an option in each category before exporting.');
             return;
         }
 
         if (displayedLayers.length === 0) {
-            alert('No hay capas para exportar.');
+            alert('There are no layers to export.');
             return;
         }
 
@@ -199,7 +198,7 @@ function CustomizerContent() {
                     if (url.endsWith('.gif')) {
                         const response = await fetch(url);
                         if (!response.ok) {
-                            throw new Error(`No se pudo cargar la capa GIF: ${url}`);
+                            throw new Error(`Failed to load GIF layer: ${url}`);
                         }
 
                         const buffer = await response.arrayBuffer();
@@ -212,7 +211,7 @@ function CustomizerContent() {
                         const img = new Image();
                         img.crossOrigin = 'anonymous';
                         img.onload = () => resolve(img);
-                        img.onerror = () => reject(new Error(`No se pudo cargar la imagen: ${url}`));
+                        img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
                         img.src = url;
                     });
 
@@ -237,7 +236,7 @@ function CustomizerContent() {
             const patchCtx = patchCanvas.getContext('2d');
 
             if (!frameCtx || !patchCtx) {
-                throw new Error('No se pudo inicializar el canvas para exportación.');
+                throw new Error('Failed to initialize canvas for export.');
             }
 
             const gifLayerCache = new Map<string, HTMLCanvasElement>();
@@ -288,34 +287,23 @@ function CustomizerContent() {
             await new Promise<void>((resolve, reject) => {
                 gif.on('finished', (blob: Blob) => {
                     const url = URL.createObjectURL(blob);
-                    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-                    if (isIOS) {
-                        // iOS Safari no soporta descarga de blobs con anchor.click()
-                        // Abrir en nueva pestaña para que el usuario lo guarde manualmente
-                        window.open(url, '_blank');
-                        // Limpiar después de un tiempo para dar oportunidad a que se abra
-                        setTimeout(() => URL.revokeObjectURL(url), 30000);
-                    } else {
-                        const anchor = document.createElement('a');
-                        anchor.href = url;
-                        anchor.download = `${nftId}.gif`;
-                        document.body.appendChild(anchor);
-                        anchor.click();
-                        document.body.removeChild(anchor);
-                        URL.revokeObjectURL(url);
-                    }
+                    const anchor = document.createElement('a');
+                    anchor.href = url;
+                    anchor.download = `${nftId}.gif`;
+                    anchor.click();
+                    URL.revokeObjectURL(url);
                     resolve();
                 });
 
                 gif.on('abort', () => {
-                    reject(new Error('La exportación del GIF fue abortada.'));
+                    reject(new Error('GIF export aborted.'));
                 });
 
                 gif.render();
             });
         } catch (exportError) {
             console.error(exportError);
-            alert('No se pudo exportar el GIF. Revisa la consola para más detalle.');
+            alert('Failed to export GIF. Check console for details.');
         } finally {
             setExportingGif(false);
             setExportProgress(0);
