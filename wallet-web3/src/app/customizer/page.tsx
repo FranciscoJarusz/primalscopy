@@ -68,6 +68,14 @@ function CustomizerContent() {
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
     const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || 'http://localhost:3001';
 
+    // Pre-cargar el worker de gif.js al montar la página.
+    // En iOS Safari, la primera vez que se usa el worker se descarga el script
+    // justo cuando el canvas ya consume RAM → pico de memoria → Safari mata el tab.
+    // Pre-cargándolo queda en caché del browser antes de que el usuario toque Export.
+    useEffect(() => {
+        fetch('/gif.worker.js').catch(() => {});
+    }, []);
+
     const getVariantSelectionValue = (variant: TraitVariant): string => variant.imageUrl || NONE_SELECTION;
 
     // Cargar datos del NFT automáticamente
@@ -192,6 +200,11 @@ function CustomizerContent() {
         setExportingGif(true);
         setExportProgress(0);
 
+        // iOS Safari: canvas 2000×2000 con múltiples capas agota la RAM y Safari mata el tab.
+        // Usamos 800px en iOS. En desktop mantenemos el tamaño completo.
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const exportSize = isIOS ? 800 : GIF_EXPORT_SIZE;
+
         try {
             const loadedLayers: LoadedLayer[] = await Promise.all(
                 displayedLayers.map(async (url) => {
@@ -220,16 +233,16 @@ function CustomizerContent() {
             );
 
             const gif = new GIF({
-                workers: 2,
+                workers: isIOS ? 1 : 2,
                 quality: 10,
-                width: GIF_EXPORT_SIZE,
-                height: GIF_EXPORT_SIZE,
+                width: exportSize,
+                height: exportSize,
                 workerScript: '/gif.worker.js'
             });
 
             const frameCanvas = document.createElement('canvas');
-            frameCanvas.width = GIF_EXPORT_SIZE;
-            frameCanvas.height = GIF_EXPORT_SIZE;
+            frameCanvas.width = exportSize;
+            frameCanvas.height = exportSize;
             const frameCtx = frameCanvas.getContext('2d');
 
             const patchCanvas = document.createElement('canvas');
@@ -246,11 +259,11 @@ function CustomizerContent() {
                 : 1;
 
             for (let frameIndex = 0; frameIndex < totalFrames; frameIndex += 1) {
-                frameCtx.clearRect(0, 0, GIF_EXPORT_SIZE, GIF_EXPORT_SIZE);
+                frameCtx.clearRect(0, 0, exportSize, exportSize);
 
                 for (const layer of loadedLayers) {
                     if (layer.type === 'image') {
-                        frameCtx.drawImage(layer.image, 0, 0, GIF_EXPORT_SIZE, GIF_EXPORT_SIZE);
+                        frameCtx.drawImage(layer.image, 0, 0, exportSize, exportSize);
                         continue;
                     }
 
@@ -267,16 +280,19 @@ function CustomizerContent() {
                     let layerCanvas = gifLayerCache.get(layer.url);
                     if (!layerCanvas) {
                         layerCanvas = document.createElement('canvas');
-                        layerCanvas.width = GIF_EXPORT_SIZE;
-                        layerCanvas.height = GIF_EXPORT_SIZE;
+                        layerCanvas.width = exportSize;
+                        layerCanvas.height = exportSize;
                         gifLayerCache.set(layer.url, layerCanvas);
                     }
 
                     const layerCtx = layerCanvas.getContext('2d');
                     if (!layerCtx) continue;
 
-                    layerCtx.drawImage(patchCanvas, gifFrame.dims.left, gifFrame.dims.top);
-                    frameCtx.drawImage(layerCanvas, 0, 0, GIF_EXPORT_SIZE, GIF_EXPORT_SIZE);
+                    // Escalar la posición del parche al tamaño de exportación
+                    const scaleX = exportSize / (gifFrame.dims.width + gifFrame.dims.left || exportSize);
+                    const scaleY = exportSize / (gifFrame.dims.height + gifFrame.dims.top || exportSize);
+                    layerCtx.drawImage(patchCanvas, gifFrame.dims.left * scaleX, gifFrame.dims.top * scaleY, gifFrame.dims.width * scaleX, gifFrame.dims.height * scaleY);
+                    frameCtx.drawImage(layerCanvas, 0, 0, exportSize, exportSize);
                 }
 
                 const animatedDelay = animatedLayers[0]?.frames[frameIndex % animatedLayers[0].frames.length]?.delay;
@@ -287,11 +303,20 @@ function CustomizerContent() {
             await new Promise<void>((resolve, reject) => {
                 gif.on('finished', (blob: Blob) => {
                     const url = URL.createObjectURL(blob);
-                    const anchor = document.createElement('a');
-                    anchor.href = url;
-                    anchor.download = `${nftId}.gif`;
-                    anchor.click();
-                    URL.revokeObjectURL(url);
+                    if (isIOS) {
+                        // iOS Safari bloquea anchor.click() con blobs (causa reload).
+                        // window.location.href navega al archivo → Safari lo muestra
+                        // y el usuario puede guardarlo con el botón Compartir.
+                        window.location.href = url;
+                        // No revocamos inmediatamente para dar tiempo a la navegación
+                        setTimeout(() => URL.revokeObjectURL(url), 60000);
+                    } else {
+                        const anchor = document.createElement('a');
+                        anchor.href = url;
+                        anchor.download = `${nftId}.gif`;
+                        anchor.click();
+                        URL.revokeObjectURL(url);
+                    }
                     resolve();
                 });
 
