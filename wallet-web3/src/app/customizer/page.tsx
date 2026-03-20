@@ -142,7 +142,11 @@ function CustomizerContent() {
 
     const handleLoadNft = () => {
         const trimmedId = inputNftId.trim();
-        if (trimmedId && trimmedId !== nftId) setNftId(trimmedId);
+        if (trimmedId && trimmedId !== nftId) {
+            setNftId(trimmedId);
+            // Actualizar la URL para que un reload en móvil mantenga el NFT correcto
+            router.replace(`/customizer?tokenId=${trimmedId}`);
+        }
     };
 
     const handleInputKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
