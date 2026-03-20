@@ -37,7 +37,7 @@ const isNoneVariant = (variant: TraitVariant): boolean => {
 
 // --- Componente Principal ---
 export default function NftCustomizerPage() {
-    const [nftId, setNftId] = useState<string>('');
+    const [nftId, setNftIdState] = useState<string>('');
     const [inputNftId, setInputNftId] = useState<string>('');
     const [customizationOptions, setCustomizationOptions] = useState<CustomizationOptions | null>(null);
     const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: string }>({});
@@ -51,6 +51,29 @@ export default function NftCustomizerPage() {
 
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
     const BACKEND_BASE_URL = 'http://localhost:3001';
+
+    // Sincroniza nftId con ?id= en la URL para que recargas en móvil no pierdan el NFT
+    const setNftId = (id: string) => {
+        setNftIdState(id);
+        if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            if (id) url.searchParams.set('id', id);
+            else url.searchParams.delete('id');
+            window.history.replaceState(null, '', url.toString());
+        }
+    };
+
+    // Al montar, restaurar el NFT desde la URL si existe
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const idFromUrl = params.get('id');
+            if (idFromUrl) {
+                setNftIdState(idFromUrl);
+                setInputNftId(idFromUrl);
+            }
+        }
+    }, []);
 
     // Cargar datos del NFT (sin cambios)
     useEffect(() => {
