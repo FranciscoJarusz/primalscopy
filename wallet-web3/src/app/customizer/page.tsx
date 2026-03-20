@@ -101,7 +101,26 @@ function CustomizerContent() {
                         initialSelections[traitType] = getVariantSelectionValue(defaultVariant);
                     }
                 }
-                setSelectedVariants(initialSelections);
+
+                // Restaurar selecciones guardadas (si el usuario vuelve después de navegar)
+                try {
+                    const saved = localStorage.getItem(`nft_custom_${nftId}`);
+                    if (saved) {
+                        const savedSelections: { [key: string]: string } = JSON.parse(saved);
+                        // Solo restaurar keys que sigan siendo válidas en los datos actuales
+                        const restored: { [key: string]: string } = { ...initialSelections };
+                        for (const traitType in savedSelections) {
+                            if (sanitizedData[traitType]) {
+                                restored[traitType] = savedSelections[traitType];
+                            }
+                        }
+                        setSelectedVariants(restored);
+                    } else {
+                        setSelectedVariants(initialSelections);
+                    }
+                } catch {
+                    setSelectedVariants(initialSelections);
+                }
                 const firstAvailableSection = LAYER_ORDER.find(trait => sanitizedData[trait]) || Object.keys(sanitizedData)[0] || null;
                 setActiveTraitSection(firstAvailableSection);
             } catch (_error: unknown) {
@@ -136,6 +155,8 @@ function CustomizerContent() {
             const updated = { ...prev };
             if (updated[traitType] === nextValue) delete updated[traitType];
             else updated[traitType] = nextValue;
+            // Persistir cambios para sobrevivir navegación
+            try { localStorage.setItem(`nft_custom_${nftId}`, JSON.stringify(updated)); } catch { /* storage lleno */ }
             return updated;
         });
     };
