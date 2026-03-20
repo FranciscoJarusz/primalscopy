@@ -82,7 +82,7 @@ export default function NftCustomizerPage() {
                 setSelectedVariants(initialSelections);
                 if (Object.keys(sanitizedData).length > 0) setActiveTraitSection(Object.keys(sanitizedData)[0]);
             } catch (error: unknown) {
-                setError(`Falló la carga de datos del NFT #${nftId}.`);
+                setError(`Failed to load NFT #${nftId} data.`);
             } finally {
                 setLoading(false);
             }
@@ -126,14 +126,14 @@ export default function NftCustomizerPage() {
     // ==================================================================
     const handleExportGif = async () => {
         if (!allAssetsSelected) {
-            alert('Debes seleccionar una pieza de cada categoría para exportar.');
+            alert('You must select a piece from each category to export.');
             return;
         }
         setExportingGif(true);
         setExportProgress(0);
 
         try {
-            console.log("Iniciando la carga de todas las capas...");
+            console.log("Starting to load all layers...");
             type LoadedImageLayer = { url: string; type: 'image'; image: HTMLImageElement };
             type GifFrame = {
                 dims: { left: number; top: number; width: number; height: number };
@@ -156,13 +156,13 @@ export default function NftCustomizerPage() {
                         const img = new Image();
                         img.crossOrigin = "anonymous";
                         img.onload = () => resolve(img);
-                        img.onerror = () => reject(new Error(`No se pudo cargar la imagen: ${url}`));
+                        img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
                         img.src = url;
                     });
                     return { url, type: 'image', image } as LoadedImageLayer;
                 })
             );
-            console.log("Todas las capas cargadas y procesadas.");
+            console.log("All layers loaded and processed.");
 
             const gif = new GIF({ workers: 4, quality: 10, width: GIF_EXPORT_SIZE, height: GIF_EXPORT_SIZE, workerScript: '/gif.worker.js' });
 
@@ -170,16 +170,16 @@ export default function NftCustomizerPage() {
             frameCanvas.width = GIF_EXPORT_SIZE;
             frameCanvas.height = GIF_EXPORT_SIZE;
             const frameCtx = frameCanvas.getContext('2d');
-            if (!frameCtx) throw new Error("Canvas context es nulo");
+            if (!frameCtx) throw new Error("Canvas context is null");
             
             // Un canvas temporal para dibujar los parches de los GIFs
             const patchCanvas = document.createElement('canvas');
             const patchCtx = patchCanvas.getContext('2d');
-            if (!patchCtx) throw new Error("Patch canvas context es nulo");
+            if (!patchCtx) throw new Error("Patch canvas context is null");
 
             const animatedLayers = loadedLayers.filter((l): l is LoadedGifLayer => l.type === 'gif');
             if (animatedLayers.length === 0) {
-                 console.log("No hay capas animadas, exportando PNG.");
+                 console.log("No animated layers, exporting PNG.");
                  loadedLayers.forEach(layer => {
                      if (layer.type === 'image') {
                          frameCtx.drawImage(layer.image, 0, 0, GIF_EXPORT_SIZE, GIF_EXPORT_SIZE);
@@ -195,7 +195,7 @@ export default function NftCustomizerPage() {
             const longestAnimation = animatedLayers.reduce((a, b) => (a.frames.length > b.frames.length ? a : b));
             const totalFrames = longestAnimation.frames.length;
 
-            console.log(`Componiendo ${totalFrames} fotogramas...`);
+            console.log(`Composing ${totalFrames} frames...`);
             for (let i = 0; i < totalFrames; i++) {
                 frameCtx.clearRect(0, 0, GIF_EXPORT_SIZE, GIF_EXPORT_SIZE);
 
@@ -258,7 +258,7 @@ export default function NftCustomizerPage() {
             }
 
             gif.on('finished', (blob: Blob) => {
-                console.log("¡GIF generado! Descargando...");
+                console.log("GIF generated! Downloading...");
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -270,8 +270,8 @@ export default function NftCustomizerPage() {
             gif.render();
 
         } catch (err) {
-            console.error('Error final al exportar el GIF:', err);
-            alert('Hubo un error al generar el GIF animado.');
+            console.error('Final error exporting GIF:', err);
+            alert('There was an error generating the animated GIF.');
             setExportingGif(false);
         }
     };
@@ -282,8 +282,8 @@ export default function NftCustomizerPage() {
             <div className="initial-state">
                 <h1 className="main-title">NFT DRESSROOM</h1>
                 <div className="nft-id-input-section">
-                    <input type="text" value={inputNftId} onChange={(e) => setInputNftId(e.target.value)} onKeyPress={handleInputKeyPress} placeholder="Ingresa un ID de NFT" className="nft-id-input" />
-                    <button onClick={handleLoadNft} className="load-nft-button">Cargar NFT</button>
+                    <input type="text" value={inputNftId} onChange={(e) => setInputNftId(e.target.value)} onKeyPress={handleInputKeyPress} placeholder="Enter an NFT ID" className="nft-id-input" />
+                    <button onClick={handleLoadNft} className="load-nft-button">Load NFT</button>
                 </div>
             </div>
         );
@@ -293,12 +293,12 @@ export default function NftCustomizerPage() {
         <div className="customizer-layout">
             <h1 className="main-title">CUSTOMIZE: PRIMAL #{nftId}</h1>
             <div className="nft-id-input-section">
-                <input type="text" value={inputNftId} onChange={(e) => setInputNftId(e.target.value)} onKeyPress={handleInputKeyPress} placeholder="Ingresa otro ID" className="nft-id-input" />
-                <button onClick={handleLoadNft} className="load-nft-button">Cargar NFT</button>
-                <button onClick={() => setNftId('')} className="back-button">← Nueva Búsqueda</button>
+                <input type="text" value={inputNftId} onChange={(e) => setInputNftId(e.target.value)} onKeyPress={handleInputKeyPress} placeholder="Enter another ID" className="nft-id-input" />
+                <button onClick={handleLoadNft} className="load-nft-button">Load NFT</button>
+                <button onClick={() => setNftId('')} className="back-button">← New Search</button>
             </div>
     
-            {loading && <div className="loading-message">Cargando...</div>}
+            {loading && <div className="loading-message">Loading...</div>}
             {error && <div className="error-message">Error: {error}</div>}
     
             {!loading && !error && customizationOptions && (
@@ -306,12 +306,12 @@ export default function NftCustomizerPage() {
                     <div className="left-column">
                         <div ref={nftDisplayRef} className="nft-display-wrapper" style={{ position: 'relative', width: NFT_DISPLAY_SIZE, height: NFT_DISPLAY_SIZE }}>
                             {displayedLayers.map((layerSrc) => (
-                                <img key={layerSrc} src={layerSrc} alt={`Capa de NFT`} width={NFT_DISPLAY_SIZE} height={NFT_DISPLAY_SIZE} className="nft-image-layer" style={{ position: 'absolute', top: 0, left: 0, imageRendering: 'pixelated' }} />
+                                <img key={layerSrc} src={layerSrc} alt={`NFT Layer`} width={NFT_DISPLAY_SIZE} height={NFT_DISPLAY_SIZE} className="nft-image-layer" style={{ position: 'absolute', top: 0, left: 0, imageRendering: 'pixelated' }} />
                             ))}
                         </div>
                         <div className="action-buttons">
                             <button className="action-button" onClick={handleExportGif} disabled={exportingGif || !allAssetsSelected}>
-                                {exportingGif ? `EXPORTANDO... ${Math.round(exportProgress)}%` : 'EXPORT GIF'}
+                                {exportingGif ? `Exporting... ${Math.round(exportProgress)}%` : 'EXPORT GIF'}
                             </button>
                             <button className="action-button">SUBMIT</button>
                         </div>
@@ -346,7 +346,7 @@ export default function NftCustomizerPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="no-trait-selected">Selecciona una categoría para ver las opciones.</div>
+                                <div className="no-trait-selected">Select a category to view options.</div>
                             )}
                         </div>
                     </div>

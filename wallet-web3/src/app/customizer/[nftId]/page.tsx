@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAccount } from 'wagmi';
@@ -58,6 +58,9 @@ export default function CustomizerPage() {
     const [exportingGif, setExportingGif] = useState<boolean>(false);
     const [exportProgress, setExportProgress] = useState<number>(0);
 
+    // Ref para evitar que el efecto de autenticación recargue las opciones si ya están cargadas
+    const loadedNftIdRef = useRef<string | null>(null);
+
     const BACKEND_URL = config.BACKEND_URL;
     const BACKEND_BASE_URL = config.BACKEND_BASE_URL;
 
@@ -88,7 +91,13 @@ export default function CustomizerPage() {
                 }
 
                 setNft(userNFT);
-                loadCustomizationOptions();
+                // Solo cargar opciones si no se han cargado antes para este NFT.
+                // En móvil, isConnected puede fluctuar brevemente (WalletConnect) y
+                // volver a llamar a loadCustomizationOptions resetearía selectedVariants.
+                if (loadedNftIdRef.current !== nftId) {
+                    loadedNftIdRef.current = nftId;
+                    loadCustomizationOptions();
+                }
             } catch (err) {
                 console.error('Error verificando propiedad:', err);
                 setError('Error al verificar la propiedad del NFT');
@@ -164,7 +173,7 @@ export default function CustomizerPage() {
 
     const handleExportGif = async () => {
         if (!allAssetsSelected) {
-            alert('Debes seleccionar una pieza de cada categoría para exportar.');
+            alert('You must select a piece from each category to export.');
             return;
         }
         // Aquí iría la lógica de exportación (similar a la del frontend original)
@@ -176,7 +185,7 @@ export default function CustomizerPage() {
     if (status === 'loading' || loading) {
         return (
             <div className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] flex items-center justify-center">
-                <div className="text-white text-2xl">Cargando...</div>
+                <div className="text-white text-2xl">Loading...</div>
             </div>
         );
     }
@@ -195,7 +204,7 @@ export default function CustomizerPage() {
                         onClick={() => router.push('/dashboard')}
                         className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
                     >
-                        Volver al Dashboard
+                        Back to Dashboard
                     </button>
                 </div>
             </div>
@@ -212,15 +221,15 @@ export default function CustomizerPage() {
                             onClick={() => router.push('/dashboard')}
                             className="text-white hover:text-blue-200 transition-colors"
                         >
-                            ← Volver al Dashboard
+                            ← Back to Dashboard
                         </button>
                         <h1 className="text-3xl font-bold text-white">
-                            Personalizar: PrimaCult #{nftId}
+                            Customize: PrimaCult #{nftId}
                         </h1>
                     </div>
 
                     <div className="text-white">
-                        <p className="text-sm text-blue-200">Wallet Conectada</p>
+                        <p className="text-sm text-blue-200">Wallet Connected</p>
                         <p className="font-mono">{address ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}` : ''}</p>
                     </div>
                 </div>
@@ -233,7 +242,7 @@ export default function CustomizerPage() {
                         {/* Columna izquierda - Vista previa */}
                         <div className="lg:col-span-2">
                             <div className="bg-[#1322D3]/50 p-6 rounded-2xl">
-                                <h3 className="text-2xl font-bold text-white mb-4">Vista Previa</h3>
+                                <h3 className="text-2xl font-bold text-white mb-4">Preview</h3>
                                 <div className="relative w-full max-w-md mx-auto aspect-square bg-gray-800 rounded-xl overflow-hidden">
                                     {displayedLayers.map((layerSrc, index) => (
                                         <img
@@ -252,7 +261,7 @@ export default function CustomizerPage() {
                                         onClick={handleExportGif}
                                         disabled={exportingGif || !allAssetsSelected}
                                     >
-                                        {exportingGif ? `Exportando... ${Math.round(exportProgress)}%` : 'Exportar GIF'}
+                                        {exportingGif ? `Exporting... ${Math.round(exportProgress)}%` : 'Export GIF'}
                                     </button>
                                 </div>
                             </div>
