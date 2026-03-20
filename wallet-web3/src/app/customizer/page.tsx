@@ -25,7 +25,8 @@ interface CustomizationOptions {
 
 // --- Constantes ---
 const THUMBNAIL_SIZE = 80;
-const GIF_EXPORT_SIZE = 2000;
+// iOS Safari se queda sin memoria con canvases muy grandes; reducir para móvil
+const GIF_EXPORT_SIZE = typeof window !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 800 : 2000;
 const LAYER_ORDER = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Effect'];
 const NONE_SELECTION = '__NONE__';
 
@@ -287,11 +288,22 @@ function CustomizerContent() {
             await new Promise<void>((resolve, reject) => {
                 gif.on('finished', (blob: Blob) => {
                     const url = URL.createObjectURL(blob);
-                    const anchor = document.createElement('a');
-                    anchor.href = url;
-                    anchor.download = `${nftId}.gif`;
-                    anchor.click();
-                    URL.revokeObjectURL(url);
+                    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                    if (isIOS) {
+                        // iOS Safari no soporta descarga de blobs con anchor.click()
+                        // Abrir en nueva pestaña para que el usuario lo guarde manualmente
+                        window.open(url, '_blank');
+                        // Limpiar después de un tiempo para dar oportunidad a que se abra
+                        setTimeout(() => URL.revokeObjectURL(url), 30000);
+                    } else {
+                        const anchor = document.createElement('a');
+                        anchor.href = url;
+                        anchor.download = `${nftId}.gif`;
+                        document.body.appendChild(anchor);
+                        anchor.click();
+                        document.body.removeChild(anchor);
+                        URL.revokeObjectURL(url);
+                    }
                     resolve();
                 });
 
