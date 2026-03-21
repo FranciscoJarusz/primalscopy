@@ -38,6 +38,7 @@ const isNoneVariant = (variant: TraitVariant): boolean => {
 interface GifFrame {
     dims: { left: number; top: number; width: number; height: number };
     delay?: number;
+    disposalType?: number;
     patch: Uint8ClampedArray;
 }
 
@@ -251,6 +252,9 @@ function CustomizerContent() {
             }
 
             const gifLayerCache = new Map<string, HTMLCanvasElement>();
+            // Tracks the previous frame's disposal info for each GIF layer
+            const gifLayerPrevInfo = new Map<string, { dims: GifFrame['dims']; disposalType: number; savedData?: ImageData }>();
+
             const animatedLayers = loadedLayers.filter((layer): layer is LoadedGifLayer => layer.type === 'gif');
             const totalFrames = animatedLayers.length > 0
                 ? Math.max(...animatedLayers.map(layer => layer.frames.length))
@@ -265,7 +269,8 @@ function CustomizerContent() {
                         continue;
                     }
 
-                    const gifFrame = layer.frames[frameIndex % layer.frames.length];
+                    const localFrameIndex = frameIndex % layer.frames.length;
+                    const gifFrame = layer.frames[localFrameIndex];
                     if (!gifFrame) continue;
 
                     patchCanvas.width = gifFrame.dims.width;
@@ -277,7 +282,6 @@ function CustomizerContent() {
 
                     let layerCanvas = gifLayerCache.get(layer.url);
                     if (!layerCanvas) {
-                        // Mantener layerCanvas en dimensiones originales del GIF para acumular patches correctamente
                         layerCanvas = document.createElement('canvas');
                         layerCanvas.width = layer.origWidth;
                         layerCanvas.height = layer.origHeight;
@@ -287,8 +291,39 @@ function CustomizerContent() {
                     const layerCtx = layerCanvas.getContext('2d');
                     if (!layerCtx) continue;
 
+                    // Cuando el GIF llega al frame 0 (primer frame o reinicio del loop),
+                    // limpiar el canvas acumulado para que no queden restos del ciclo anterior
+                    if (localFrameIndex === 0) {
+                        layerCtx.clearRect(0, 0, layerCanvas.width, layerCanvas.height);
+                        gifLayerPrevInfo.delete(layer.url);
+                    }
+
+                    // Aplicar el disposal del frame anterior antes de pintar el actual
+                    const prevInfo = gifLayerPrevInfo.get(layer.url);
+                    if (prevInfo) {
+                        if (prevInfo.disposalType === 2) {
+                            // Restore to background: borrar el área que ocupó el frame anterior
+                            layerCtx.clearRect(prevInfo.dims.left, prevInfo.dims.top, prevInfo.dims.width, prevInfo.dims.height);
+                        } else if (prevInfo.disposalType === 3 && prevInfo.savedData) {
+                            // Restore to previous: restaurar el estado guardado
+                            layerCtx.putImageData(prevInfo.savedData, prevInfo.dims.left, prevInfo.dims.top);
+                        }
+                        // disposalType 0 o 1: no dispose / leave in place → no action needed
+                    }
+
+                    // Para disposal type 3: guardar el área actual antes de pintar
+                    const frameDisposalType = gifFrame.disposalType ?? 1;
+                    let savedData: ImageData | undefined;
+                    if (frameDisposalType === 3) {
+                        savedData = layerCtx.getImageData(gifFrame.dims.left, gifFrame.dims.top, gifFrame.dims.width, gifFrame.dims.height);
+                    }
+
                     // Pintar el patch en sus coordenadas originales (sin escalar)
                     layerCtx.drawImage(patchCanvas, gifFrame.dims.left, gifFrame.dims.top);
+
+                    // Guardar info de este frame para el disposal del siguiente
+                    gifLayerPrevInfo.set(layer.url, { dims: gifFrame.dims, disposalType: frameDisposalType, savedData });
+
                     // Escalar el canvas acumulado al tamaño de exportación
                     frameCtx.drawImage(layerCanvas, 0, 0, exportSize, exportSize);
                 }
