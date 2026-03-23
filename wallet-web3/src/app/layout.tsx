@@ -9,8 +9,11 @@ import Web3ModalProvider from "../components/Web3ModalProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PrimaCult Wallet Web3",
-  description: "Conecta tu wallet y gestiona tus NFTs",
+  title: "Cultomizer - Primal Cult",
+  description: "Connect your wallet, select and customize your Primal Cult NFTs here",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -19,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
           <Web3ModalProvider>
