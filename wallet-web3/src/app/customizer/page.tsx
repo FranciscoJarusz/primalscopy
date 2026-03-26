@@ -51,6 +51,8 @@ function CustomizerContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
+    const [generatedBlob, setGeneratedBlob] = useState<Blob | null>(null);
+
     // Lee el ID de la URL
     const tokenIdFromUrl = searchParams.get('tokenId');
 
@@ -335,6 +337,8 @@ function CustomizerContent() {
 
             await new Promise<void>((resolve, reject) => {
                 gif.on('finished', (blob: Blob) => {
+                    setGeneratedBlob(blob);
+                    
                     const url = URL.createObjectURL(blob);
                     if (isIOS) {
                         // iOS Safari no permite anchor.click() con blobs — navegar al blob
@@ -348,6 +352,8 @@ function CustomizerContent() {
                         anchor.click();
                         URL.revokeObjectURL(url);
                     }
+                    setExportingGif(false);
+                    setExportProgress(0);
                     resolve();
                 });
 
@@ -363,6 +369,36 @@ function CustomizerContent() {
         } finally {
             setExportingGif(false);
             setExportProgress(0);
+        }
+    };
+
+    const handleShareOnX = async () => {
+        if (!generatedBlob) {
+            alert("Primero debés exportar el NFT para poder compartirlo.");
+            return;
+        }
+
+        setExportingGif(true); // Usamos el loader para el feedback de subida
+        
+        try {
+            const formData = new FormData();
+            formData.append('file', generatedBlob, `primal-${nftId}.gif`);
+
+            const response = await fetch(`${BACKEND_URL}/nft/share-gif`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            
+            if (data.shareUrl) {
+                const tweetText = encodeURIComponent(`I just customized my Primal NFT #${nftId}! 🎭✨`);
+                window.open(`https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(data.shareUrl)}`, '_blank');
+            }
+        } catch (err) {
+            alert("Error al subir el GIF a Railway.");
+        } finally {
+            setExportingGif(false);
         }
     };
 
@@ -386,6 +422,7 @@ function CustomizerContent() {
     }
 
     return (
+
         <div className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] text-white px-4 py-6 sm:p-8">
             <div className="max-w-7xl mx-auto flex flex-col gap-10">
                 {/* Header */}
@@ -458,21 +495,30 @@ function CustomizerContent() {
                                         />
                                     ))}
                                 </div>
-                                <div className="mt-5">
+                                <div className="flex flex-col gap-3 mt-5">
+                                    {/* Botón 1: Siempre activo */}
                                     <button
                                         onClick={handleExportGif}
-                                        disabled={!allAssetsSelected || exportingGif}
-                                        className={`flex w-full items-center justify-center rounded-2xl px-6 py-3 text-lg font-black uppercase tracking-[0.12em] transition-all duration-200 ${
-                                            allAssetsSelected
-                                                ? 'bg-blue-600 text-white hover:bg-blue-800'
-                                                : 'text-white/45'
-                                        } disabled:cursor-not-allowed disabled:shadow-none`}
+                                        disabled={exportingGif}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all"
                                     >
-                                        {exportingGif
-                                            ? `Exporting ${Math.round(exportProgress)}%`
-                                            : allAssetsSelected
-                                                ? 'Export'
-                                                : 'Complete traits'}
+                                        {exportingGif ? `Generando ${Math.round(exportProgress)}%` : '1. Generar y Descargar GIF'}
+                                    </button>
+
+                                    {/* Botón 2: Deshabilitado hasta que generatedBlob tenga datos */}
+                                    <button
+                                        onClick={handleShareOnX}
+                                        disabled={!generatedBlob || exportingGif}
+                                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${
+                                            generatedBlob 
+                                            ? 'bg-black text-white border border-white/20 hover:bg-white/10' 
+                                            : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                        </svg>
+                                        {generatedBlob ? '2. Compartir en X' : 'Esperando GIF...'}
                                     </button>
                                 </div>
                             </div>
@@ -590,7 +636,7 @@ function CustomizerContent() {
 
             </div>
         </div>
-    );
+        );
 }
 
 // --- Componente Principal Exportado ---
