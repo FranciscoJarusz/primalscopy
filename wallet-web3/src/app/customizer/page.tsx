@@ -6,8 +6,6 @@ import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import GIF from 'gif.js/dist/gif.js';
 import { parseGIF, decompressFrames } from 'gifuct-js';
 import { useSearchParams, useRouter } from 'next/navigation';
-    
-const [generatedBlob, setGeneratedBlob] = useState<Blob | null>(null);
 
 // --- Interfaces para Tipado ---
 interface TraitVariant {
@@ -337,8 +335,6 @@ function CustomizerContent() {
 
             await new Promise<void>((resolve, reject) => {
                 gif.on('finished', (blob: Blob) => {
-                    setGeneratedBlob(blob);
-                    
                     const url = URL.createObjectURL(blob);
                     if (isIOS) {
                         // iOS Safari no permite anchor.click() con blobs — navegar al blob
@@ -352,8 +348,6 @@ function CustomizerContent() {
                         anchor.click();
                         URL.revokeObjectURL(url);
                     }
-                    setExportingGif(false);
-                    setExportProgress(0);
                     resolve();
                 });
 
@@ -371,6 +365,7 @@ function CustomizerContent() {
             setExportProgress(0);
         }
     };
+
     // Si no hay tokenId, mostrar mensaje de error
     if (!tokenIdFromUrl) {
         return (
@@ -391,7 +386,6 @@ function CustomizerContent() {
     }
 
     return (
-
         <div className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] text-white px-4 py-6 sm:p-8">
             <div className="max-w-7xl mx-auto flex flex-col gap-10">
                 {/* Header */}
@@ -464,7 +458,7 @@ function CustomizerContent() {
                                         />
                                     ))}
                                 </div>
-                                <div className="mt-5 flex flex-col gap-3">
+                                <div className="mt-5">
                                     <button
                                         onClick={handleExportGif}
                                         disabled={!allAssetsSelected || exportingGif}
@@ -596,7 +590,7 @@ function CustomizerContent() {
 
             </div>
         </div>
-        );
+    );
 }
 
 // --- Componente Principal Exportado ---
