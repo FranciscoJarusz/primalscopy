@@ -108,9 +108,12 @@ async function getNftMetadata(nftId) {
     }
 }
 
-async function getCustomizationOptions(req, res) {
-    try {
-        const { nftId } = req.params;
+// Las variantes que este token puede usar legitimamente. Se usa en dos
+// lugares y tiene que ser la misma lista en los dos: el endpoint que se las
+// ofrece al front, y el que valida lo que el front manda al guardar. Si
+// divergieran, se podria guardar una combinacion que el customizer nunca
+// ofrecio.
+async function buildCustomizationOptions(nftId) {
         const metadata = await getNftMetadata(nftId);
         const customizationOptions = {};
 
@@ -158,6 +161,13 @@ async function getCustomizationOptions(req, res) {
                 variants
             };
         }
+
+        return customizationOptions;
+}
+
+async function getCustomizationOptions(req, res) {
+    try {
+        const customizationOptions = await buildCustomizationOptions(req.params.nftId);
 
         // El listado cambia cada vez que se sube o borra un trait desde el
         // panel, así que el navegador tiene que revalidar siempre. Con el ETag
@@ -233,6 +243,8 @@ async function generateAndSaveNftImage(req, res) {
 }
 
 module.exports = {
+    buildCustomizationOptions,
+    resolveLayerPath,
     getCustomizationOptions,
     generateAndSaveNftImage,
     // Reutilizados por el panel de admin para no duplicar la config de categorías.

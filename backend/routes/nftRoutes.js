@@ -8,8 +8,9 @@ const {
     getCustomizationOptions,
     generateAndSaveNftImage
 } = require('../controllers/nftController.js');
-const { requireWallet } = require('../middleware/requireWallet');
+const { requireWallet, requireTokenOwner } = require('../middleware/requireWallet');
 const { checkOwnership } = require('../lib/nftOwnership');
+const { saveCustomization, getCustomization } = require('../controllers/customizationController.js');
 
 // Ruta para obtener las opciones de personalización de un NFT.
 // El frontend llama a: /api/nft/:nftId/customize-options
@@ -47,6 +48,15 @@ router.get('/:nftId/ownership', requireWallet, async (req, res) => {
         isOwner: result.status === 'owner'
     });
 });
+
+// Guardar la customizacion. Las dos guardas van encadenadas y en este orden:
+// requireWallet prueba quien es, requireTokenOwner que sea dueño del token en
+// este momento. Sin las dos, cualquiera podria reescribir el NFT de otro.
+router.post('/:nftId/customization', requireWallet, requireTokenOwner, saveCustomization);
+
+// Lectura publica: que customizacion tiene aplicada este token. No expone
+// nada que no este ya en la metadata publica.
+router.get('/:nftId/customization', getCustomization);
 
 // IMPORTANTE: Ya no hay rutas para 'get-layers', 'metadata' o 'customize' porque no se usan o
 // han sido renombradas para ser más claras.

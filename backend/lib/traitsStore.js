@@ -42,7 +42,12 @@ function isUsingPersistentVolume() {
 // ninguna cuenta como contenido real. Un volumen ext4 nuevo viene con
 // lost+found, y eso alcanzaba para que el directorio pareciera poblado y la
 // semilla no se copiara nunca, dejando el customizer sin un solo trait.
-const NON_CONTENT_ENTRIES = new Set([MARKER_FILE, 'lost+found', '.DS_Store', 'Thumbs.db']);
+// Carpeta donde se guardan las imagenes y la metadata publicadas de los NFTs
+// (ver lib/assetStore.js). Vive dentro del volumen de traits porque Railway
+// permite un solo volumen por servicio.
+const GENERATED_DIR = '_generated';
+
+const NON_CONTENT_ENTRIES = new Set([MARKER_FILE, 'lost+found', '.DS_Store', 'Thumbs.db', GENERATED_DIR]);
 
 function isContentEntry(entry) {
     return !NON_CONTENT_ENTRIES.has(entry) && !entry.startsWith('.');
@@ -182,6 +187,7 @@ module.exports = {
     TRAITS_PATH,
     SEED_TRAITS_PATH,
     GLOBAL_DIR,
+    GENERATED_DIR,
     IMAGE_EXTENSION_REGEX,
     isUsingPersistentVolume,
     seedTraitsIfEmpty,

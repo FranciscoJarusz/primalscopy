@@ -7,6 +7,7 @@ const authRoutes = require('./routes/authRoutes');
 const { TRAITS_PATH, seedTraitsIfEmpty } = require('./lib/traitsStore');
 const { isAdminEnabled, getAdminTokenLength } = require('./middleware/adminAuth');
 const { isWalletAuthEnabled } = require('./lib/walletAuth');
+const assets = require('./lib/assetStore');
 const path = require('path');
 const fs = require('fs');
 
@@ -42,6 +43,30 @@ app.use('/assets/traits', express.static(TRAITS_PATH));
 // Servir el resto de assets (base_primal, empty_canvas, etc.)
 const ASSETS_PATH = path.join(__dirname, 'assets');
 app.use('/assets', express.static(ASSETS_PATH));
+
+// --- Assets publicos de los NFTs -------------------------------------------
+//
+// Estas dos rutas son las que van a servir la coleccion cuando
+// ipfs.primalcult.xyz apunte a este servicio. Las URLs tienen que quedar
+// exactamente asi porque el tokenURI del contrato ya apunta a
+// /metadata/<id>, y eso esta escrito on-chain: no se puede cambiar.
+assets.ensureDirs();
+
+// La imagen lleva ?v=<timestamp> en la metadata, asi que cada version es una
+// URL distinta y se puede cachear fuerte sin que nadie quede viendo la vieja.
+app.use('/images', express.static(assets.IMAGES_DIR, {
+  maxAge: '365d',
+  immutable: true
+}));
+
+// La metadata, en cambio, se sobreescribe en su misma URL: tiene que
+// revalidarse siempre o los marketplaces nunca se enteran de un cambio.
+app.get('/metadata/:tokenId', (req, res) => {
+  const metadata = assets.readMetadata(req.params.tokenId);
+  if (!metadata) return res.status(404).json({ error: 'Metadata no encontrada.' });
+  res.set('Cache-Control', 'no-cache');
+  res.json(metadata);
+});
 
 // Rutas de tu router
 app.use('/api/nft', nftRoutes);
