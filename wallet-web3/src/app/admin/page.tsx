@@ -310,33 +310,43 @@ export default function AdminPage() {
 
     if (!token) {
         return (
-            <main className="min-h-screen bg-primacult-gradient flex items-center justify-center px-4">
-                <form
-                    onSubmit={handleLogin}
-                    className="w-full max-w-sm bg-black/40 border border-white/10 rounded-2xl p-8 backdrop-blur"
-                >
-                    <h1 className="text-2xl font-bold text-white mb-1">Admin de Traits</h1>
-                    <p className="text-sm text-white/50 mb-6">Ingresá el token de administración.</p>
+            <main className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] flex items-center justify-center p-4">
+                <div className="relative">
+                    <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 z-10">
+                        <div className="w-24 h-24 bg-[#000000] rounded-full flex items-center justify-center">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src="/logo.png" alt="PrimaCult Logo" className="w-20 h-20 object-contain" />
+                        </div>
+                    </div>
 
-                    <input
-                        type="password"
-                        value={tokenInput}
-                        onChange={event => setTokenInput(event.target.value)}
-                        placeholder="ADMIN_TOKEN"
-                        autoFocus
-                        className="w-full bg-black/50 border border-white/15 rounded-lg px-4 py-3 text-white placeholder-white/30 outline-none focus:border-primacult transition-colors"
-                    />
-
-                    {authError && <p className="mt-3 text-sm text-red-400">{authError}</p>}
-
-                    <button
-                        type="submit"
-                        disabled={checkingToken || !tokenInput.trim()}
-                        className="mt-5 w-full bg-primacult hover:bg-primacult/80 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg py-3 transition-colors"
+                    <form
+                        onSubmit={handleLogin}
+                        className="flex flex-col gap-6 bg-[#1322D3] p-12 rounded-3xl shadow-2xl text-center max-w-md w-full"
                     >
-                        {checkingToken ? "Verificando..." : "Entrar"}
-                    </button>
-                </form>
+                        <h1 className="text-4xl font-bold text-white">Prima Cult</h1>
+                        <p className="text-white font-bold text-2xl">Traits Admin</p>
+                        <p className="text-blue-200 text-md">Enter the admin token to continue</p>
+
+                        <input
+                            type="password"
+                            value={tokenInput}
+                            onChange={event => setTokenInput(event.target.value)}
+                            placeholder="ADMIN_TOKEN"
+                            autoFocus
+                            className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/50 text-center focus:outline-none focus:border-white transition-colors"
+                        />
+
+                        {authError && <p className="text-sm text-red-200">{authError}</p>}
+
+                        <button
+                            type="submit"
+                            disabled={checkingToken || !tokenInput.trim()}
+                            className="bg-white hover:scale-105 text-blue-600 font-bold py-4 px-12 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        >
+                            {checkingToken ? "Verifying..." : "Enter"}
+                        </button>
+                    </form>
+                </div>
             </main>
         );
     }
@@ -344,38 +354,44 @@ export default function AdminPage() {
     // --- Panel -------------------------------------------------------------
 
     return (
-        <main className="min-h-screen bg-primacult-gradient text-white">
-            <div className="max-w-7xl mx-auto px-4 py-6">
-                <header className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <main className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] text-white px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+            <div className="max-w-7xl mx-auto flex flex-col gap-8">
+                {/* Header */}
+                <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
                     <div>
-                        <h1 className="text-2xl font-bold">Admin de Traits</h1>
-                        <p className="text-sm text-white/50">
-                            Los traits en <span className="font-mono text-white/70">{globalDirName}</span> se ofrecen a todos los NFTs.
+                        <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                            Traits Admin
+                        </h1>
+                        <p className="text-lg sm:text-xl text-blue-200 mt-2 max-w-2xl">
+                            Upload, rename and delete traits without redeploying
                         </p>
+                        <div className="text-sm text-white/60 mt-1">
+                            Traits in <span className="font-mono text-white/80">{globalDirName}</span> are offered to every NFT
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <button
                             onClick={() => loadTraits(token)}
                             disabled={loading || busy}
-                            className="text-sm px-4 py-2 rounded-lg border border-white/15 hover:bg-white/5 disabled:opacity-40 transition-colors"
+                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 disabled:transform-none text-sm sm:text-base"
                         >
-                            {loading ? "Cargando..." : "Recargar"}
+                            {loading ? "🔄 Loading..." : "🔄 Refresh"}
                         </button>
                         <button
                             onClick={handleLogout}
-                            className="text-sm px-4 py-2 rounded-lg border border-white/15 hover:bg-white/5 transition-colors"
+                            className="bg-white/10 hover:bg-white/20 px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl font-semibold transition-all duration-200 text-sm sm:text-base"
                         >
-                            Salir
+                            Log out
                         </button>
                     </div>
-                </header>
+                </div>
 
                 {status && (
                     <div
-                        className={`mb-4 rounded-lg px-4 py-3 text-sm border ${
+                        className={`rounded-xl px-6 py-4 border ${
                             status.kind === "ok"
-                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
-                                : "bg-red-500/10 border-red-500/30 text-red-200"
+                                ? "bg-blue-500/20 border-blue-500/50 text-blue-200"
+                                : "bg-red-500/20 border-red-500/50 text-red-300"
                         }`}
                     >
                         {status.text}
@@ -383,154 +399,169 @@ export default function AdminPage() {
                 )}
 
                 {/* Categorías */}
-                <nav className="flex flex-wrap gap-2 mb-6">
-                    {data?.categories.map(category => {
-                        const total = category.directories.reduce((sum, directory) => sum + directory.traits.length, 0);
-                        const isActive = category.name === activeCategory;
-                        return (
-                            <button
-                                key={category.name}
-                                onClick={() => {
-                                    setActiveCategory(category.name);
-                                    setActiveDirectory(null);
-                                }}
-                                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
-                                    isActive
-                                        ? "bg-primacult border-primacult text-white"
-                                        : "bg-black/30 border-white/10 text-white/60 hover:text-white hover:border-white/25"
-                                }`}
-                            >
-                                {category.name}
-                                <span className="ml-2 text-xs opacity-60">{total}</span>
-                            </button>
-                        );
-                    })}
-                </nav>
+                <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                    <h3 className="text-xl font-semibold mb-4">Categories</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {data?.categories.map(category => {
+                            const total = category.directories.reduce((sum, directory) => sum + directory.traits.length, 0);
+                            const isActive = category.name === activeCategory;
+                            return (
+                                <button
+                                    key={category.name}
+                                    onClick={() => {
+                                        setActiveCategory(category.name);
+                                        setActiveDirectory(null);
+                                    }}
+                                    className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${
+                                        isActive
+                                            ? "bg-blue-600 text-white"
+                                            : "bg-white/10 text-white/70 hover:bg-white/20"
+                                    }`}
+                                >
+                                    {category.name}
+                                    <span className="ml-2 text-xs opacity-60">{total}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Carpetas */}
-                    <aside className="bg-black/30 border border-white/10 rounded-xl p-3 lg:max-h-[70vh] lg:overflow-y-auto">
-                        <p className="text-xs uppercase tracking-wider text-white/40 px-2 mb-2">Carpetas</p>
-                        <ul className="space-y-1">
-                            {currentCategory?.directories.map(directory => {
-                                const isActive = directory.name === activeDirectory;
-                                return (
-                                    <li key={directory.name}>
-                                        <button
-                                            onClick={() => setActiveDirectory(directory.name)}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between gap-2 transition-colors ${
-                                                isActive ? "bg-primacult/25 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
-                                            }`}
-                                        >
-                                            <span className="truncate">
-                                                {directory.isGlobal && <span className="mr-1">🌐</span>}
-                                                {directory.name}
-                                            </span>
-                                            <span className="text-xs opacity-50 shrink-0">{directory.traits.length}</span>
-                                        </button>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </aside>
+                    <div className="lg:col-span-1">
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-6 lg:max-h-[70vh] lg:overflow-y-auto">
+                            <h3 className="text-xl font-semibold mb-4">Folders</h3>
+                            <ul className="space-y-1">
+                                {currentCategory?.directories.map(directory => {
+                                    const isActive = directory.name === activeDirectory;
+                                    return (
+                                        <li key={directory.name}>
+                                            <button
+                                                onClick={() => setActiveDirectory(directory.name)}
+                                                className={`w-full text-left px-4 py-2 rounded-lg font-semibold flex items-center justify-between gap-2 transition-all duration-200 ${
+                                                    isActive
+                                                        ? "bg-blue-600 text-white"
+                                                        : "bg-white/10 text-white/70 hover:bg-white/20"
+                                                }`}
+                                            >
+                                                <span className="truncate">
+                                                    {directory.isGlobal && <span className="mr-1">🌐</span>}
+                                                    {directory.name}
+                                                </span>
+                                                <span className="text-xs opacity-60 shrink-0">{directory.traits.length}</span>
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                    </div>
 
                     {/* Traits */}
-                    <section>
-                        {/* Zona de subida */}
-                        <div
-                            onDragOver={event => {
-                                event.preventDefault();
-                                setDragging(true);
-                            }}
-                            onDragLeave={() => setDragging(false)}
-                            onDrop={handleDrop}
-                            onClick={() => fileInputRef.current?.click()}
-                            className={`mb-5 rounded-xl border-2 border-dashed px-6 py-7 text-center cursor-pointer transition-colors ${
-                                dragging ? "border-primacult bg-primacult/10" : "border-white/15 hover:border-white/30 bg-black/20"
-                            }`}
-                        >
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".png,.gif,.bmp,.webp"
-                                multiple
-                                className="hidden"
-                                onChange={event => {
-                                    if (event.target.files?.length) uploadFiles(event.target.files);
-                                    event.target.value = "";
-                                }}
-                            />
-                            <p className="text-sm text-white/80">
-                                {busy ? "Subiendo..." : "Arrastrá archivos acá o hacé clic para elegirlos"}
-                            </p>
-                            <p className="text-xs text-white/40 mt-1">
-                                Destino:{" "}
-                                <span className="font-mono text-white/70">
-                                    {activeCategory || "-"}/{activeDirectory || "-"}
-                                </span>
-                                {currentDirectory?.isGlobal && " · visible para todos los NFTs"}
-                            </p>
-                            <p className="text-xs text-white/30 mt-1">PNG, GIF, BMP o WEBP · máx. 25 MB</p>
-                        </div>
+                    <div className="lg:col-span-2">
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                            <h3 className="text-xl font-semibold mb-6">
+                                {activeCategory} / {activeDirectory}
+                            </h3>
 
-                        {/* Grilla */}
-                        {currentDirectory && currentDirectory.traits.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {currentDirectory.traits.map(trait => (
-                                    <div
-                                        key={trait.file}
-                                        className="bg-black/30 border border-white/10 rounded-xl overflow-hidden hover:border-white/25 transition-colors"
-                                    >
-                                        <div className="aspect-square bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22><rect width=%228%22 height=%228%22 fill=%22%23ffffff10%22/><rect x=%228%22 y=%228%22 width=%228%22 height=%228%22 fill=%22%23ffffff10%22/></svg>')]">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img
-                                                src={`${BACKEND_BASE_URL}${trait.url}`}
-                                                alt={trait.name}
-                                                className="w-full h-full object-contain"
-                                                style={{ imageRendering: "pixelated" }}
-                                            />
-                                        </div>
-                                        <div className="p-3">
-                                            <p className="text-sm font-medium truncate" title={trait.name}>
+                            {/* Zona de subida */}
+                            <div
+                                onDragOver={event => {
+                                    event.preventDefault();
+                                    setDragging(true);
+                                }}
+                                onDragLeave={() => setDragging(false)}
+                                onDrop={handleDrop}
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`mb-6 rounded-xl border-2 border-dashed px-6 py-7 text-center cursor-pointer transition-all duration-200 ${
+                                    dragging
+                                        ? "border-blue-500 bg-blue-500/10"
+                                        : "border-white/20 hover:border-blue-500 bg-white/5"
+                                }`}
+                            >
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept=".png,.gif,.bmp,.webp"
+                                    multiple
+                                    className="hidden"
+                                    onChange={event => {
+                                        if (event.target.files?.length) uploadFiles(event.target.files);
+                                        event.target.value = "";
+                                    }}
+                                />
+                                <p className="font-semibold text-white">
+                                    {busy ? "Uploading..." : "Drop files here or click to browse"}
+                                </p>
+                                <p className="text-sm text-blue-200 mt-1">
+                                    Target:{" "}
+                                    <span className="font-mono">
+                                        {activeCategory || "-"}/{activeDirectory || "-"}
+                                    </span>
+                                    {currentDirectory?.isGlobal && " · visible to every NFT"}
+                                </p>
+                                <p className="text-xs text-white/50 mt-1">PNG, GIF, BMP or WEBP · max 25 MB</p>
+                            </div>
+
+                            {/* Grilla */}
+                            {loading ? (
+                                <div className="text-center py-16">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                                    <div className="text-blue-200 text-xl">Loading traits...</div>
+                                </div>
+                            ) : currentDirectory && currentDirectory.traits.length > 0 ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+                                    {currentDirectory.traits.map(trait => (
+                                        <div key={trait.file} className="transition-all duration-200">
+                                            <div className="bg-white/10 rounded-lg p-2 mb-2">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img
+                                                    src={`${BACKEND_BASE_URL}${trait.url}`}
+                                                    alt={trait.name}
+                                                    className="w-full aspect-square object-cover rounded"
+                                                    style={{ imageRendering: "pixelated" }}
+                                                />
+                                            </div>
+                                            <p className="text-center text-sm font-medium truncate" title={trait.name}>
                                                 {trait.name}
                                             </p>
-                                            <p className="text-xs text-white/40 mb-3">{formatBytes(trait.sizeBytes)}</p>
-                                            <div className="flex flex-wrap gap-2">
+                                            <p className="text-center text-xs text-white/50 mb-2">
+                                                {formatBytes(trait.sizeBytes)}
+                                            </p>
+                                            <div className="flex flex-wrap justify-center gap-2">
                                                 <button
                                                     onClick={() => handleRename(trait)}
                                                     disabled={busy}
-                                                    className="text-xs px-2.5 py-1.5 rounded-md border border-white/15 hover:bg-white/10 disabled:opacity-40 transition-colors"
+                                                    className="text-xs px-3 py-1.5 rounded-lg font-semibold bg-white/10 text-white/70 hover:bg-white/20 disabled:opacity-40 transition-all duration-200"
                                                 >
-                                                    Renombrar
+                                                    Rename
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(trait, "one")}
                                                     disabled={busy}
-                                                    className="text-xs px-2.5 py-1.5 rounded-md border border-red-500/30 text-red-300 hover:bg-red-500/15 disabled:opacity-40 transition-colors"
+                                                    className="text-xs px-3 py-1.5 rounded-lg font-semibold bg-red-500/20 border border-red-500/50 text-red-300 hover:bg-red-500/30 disabled:opacity-40 transition-all duration-200"
                                                 >
-                                                    Borrar
+                                                    Delete
                                                 </button>
                                                 {!currentDirectory.isGlobal && (
                                                     <button
                                                         onClick={() => handleDelete(trait, "all")}
                                                         disabled={busy}
-                                                        title={`Borra este archivo de todas las carpetas de ${activeCategory}`}
-                                                        className="text-xs px-2.5 py-1.5 rounded-md border border-red-500/30 text-red-300/80 hover:bg-red-500/15 disabled:opacity-40 transition-colors"
+                                                        title={`Deletes this file from every ${activeCategory} folder`}
+                                                        className="text-xs px-3 py-1.5 rounded-lg font-semibold bg-red-500/20 border border-red-500/50 text-red-300/80 hover:bg-red-500/30 disabled:opacity-40 transition-all duration-200"
                                                     >
-                                                        Borrar en todas
+                                                        Delete everywhere
                                                     </button>
                                                 )}
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-white/40 py-10 text-center">
-                                {loading ? "Cargando traits..." : "Esta carpeta está vacía."}
-                            </p>
-                        )}
-                    </section>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-blue-200 py-16 text-center">This folder is empty.</p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
