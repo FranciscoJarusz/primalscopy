@@ -3,8 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const nftRoutes = require('./routes/nftRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const authRoutes = require('./routes/authRoutes');
 const { TRAITS_PATH, seedTraitsIfEmpty } = require('./lib/traitsStore');
 const { isAdminEnabled, getAdminTokenLength } = require('./middleware/adminAuth');
+const { isWalletAuthEnabled } = require('./lib/walletAuth');
 const path = require('path');
 const fs = require('fs');
 
@@ -44,11 +46,17 @@ app.use('/assets', express.static(ASSETS_PATH));
 // Rutas de tu router
 app.use('/api/nft', nftRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/auth', authRoutes);
 
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
   console.log(`[traits] Sirviendo traits desde ${TRAITS_PATH}`);
+  if (!isWalletAuthEnabled()) {
+    console.warn('[auth] WALLET_JWT_SECRET no definido: el login por wallet está deshabilitado.');
+  } else {
+    console.log('[auth] Login por wallet habilitado.');
+  }
   if (!isAdminEnabled()) {
     console.warn('[admin] ADMIN_TOKEN no definido: el panel de admin está deshabilitado.');
   } else {
