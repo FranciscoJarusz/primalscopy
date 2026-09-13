@@ -6,6 +6,7 @@ import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import GIF from 'gif.js/dist/gif.js';
 import { parseGIF, decompressFrames } from 'gifuct-js';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useWalletSession, useNftOwnership } from '../../hooks/useWalletSession';
 
 // --- Interfaces para Tipado ---
 interface TraitVariant {
@@ -68,6 +69,12 @@ function CustomizerContent() {
     const [exportProgress, setExportProgress] = useState<number>(0);
 
     const nftDisplayRef = useRef<HTMLDivElement>(null);
+
+    // Sesion probada ante el backend (firma) y si esa wallet es dueña de este
+    // token. Por ahora solo informa: el guardado todavia no existe. Cuando
+    // exista, el boton va a colgar de `ownership === 'owner'`.
+    const walletSession = useWalletSession();
+    const { state: ownership, owner } = useNftOwnership(nftId || null, walletSession.token);
 
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
     const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || 'http://localhost:3001';
@@ -503,6 +510,72 @@ function CustomizerContent() {
                                                 ? 'Export'
                                                 : 'Complete traits'}
                                     </button>
+                                </div>
+
+                                {/* Estado de la wallet y de la propiedad del NFT.
+                                    Hoy solo informa; cuando exista el guardado, el boton
+                                    va a colgar de ownership === 'owner'. El chequeo real
+                                    lo hace el backend en cada escritura: esto es interfaz,
+                                    no seguridad. */}
+                                <div className="mt-4 border-t border-white/10 pt-4 text-sm">
+                                    {!walletSession.isConnected && (
+                                        <p className="text-white/50">
+                                            Connect your wallet to save changes to this NFT.
+                                        </p>
+                                    )}
+
+                                    {walletSession.isConnected && walletSession.status === 'needs-signature' && (
+                                        <div className="flex flex-col gap-2">
+                                            <p className="text-white/60">
+                                                Verify your wallet to prove you own this NFT.
+                                            </p>
+                                            <button
+                                                onClick={walletSession.signIn}
+                                                className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-blue-700"
+                                            >
+                                                Verify wallet
+                                            </button>
+                                            <p className="text-white/35 text-xs">
+                                                You will sign a message. It does not authorize any transaction.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {(walletSession.status === 'checking' || walletSession.status === 'signing') && (
+                                        <p className="text-blue-200">
+                                            {walletSession.status === 'signing' ? 'Waiting for signature...' : 'Verifying session...'}
+                                        </p>
+                                    )}
+
+                                    {walletSession.status === 'ready' && (
+                                        <div className="flex flex-col gap-1">
+                                            {ownership === 'checking' && <p className="text-blue-200">Checking ownership...</p>}
+                                            {ownership === 'owner' && (
+                                                <p className="text-emerald-400 font-semibold">You own this NFT</p>
+                                            )}
+                                            {ownership === 'not-owner' && (
+                                                <>
+                                                    <p className="text-amber-400 font-semibold">You don&apos;t own this NFT</p>
+                                                    {owner && (
+                                                        <p className="text-white/40 text-xs font-mono">
+                                                            Owner: {owner.slice(0, 6)}...{owner.slice(-4)}
+                                                        </p>
+                                                    )}
+                                                </>
+                                            )}
+                                            {ownership === 'not-found' && <p className="text-white/50">This NFT does not exist.</p>}
+                                            {ownership === 'unavailable' && (
+                                                <p className="text-white/50">Could not verify ownership right now.</p>
+                                            )}
+                                            <p className="text-white/35 text-xs font-mono">
+                                                {walletSession.address?.slice(0, 6)}...{walletSession.address?.slice(-4)}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {walletSession.error && (
+                                        <p className="mt-2 text-red-400 text-xs">{walletSession.error}</p>
+                                    )}
                                 </div>
                             </div>
                         </div>
