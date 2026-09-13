@@ -5,6 +5,7 @@ const multer = require('multer');
 const path = require('path');
 
 const { adminAuth } = require('../middleware/adminAuth');
+const { getStorageStatus } = require('../lib/traitsStore');
 const {
     listTraits,
     uploadTrait,
@@ -40,6 +41,20 @@ router.use(adminAuth);
 
 // Sirve para que el panel valide el token antes de mostrar la UI.
 router.get('/session', (req, res) => res.json({ ok: true }));
+
+// Diagnostico de almacenamiento: dice si TRAITS_PATH es un volumen de verdad y
+// si el marcador sobrevivio a reinicios anteriores. Sin esto, que el volumen no
+// persista solo se nota cuando el cliente pierde el trabajo.
+router.get('/storage', (req, res) => {
+    const status = getStorageStatus();
+    res.json({
+        ...status,
+        healthy: status.isRealMountPoint,
+        warning: status.isRealMountPoint
+            ? null
+            : 'TRAITS_PATH no es un volumen montado: todo lo que se suba se pierde al reiniciar.'
+    });
+});
 
 router.get('/traits', listTraits);
 router.post('/traits', upload.single('file'), uploadTrait);
