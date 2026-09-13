@@ -455,7 +455,10 @@ function CustomizerContent() {
 
                 {/* Contenido del customizer */}
                 {!loading && !error && customizationOptions && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center justify-center">
+                    // items-start, no items-center: la columna de traits es mucho más
+                    // alta que la del preview, y centrarlas dejaba el preview flotando
+                    // en el medio con un hueco muerto arriba.
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start justify-center">
                         {/* Columna izquierda - Vista previa del NFT */}
                         <div className="lg:col-span-1">
                             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
