@@ -12,8 +12,15 @@ const fs = require('fs');
 const path = require('path');
 
 const SEED_TRAITS_PATH = path.join(__dirname, '..', 'assets', 'traits');
-const TRAITS_PATH = process.env.TRAITS_PATH
-    ? path.resolve(process.env.TRAITS_PATH)
+
+// El trim no es cosmetico. Pegar la ruta en el dashboard de Railway arrastraba
+// un espacio adelante, y como " /data/traits" no empieza con "/", path.resolve
+// lo tomaba como relativo y lo colgaba del cwd: "/app/ /data/traits", una
+// carpeta en disco efimero al lado del volumen real, que quedaba vacio. Todo
+// funcionaba salvo que se perdia en cada reinicio.
+const RAW_TRAITS_PATH = (process.env.TRAITS_PATH || '').trim();
+const TRAITS_PATH = RAW_TRAITS_PATH
+    ? path.resolve(RAW_TRAITS_PATH)
     : SEED_TRAITS_PATH;
 
 // Carpeta especial dentro de cada categoria: sus archivos se ofrecen a TODOS
@@ -69,12 +76,20 @@ function writeMarker(marker) {
     }
 }
 
+// Una ruta relativa en produccion es casi siempre un valor mal pegado: el
+// volumen se monta en una ruta absoluta, nunca colgando del cwd.
+function hasRelativePathMistake() {
+    return Boolean(RAW_TRAITS_PATH) && !path.isAbsolute(RAW_TRAITS_PATH);
+}
+
 function getStorageStatus() {
     const marker = readMarker();
     return {
         traitsPath: TRAITS_PATH,
+        rawTraitsPath: RAW_TRAITS_PATH,
         configuredViaEnv: isUsingPersistentVolume(),
         isRealMountPoint: isRealMountPoint(TRAITS_PATH),
+        relativePathMistake: hasRelativePathMistake(),
         marker,
         // Si el marcador no sobrevivio a ningun reinicio, se perdieron datos.
         survivedRestart: Boolean(marker && marker.boots > 1)
@@ -96,6 +111,15 @@ function seedTraitsIfEmpty() {
     // Esto es lo que hacia que el bug fuera invisible: sin volumen real, cada
     // reinicio encontraba el directorio vacio, volvia a sembrar, y todo lo que
     // habian subido desde el panel desaparecia sin un solo error.
+    if (hasRelativePathMistake()) {
+        console.error('='.repeat(70));
+        console.error('[traits] TRAITS_PATH es una ruta RELATIVA, casi seguro un error.');
+        console.error(`[traits] Valor recibido: ${JSON.stringify(RAW_TRAITS_PATH)}`);
+        console.error(`[traits] Resuelto contra ${process.cwd()} queda: ${TRAITS_PATH}`);
+        console.error('[traits] El mount path de un volumen es SIEMPRE absoluto (ej: /data/traits).');
+        console.error('='.repeat(70));
+    }
+
     if (!mounted) {
         console.error('='.repeat(70));
         console.error('[traits] PELIGRO: TRAITS_PATH NO es un volumen montado.');

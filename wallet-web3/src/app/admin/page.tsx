@@ -43,7 +43,9 @@ interface TraitsResponse {
 // hay que avisarlo antes de que alguien pierda horas de trabajo.
 interface StorageStatus {
     traitsPath: string;
+    rawTraitsPath?: string;
     isRealMountPoint: boolean;
+    relativePathMistake?: boolean;
     healthy: boolean;
     warning: string | null;
     survivedRestart: boolean;
@@ -429,6 +431,20 @@ export default function AdminPage() {
                         <p className="text-sm text-red-200/70 mt-3 font-mono break-all">
                             TRAITS_PATH = {storage.traitsPath}
                         </p>
+                        {/* Mostrar el valor crudo cuando difiere del resuelto delata
+                            los espacios invisibles al pegar, que son indetectables
+                            mirando solo la ruta final. */}
+                        {storage.rawTraitsPath && storage.rawTraitsPath !== storage.traitsPath && (
+                            <p className="text-sm text-red-200/70 font-mono break-all">
+                                valor en la variable = {JSON.stringify(storage.rawTraitsPath)}
+                            </p>
+                        )}
+                        {storage.relativePathMistake && (
+                            <p className="text-sm text-red-200 mt-1">
+                                Esa ruta es <strong>relativa</strong>. El mount path de un volumen es
+                                siempre absoluto, como <span className="font-mono">/data/traits</span>.
+                            </p>
+                        )}
                         <p className="text-sm text-red-200/70 mt-1">
                             En Railway, el mount path del volumen tiene que ser exactamente esa ruta.
                             {storage.marker && ` Arranques registrados: ${storage.marker.boots}.`}
