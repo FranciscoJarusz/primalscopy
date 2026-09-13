@@ -21,6 +21,9 @@ backend/.local-traits/
 *.db
 *.db-journal
 
+# Config local de Claude Code (tiene rutas absolutas de esta maquina)
+.claude/
+
 # Logs
 *.log
 npm-debug.log*
