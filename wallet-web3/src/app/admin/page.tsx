@@ -395,8 +395,20 @@ export default function AdminPage() {
                         <p className="text-lg sm:text-xl text-blue-200 mt-2 max-w-2xl">
                             Upload, rename and delete traits without redeploying
                         </p>
-                        <div className="text-sm text-white/60 mt-1">
-                            Traits in <span className="font-mono text-white/80">{globalDirName}</span> are offered to every NFT
+                        <div className="text-sm text-white/60 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span>
+                                Traits in <span className="font-mono text-white/80">{globalDirName}</span> are offered to every NFT
+                            </span>
+                            {/* La confirmación va acá y no en un cartel propio: es un
+                                estado que se consulta de reojo, no una alerta. */}
+                            {storage?.healthy && storage.survivedRestart && (
+                                <span
+                                    title={`El contenido sobrevivió a ${storage.marker?.boots} reinicios del servidor`}
+                                    className="text-xs text-emerald-300/90 whitespace-nowrap"
+                                >
+                                    ✓ almacenamiento persistente
+                                </span>
+                            )}
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -448,15 +460,6 @@ export default function AdminPage() {
                         <p className="text-sm text-red-200/70 mt-1">
                             En Railway, el mount path del volumen tiene que ser exactamente esa ruta.
                             {storage.marker && ` Arranques registrados: ${storage.marker.boots}.`}
-                        </p>
-                    </div>
-                )}
-
-                {storage && storage.healthy && storage.survivedRestart && (
-                    <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-6 py-3">
-                        <p className="text-sm text-emerald-200">
-                            ✓ Almacenamiento persistente verificado — el contenido sobrevivió a{" "}
-                            {storage.marker?.boots} reinicios del servidor.
                         </p>
                     </div>
                 )}
