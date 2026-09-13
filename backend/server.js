@@ -4,7 +4,7 @@ const cors = require('cors');
 const nftRoutes = require('./routes/nftRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const { TRAITS_PATH, seedTraitsIfEmpty } = require('./lib/traitsStore');
-const { isAdminEnabled } = require('./middleware/adminAuth');
+const { isAdminEnabled, getAdminTokenLength } = require('./middleware/adminAuth');
 const path = require('path');
 const fs = require('fs');
 
@@ -51,5 +51,9 @@ app.listen(PORT, () => {
   console.log(`[traits] Sirviendo traits desde ${TRAITS_PATH}`);
   if (!isAdminEnabled()) {
     console.warn('[admin] ADMIN_TOKEN no definido: el panel de admin está deshabilitado.');
+  } else {
+    // Solo la longitud, nunca el token: sirve para detectar desde los logs un
+    // pegado truncado o con espacios sin exponer el secreto.
+    console.log(`[admin] Panel habilitado (token de ${getAdminTokenLength()} caracteres).`);
   }
 });

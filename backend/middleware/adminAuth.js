@@ -9,10 +9,19 @@
 
 const crypto = require('crypto');
 
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+// El .trim() no es cosmético: pegar el token en el dashboard de Railway suele
+// arrastrar un salto de línea o un espacio final, y eso daba un 401 imposible
+// de diagnosticar desde afuera.
+const ADMIN_TOKEN = (process.env.ADMIN_TOKEN || '').trim();
 
 function isAdminEnabled() {
     return ADMIN_TOKEN.length > 0;
+}
+
+// Devuelve solo la longitud, nunca el token, para poder verificar desde los
+// logs si lo que llegó al server es lo que se pegó en el dashboard.
+function getAdminTokenLength() {
+    return ADMIN_TOKEN.length;
 }
 
 // Comparación en tiempo constante para no filtrar el token carácter a carácter.
@@ -46,4 +55,4 @@ function adminAuth(req, res, next) {
     next();
 }
 
-module.exports = { adminAuth, isAdminEnabled };
+module.exports = { adminAuth, isAdminEnabled, getAdminTokenLength };

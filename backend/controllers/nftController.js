@@ -159,6 +159,10 @@ async function getCustomizationOptions(req, res) {
             };
         }
 
+        // El listado cambia cada vez que se sube o borra un trait desde el
+        // panel, así que el navegador tiene que revalidar siempre. Con el ETag
+        // que agrega Express, si no cambió nada la respuesta es un 304 barato.
+        res.set('Cache-Control', 'no-cache');
         res.json(customizationOptions);
     } catch (error) {
         console.error('[ERROR] getCustomizationOptions ->', error.message);
