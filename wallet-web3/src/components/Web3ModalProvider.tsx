@@ -48,7 +48,24 @@ createAppKit({
     adapters: [wagmiAdapter],
     networks,
     projectId,
-    metadata
+    metadata,
+    features: {
+        // El login social (Google, X, etc.) y el de email se habilitan desde el
+        // dashboard de Reown, no desde acá: AppKit los expone como
+        // "remoteFeatures". Sin esa configuración el boton aparece pero abre una
+        // ventana en blanco, asi que preferimos no ofrecerlos.
+        // Para reactivarlos: habilitarlos en cloud.reown.com y borrar estas dos
+        // lineas (por defecto vienen prendidos).
+        socials: false,
+        email: false,
+        // La app solo necesita conectar una wallet. Apagar el resto aligera el
+        // modal y evita pedirle datos de mercado a la API en cada apertura.
+        swaps: false,
+        onramp: false,
+        send: false,
+        receive: false,
+        history: false
+    }
 });
 
 export default function Web3ModalProvider({ children }: { children: ReactNode }) {
