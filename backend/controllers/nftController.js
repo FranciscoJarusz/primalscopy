@@ -5,8 +5,13 @@ const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 
+const {
+    TRAITS_PATH,
+    GLOBAL_DIR,
+    IMAGE_EXTENSION_REGEX
+} = require('../lib/traitsStore');
+
 const METADATA_BASE_URL = 'https://ipfs.primalcult.xyz/metadata/';
-const ASSETS_PATH = path.join(__dirname, '../assets');
 const GENERATED_IMAGES_PATH = path.join(__dirname, '../generated_images');
 const NFT_WIDTH = 2000;
 const NFT_HEIGHT = 2000;
@@ -41,18 +46,22 @@ function safeReadDir(dir) {
 
 function getImageFilesFromDir(dir) {
     return safeReadDir(dir)
-        .filter(file => /\.(png|gif|bmp|webp)$/i.test(file))
+        .filter(file => IMAGE_EXTENSION_REGEX.test(file))
         .sort((a, b) => a.localeCompare(b));
 }
 
 function stripImageExtensions(fileName) {
     return String(fileName || '')
-        .replace(/\.(png|gif|bmp|webp)$/i, '')
-        .replace(/\.(png|gif|bmp|webp)$/i, '');
+        .replace(IMAGE_EXTENSION_REGEX, '')
+        .replace(IMAGE_EXTENSION_REGEX, '');
 }
 
+// Las carpetas de variantes se corresponden con valores de trait de la metadata.
+// _GLOBAL no es un valor posible: es el cajón de traits que se ofrecen a todos
+// los NFTs, así que nunca puede elegirse como carpeta base.
 function getVariantDirectories(categoryDir) {
     return safeReadDir(categoryDir)
+        .filter(item => item !== GLOBAL_DIR)
         .filter(item => fs.statSync(path.join(categoryDir, item)).isDirectory())
         .sort((a, b) => a.localeCompare(b));
 }
@@ -64,18 +73,29 @@ function findVariantDirectoryByValue(categoryDir, rawValue) {
     return directories.find(dir => normalizeKey(dir) === normalizedRawValue) || null;
 }
 
-function buildVariantsForDirectory(fsCategoryName, directoryName) {
+function buildVariantsFromDirectory(fsCategoryName, directoryName, isGlobal) {
     if (!directoryName) return [];
 
-    const categoryDir = path.join(ASSETS_PATH, 'traits', fsCategoryName);
-    const targetDir = path.join(categoryDir, directoryName);
-    const files = getImageFilesFromDir(targetDir);
+    const targetDir = path.join(TRAITS_PATH, fsCategoryName, directoryName);
 
-    return files.map(file => ({
+    return getImageFilesFromDir(targetDir).map(file => ({
         name: stripImageExtensions(file),
         imageUrl: `/assets/traits/${fsCategoryName}/${directoryName}/${file}`,
-        isNone: false
+        isNone: false,
+        isGlobal
     }));
+}
+
+// Un NFT ve las variantes de su propia carpeta (las que comparten su valor de
+// trait) más todo lo que viva en _GLOBAL.
+function buildVariantsForCategory(fsCategoryName, directoryName) {
+    const ownVariants = buildVariantsFromDirectory(fsCategoryName, directoryName, false);
+    const globalVariants = buildVariantsFromDirectory(fsCategoryName, GLOBAL_DIR, true);
+
+    const seen = new Set(ownVariants.map(variant => normalizeKey(variant.name)));
+    const uniqueGlobals = globalVariants.filter(variant => !seen.has(normalizeKey(variant.name)));
+
+    return [...ownVariants, ...uniqueGlobals];
 }
 
 async function getNftMetadata(nftId) {
@@ -117,14 +137,14 @@ async function getCustomizationOptions(req, res) {
         }
 
         for (const category of CATEGORY_CONFIG) {
-            const categoryDir = path.join(ASSETS_PATH, 'traits', category.fsName);
+            const categoryDir = path.join(TRAITS_PATH, category.fsName);
             if (!fs.existsSync(categoryDir)) continue;
 
             const rawCurrentValue = traitValuesByCategory[category.fsName];
             const matchedDir = findVariantDirectoryByValue(categoryDir, rawCurrentValue);
             const directoryCandidates = getVariantDirectories(categoryDir);
             const selectedDirectory = matchedDir || directoryCandidates[0] || null;
-            const variants = buildVariantsForDirectory(category.fsName, selectedDirectory);
+            const variants = buildVariantsForCategory(category.fsName, selectedDirectory);
 
             if (variants.length === 0) continue;
 
@@ -141,8 +161,27 @@ async function getCustomizationOptions(req, res) {
 
         res.json(customizationOptions);
     } catch (error) {
+        console.error('[ERROR] getCustomizationOptions ->', error.message);
         res.status(500).json({ error: 'Internal server error.' });
     }
+}
+
+// Las URLs que manda el front son del tipo /assets/traits/HAT/BOHO/BOHO.gif.
+// Con el volumen persistente esa ruta ya no vive dentro del repo, así que hay
+// que reescribir el prefijo antes de tocar el disco.
+function resolveLayerPath(imageUrl) {
+    const normalizedUrl = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
+    const traitsPrefix = 'assets/traits/';
+
+    if (normalizedUrl.startsWith(traitsPrefix)) {
+        const relative = normalizedUrl.substring(traitsPrefix.length);
+        const resolved = path.resolve(TRAITS_PATH, relative);
+        // Defensa contra ../ en la URL entrante.
+        if (!resolved.startsWith(path.resolve(TRAITS_PATH))) return null;
+        return resolved;
+    }
+
+    return path.join(__dirname, '..', normalizedUrl);
 }
 
 async function generateAndSaveNftImage(req, res) {
@@ -158,8 +197,8 @@ async function generateAndSaveNftImage(req, res) {
         const imageUrl = selectedVariants[traitType];
         if (imageUrl && imageUrl !== '__NONE__') {
             // Convierte la URL relativa (ej: /assets/...) en una ruta de archivo local
-            const imagePath = path.join(__dirname, '..', imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl);
-            if (fs.existsSync(imagePath)) {
+            const imagePath = resolveLayerPath(imageUrl);
+            if (imagePath && fs.existsSync(imagePath)) {
                 layers.push({ input: imagePath });
             } else {
                 console.warn(`[WARN] Archivo no encontrado para la capa ${traitType}: ${imagePath}`);
@@ -189,9 +228,11 @@ async function generateAndSaveNftImage(req, res) {
     }
 }
 
-// NO exportamos getNftLayers ni getProxiedMetadata si no se usan aquí.
-// Mantenemos la exportación limpia.
 module.exports = {
     getCustomizationOptions,
-    generateAndSaveNftImage
+    generateAndSaveNftImage,
+    // Reutilizados por el panel de admin para no duplicar la config de categorías.
+    CATEGORY_CONFIG,
+    normalizeKey,
+    getVariantDirectories
 };

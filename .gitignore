@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno
+.env
+.env.local
+.env*.local
+
+# Salidas de build
+.next/
+out/
+dist/
+
+# Imagenes generadas en runtime por el backend
+backend/generated_images/
+
+# Traits de desarrollo local (el volumen persistente simulado)
+backend/.local-traits/
+
+# Base de datos local de Prisma
+*.db
+*.db-journal
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
