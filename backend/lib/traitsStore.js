@@ -38,11 +38,28 @@ function isUsingPersistentVolume() {
     return TRAITS_PATH !== SEED_TRAITS_PATH;
 }
 
-// El marcador no cuenta como contenido: si lo contaramos, el directorio nunca
-// pareceria vacio y la semilla no se copiaria jamas.
+// Entradas que un volumen recien creado trae solo, o que escribimos nosotros:
+// ninguna cuenta como contenido real. Un volumen ext4 nuevo viene con
+// lost+found, y eso alcanzaba para que el directorio pareciera poblado y la
+// semilla no se copiara nunca, dejando el customizer sin un solo trait.
+const NON_CONTENT_ENTRIES = new Set([MARKER_FILE, 'lost+found', '.DS_Store', 'Thumbs.db']);
+
+function isContentEntry(entry) {
+    return !NON_CONTENT_ENTRIES.has(entry) && !entry.startsWith('.');
+}
+
+// "Tiene contenido" significa que hay al menos una carpeta de categoria, no que
+// el directorio no este vacio.
 function directoryHasEntries(dir) {
     try {
-        return fs.readdirSync(dir).filter(entry => entry !== MARKER_FILE).length > 0;
+        return fs.readdirSync(dir).some(entry => {
+            if (!isContentEntry(entry)) return false;
+            try {
+                return fs.statSync(path.join(dir, entry)).isDirectory();
+            } catch {
+                return false;
+            }
+        });
     } catch {
         return false;
     }
