@@ -38,6 +38,18 @@ interface TraitsResponse {
     categories: TraitCategory[];
 }
 
+// Diagnostico de almacenamiento. Si el volumen no es persistente, todo lo que
+// se suba se pierde en el proximo reinicio del servidor, sin ningun error:
+// hay que avisarlo antes de que alguien pierda horas de trabajo.
+interface StorageStatus {
+    traitsPath: string;
+    isRealMountPoint: boolean;
+    healthy: boolean;
+    warning: string | null;
+    survivedRestart: boolean;
+    marker: { createdAt: string; lastBootAt: string; boots: number } | null;
+}
+
 function formatBytes(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -58,6 +70,7 @@ export default function AdminPage() {
     const [status, setStatus] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
     const [busy, setBusy] = useState<boolean>(false);
     const [dragging, setDragging] = useState<boolean>(false);
+    const [storage, setStorage] = useState<StorageStatus | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -117,9 +130,24 @@ export default function AdminPage() {
         })();
     }, []);
 
+    const loadStorageStatus = useCallback(async (activeToken: string) => {
+        try {
+            const response = await fetch(`${BACKEND_URL}/admin/storage`, {
+                headers: { Authorization: `Bearer ${activeToken}` }
+            });
+            // Un backend anterior a este diagnostico devuelve 404: no es un error.
+            if (!response.ok) return;
+            setStorage(await response.json());
+        } catch {
+            // Que falle el diagnostico no debe romper el panel.
+        }
+    }, []);
+
     useEffect(() => {
-        if (token) loadTraits(token);
-    }, [token, loadTraits]);
+        if (!token) return;
+        loadTraits(token);
+        loadStorageStatus(token);
+    }, [token, loadTraits, loadStorageStatus]);
 
     const handleLogin = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -385,6 +413,37 @@ export default function AdminPage() {
                         </button>
                     </div>
                 </div>
+
+                {/* Si el almacenamiento no persiste, subir cualquier cosa es tirar
+                    el trabajo a la basura. Tiene que verse antes que nada. */}
+                {storage && !storage.healthy && (
+                    <div className="rounded-xl border-2 border-red-500 bg-red-500/20 px-6 py-5">
+                        <p className="text-lg font-bold text-red-200">
+                            ⚠️ No subas nada: los cambios se van a perder
+                        </p>
+                        <p className="text-red-200/90 mt-2">
+                            La carpeta de traits del servidor no es un volumen persistente. Todo lo que
+                            subas, renombres o borres va a desaparecer la próxima vez que el servidor se
+                            reinicie, sin ningún aviso.
+                        </p>
+                        <p className="text-sm text-red-200/70 mt-3 font-mono break-all">
+                            TRAITS_PATH = {storage.traitsPath}
+                        </p>
+                        <p className="text-sm text-red-200/70 mt-1">
+                            En Railway, el mount path del volumen tiene que ser exactamente esa ruta.
+                            {storage.marker && ` Arranques registrados: ${storage.marker.boots}.`}
+                        </p>
+                    </div>
+                )}
+
+                {storage && storage.healthy && storage.survivedRestart && (
+                    <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-6 py-3">
+                        <p className="text-sm text-emerald-200">
+                            ✓ Almacenamiento persistente verificado — el contenido sobrevivió a{" "}
+                            {storage.marker?.boots} reinicios del servidor.
+                        </p>
+                    </div>
+                )}
 
                 {status && (
                     <div
