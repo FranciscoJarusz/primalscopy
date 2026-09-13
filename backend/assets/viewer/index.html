@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Primal Viewer</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .error {
+      color: white;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewer"></div>
+
+  <script>
+    // Los 2712 tokens tienen su animation_url apuntando aca, asi que esta
+    // pagina es lo que muestran OpenSea y varias wallets: tiene que funcionar
+    // siempre.
+    //
+    // La version original armaba la URL de la imagen a mano. Eso alcanzaba
+    // cuando las imagenes no cambiaban nunca, pero ahora se sobreescriben al
+    // customizar y quedaba mostrando la vieja por cache. Ahora lee la metadata
+    // y usa su campo "image", que trae ?v=<version> y cambia en cada guardado.
+    async function loadPrimalImage() {
+      const viewer = document.getElementById('viewer');
+      const id = new URLSearchParams(window.location.search).get('id');
+
+      if (!id) {
+        viewer.innerHTML = "<p class='error'>No ID provided</p>";
+        return;
+      }
+
+      // Mismo origen que esta pagina: asi el viewer sigue funcionando sin
+      // tocarlo si el dominio cambia.
+      const base = window.location.origin;
+      let imageUrl = `${base}/images/${id}.gif`;
+
+      try {
+        const response = await fetch(`${base}/metadata/${id}`, { cache: 'no-cache' });
+        if (response.ok) {
+          const metadata = await response.json();
+          if (metadata && metadata.image) imageUrl = metadata.image;
+        }
+      } catch (err) {
+        // Si la metadata no carga, la URL directa de arriba sigue sirviendo:
+        // preferimos mostrar una version quiza vieja antes que nada.
+        console.error(err);
+      }
+
+      const img = document.createElement('img');
+      img.src = imageUrl;
+      img.alt = `Primal #${id}`;
+      img.onerror = () => {
+        viewer.innerHTML = "<p class='error'>Failed to load image</p>";
+      };
+      viewer.appendChild(img);
+    }
+
+    loadPrimalImage();
+  </script>
+</body>
+</html>

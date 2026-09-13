@@ -68,6 +68,15 @@ app.get('/metadata/:tokenId', (req, res) => {
   res.json(metadata);
 });
 
+// El animation_url de los 2712 tokens apunta a /viewer/index.html, asi que
+// esta ruta tambien tiene que existir cuando el dominio apunte aca: es lo que
+// muestran OpenSea y varias wallets. Va en el repo y no en el volumen porque
+// es codigo, no datos de la coleccion.
+app.use('/viewer', express.static(path.join(ASSETS_PATH, 'viewer'), {
+  // El HTML cambia con cada deploy; que no quede cacheado una version vieja.
+  setHeaders: res => res.set('Cache-Control', 'no-cache')
+}));
+
 // Rutas de tu router
 app.use('/api/nft', nftRoutes);
 app.use('/api/admin', adminRoutes);
