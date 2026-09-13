@@ -52,6 +52,29 @@ interface StorageStatus {
     marker: { createdAt: string; lastBootAt: string; boots: number } | null;
 }
 
+// Estado de la migracion de la coleccion al volumen. Tiene que estar completa
+// ANTES de mudar el DNS: si el dominio apunta aca sin los 2712 archivos, la
+// coleccion entera devuelve 404 en wallets y marketplaces.
+interface AssetsStatus {
+    images: number;
+    metadata: number;
+    expected: number;
+    readyForDns: boolean;
+    originUrl: string;
+    publicAssetsUrl: string;
+    seeding: {
+        running: boolean;
+        done: number;
+        total: number;
+        metadataFetched: number;
+        imagesFetched: number;
+        bytes: number;
+        errorCount: number;
+        sampleErrors: string[];
+        finishedAt: string | null;
+    };
+}
+
 function formatBytes(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -73,6 +96,7 @@ export default function AdminPage() {
     const [busy, setBusy] = useState<boolean>(false);
     const [dragging, setDragging] = useState<boolean>(false);
     const [storage, setStorage] = useState<StorageStatus | null>(null);
+    const [assets, setAssets] = useState<AssetsStatus | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -145,8 +169,46 @@ export default function AdminPage() {
         }
     }, []);
 
+    const loadAssetsStatus = useCallback(async (activeToken: string) => {
+        try {
+            const response = await fetch(`${BACKEND_URL}/admin/assets`, {
+                headers: { Authorization: `Bearer ${activeToken}` }
+            });
+            if (!response.ok) return;
+            setAssets(await response.json());
+        } catch {
+            // Que falle el diagnostico no debe romper el panel.
+        }
+    }, []);
+
+    const startAssetsSeed = useCallback(async () => {
+        setStatus(null);
+        try {
+            const response = await fetch(`${BACKEND_URL}/admin/assets/seed`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const body = await response.json();
+            setStatus(response.ok
+                ? { kind: "ok", text: body.message || "Migración iniciada." }
+                : { kind: "error", text: body.error || "No se pudo iniciar la migración." });
+            loadAssetsStatus(token);
+        } catch {
+            setStatus({ kind: "error", text: "No se pudo contactar al servidor." });
+        }
+    }, [token, loadAssetsStatus]);
+
+    // Mientras la migración corre, refrescar el avance solo. Son 2712 archivos
+    // y sin esto habría que recargar la página para ver si termino.
+    useEffect(() => {
+        if (!token || !assets?.seeding.running) return;
+        const timer = setInterval(() => loadAssetsStatus(token), 3000);
+        return () => clearInterval(timer);
+    }, [token, assets?.seeding.running, loadAssetsStatus]);
+
     useEffect(() => {
         if (!token) return;
+        loadAssetsStatus(token);
         loadTraits(token);
         loadStorageStatus(token);
     }, [token, loadTraits, loadStorageStatus]);
@@ -460,6 +522,95 @@ export default function AdminPage() {
                         <p className="text-sm text-red-200/70 mt-1">
                             En Railway, el mount path del volumen tiene que ser exactamente esa ruta.
                             {storage.marker && ` Arranques registrados: ${storage.marker.boots}.`}
+                        </p>
+                    </div>
+                )}
+
+                {/* Migración de la colección al volumen. Solo se muestra cuando falta
+                    algo o cuando está corriendo: una vez completa deja de molestar. */}
+                {assets && (!assets.readyForDns || assets.seeding.running) && (
+                    <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 px-6 py-5">
+                        <p className="text-lg font-bold text-amber-200">
+                            Migración de la colección
+                        </p>
+                        <p className="text-sm text-amber-100/80 mt-1">
+                            Trae los {assets.expected} archivos desde{" "}
+                            <span className="font-mono">{assets.originUrl}</span> a este servidor.
+                            Tiene que estar completa <strong>antes</strong> de apuntar el dominio acá:
+                            si no, la colección entera se ve rota en wallets y marketplaces.
+                        </p>
+
+                        <div className="mt-4 flex flex-wrap gap-6 text-sm">
+                            <div>
+                                <span className="text-amber-100/60">Metadata: </span>
+                                <span className="font-mono text-amber-100">
+                                    {assets.metadata} / {assets.expected}
+                                </span>
+                            </div>
+                            <div>
+                                <span className="text-amber-100/60">Imágenes: </span>
+                                <span className="font-mono text-amber-100">
+                                    {assets.images} / {assets.expected}
+                                </span>
+                            </div>
+                            {assets.seeding.bytes > 0 && (
+                                <div>
+                                    <span className="text-amber-100/60">Descargado: </span>
+                                    <span className="font-mono text-amber-100">
+                                        {formatBytes(assets.seeding.bytes)}
+                                    </span>
+                                </div>
+                            )}
+                            {assets.seeding.errorCount > 0 && (
+                                <div>
+                                    <span className="text-amber-100/60">Errores: </span>
+                                    <span className="font-mono text-red-300">{assets.seeding.errorCount}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {assets.seeding.running ? (
+                            <div className="mt-4">
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-amber-500/20">
+                                    <div
+                                        className="h-full bg-amber-400 transition-all duration-500"
+                                        style={{ width: `${Math.round((assets.seeding.done / Math.max(1, assets.seeding.total)) * 100)}%` }}
+                                    />
+                                </div>
+                                <p className="mt-2 text-sm text-amber-100/70">
+                                    {assets.seeding.done} de {assets.seeding.total} tokens. Podés cerrar esta
+                                    página: sigue corriendo en el servidor.
+                                </p>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={startAssetsSeed}
+                                className="mt-4 rounded-lg bg-amber-500 px-5 py-2 font-semibold text-black transition-colors hover:bg-amber-400"
+                            >
+                                {assets.metadata > 0 || assets.images > 0 ? "Continuar migración" : "Empezar migración"}
+                            </button>
+                        )}
+
+                        {assets.seeding.sampleErrors.length > 0 && (
+                            <details className="mt-3 text-xs text-red-300/80">
+                                <summary className="cursor-pointer">Ver errores</summary>
+                                <ul className="mt-2 space-y-1 font-mono">
+                                    {assets.seeding.sampleErrors.map((error, index) => (
+                                        <li key={index}>{error}</li>
+                                    ))}
+                                </ul>
+                            </details>
+                        )}
+                    </div>
+                )}
+
+                {assets?.readyForDns && !assets.seeding.running && (
+                    <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-6 py-4">
+                        <p className="font-semibold text-emerald-300">
+                            ✓ Colección migrada: {assets.expected} imágenes y {assets.expected} metadata
+                        </p>
+                        <p className="text-sm text-emerald-100/70 mt-1">
+                            Ya se puede apuntar el dominio a este servidor.
                         </p>
                     </div>
                 )}

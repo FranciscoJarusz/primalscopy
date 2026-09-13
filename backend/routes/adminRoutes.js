@@ -6,6 +6,8 @@ const path = require('path');
 
 const { adminAuth } = require('../middleware/adminAuth');
 const { getStorageStatus } = require('../lib/traitsStore');
+const { getAssetsStatus } = require('../lib/assetStore');
+const { startSeeding, getSeedProgress, ORIGIN_URL, LAST_TOKEN } = require('../lib/assetSeeder');
 const {
     listTraits,
     uploadTrait,
@@ -54,6 +56,31 @@ router.get('/storage', (req, res) => {
             ? null
             : 'TRAITS_PATH no es un volumen montado: todo lo que se suba se pierde al reiniciar.'
     });
+});
+
+// --- Migracion de la coleccion al volumen ----------------------------------
+//
+// Trae los 2712 archivos desde el servidor donde viven hoy. Hace falta ANTES
+// de mudar el DNS: despues del switch este dominio resuelve a nosotros mismos
+// y no habria de donde traerlos.
+
+router.get('/assets', (req, res) => {
+    const status = getAssetsStatus();
+    const progress = getSeedProgress();
+    res.json({
+        ...status,
+        originUrl: ORIGIN_URL,
+        expected: LAST_TOKEN,
+        // Listo para mudar el DNS solo cuando esten los 2712 de cada cosa.
+        readyForDns: status.images >= LAST_TOKEN && status.metadata >= LAST_TOKEN,
+        seeding: progress
+    });
+});
+
+router.post('/assets/seed', (req, res) => {
+    const result = startSeeding();
+    if (!result.started) return res.status(409).json({ error: result.reason });
+    res.status(202).json({ message: 'Migracion iniciada. Consultá GET /api/admin/assets para ver el avance.' });
 });
 
 router.get('/traits', listTraits);
