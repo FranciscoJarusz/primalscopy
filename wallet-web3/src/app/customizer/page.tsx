@@ -61,6 +61,9 @@ function CustomizerContent() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [activeTraitSection, setActiveTraitSection] = useState<string | null>(null);
+    // Capas cuyo archivo no cargó: se sacan del preview en vez de dejar que el
+    // navegador dibuje el ícono de imagen rota encima del NFT.
+    const [failedLayers, setFailedLayers] = useState<string[]>([]);
     const [exportingGif, setExportingGif] = useState<boolean>(false);
     const [exportProgress, setExportProgress] = useState<number>(0);
 
@@ -87,6 +90,7 @@ function CustomizerContent() {
             setError(null);
             setCustomizationOptions(null);
             setSelectedVariants({});
+            setFailedLayers([]);
             try {
                 const optionsResponse = await fetch(`${BACKEND_URL}/nft/${nftId}/customize-options`);
                 if (!optionsResponse.ok) throw new Error(`Error: ${optionsResponse.status}`);
@@ -116,14 +120,28 @@ function CustomizerContent() {
                     const saved = localStorage.getItem(`nft_custom_${nftId}`);
                     if (saved) {
                         const savedSelections: { [key: string]: string } = JSON.parse(saved);
-                        // Solo restaurar keys que sigan siendo válidas en los datos actuales
+                        // No alcanza con que la categoría siga existiendo: hay que validar
+                        // la URL guardada contra las variantes de ahora. Si un trait se
+                        // renombró o se borró desde /admin, el navegador se queda con la
+                        // URL vieja y esa capa da 404. Ojo que el server es Linux: un
+                        // cambio de mayúsculas (STANDART.gif → Standart.gif) ya es otro
+                        // archivo, aunque en Windows local parezca el mismo.
                         const restored: { [key: string]: string } = { ...initialSelections };
                         for (const traitType in savedSelections) {
-                            if (sanitizedData[traitType]) {
-                                restored[traitType] = savedSelections[traitType];
+                            const option = sanitizedData[traitType];
+                            if (!option) continue;
+                            const savedValue = savedSelections[traitType];
+                            const stillExists = savedValue === NONE_SELECTION
+                                || option.variants.some(variant => getVariantSelectionValue(variant) === savedValue);
+                            // Si la selección murió, queda el default de la metadata.
+                            if (stillExists) {
+                                restored[traitType] = savedValue;
                             }
                         }
                         setSelectedVariants(restored);
+                        // Reescribir lo guardado para que las selecciones muertas no
+                        // vuelvan a aparecer en cada carga.
+                        try { localStorage.setItem(`nft_custom_${nftId}`, JSON.stringify(restored)); } catch { /* storage lleno */ }
                     } else {
                         setSelectedVariants(initialSelections);
                     }
@@ -446,15 +464,23 @@ function CustomizerContent() {
                                     ref={nftDisplayRef} 
                                     className="relative mx-auto w-full max-w-[500px] aspect-square overflow-hidden rounded-lg"
                                 >
-                                    {displayedLayers.map((layerSrc, index) => (
-                                        <img 
-                                            key={index} 
-                                            src={layerSrc} 
-                                            alt={`NFT Layer ${index}`} 
+                                    {displayedLayers
+                                        .filter(layerSrc => !failedLayers.includes(layerSrc))
+                                        .map((layerSrc) => (
+                                        <img
+                                            key={layerSrc}
+                                            src={layerSrc}
+                                            // Las capas son decorativas y se apilan: un alt por
+                                            // capa solo sirve para que el navegador lo dibuje
+                                            // encima del preview cuando el archivo no carga.
+                                            alt=""
                                             width={1000}
                                             height={1000}
-                                            className="absolute inset-0 w-full h-full object-contain" 
-                                            style={{ imageRendering: 'pixelated' }} 
+                                            className="absolute inset-0 w-full h-full object-contain"
+                                            style={{ imageRendering: 'pixelated' }}
+                                            onError={() => setFailedLayers(prev => (
+                                                prev.includes(layerSrc) ? prev : [...prev, layerSrc]
+                                            ))}
                                         />
                                     ))}
                                 </div>
