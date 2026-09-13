@@ -4,12 +4,12 @@
 
 import React, { useEffect, useLayoutEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { useAppKit } from '@reown/appkit/react';
 import { useAccount, useDisconnect } from 'wagmi';
 
 export default function Web3Auth() {
   const router = useRouter();
-  const { open } = useWeb3Modal();
+  const { open } = useAppKit();
   const { disconnect } = useDisconnect();
   const { isConnected, isConnecting, address } = useAccount();
 

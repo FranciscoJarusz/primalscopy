@@ -1,52 +1,60 @@
 "use client";
-import { createWeb3Modal, defaultWagmiConfig } from '@web3modal/wagmi/react';
-import { WagmiProvider } from 'wagmi';
-import { mainnet } from 'viem/chains';
-import { ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const apechain = {
-  id: 33139,
-  name: 'ApeChain',
-  nativeCurrency: {
-    name: 'ApeCoin',
-    symbol: 'APE',
-    decimals: 18
-  },
-  rpcUrls: {
-    default: {
-      http: ['https://rpc.apechain.com']
-    }
-  },
-  blockExplorers: {
-    default: {
-      name: 'ApeScan',
-      url: 'https://apescan.io'
-    }
-  }
-} as const;
+// Reown AppKit (antes Web3Modal).
+//
+// @web3modal/wagmi quedó deprecado y congelado en su ultima version (5.1.11):
+// el modal abria pero nunca llegaba el URI de pareo, asi que el QR se
+// renderizaba vacio y el login social abria una ventana en blanco.
+
+import { createAppKit } from "@reown/appkit/react";
+import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
+import { apeChain, mainnet } from "@reown/appkit/networks";
+import type { AppKitNetwork } from "@reown/appkit/networks";
+import { WagmiProvider } from "wagmi";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactNode } from "react";
 
 const queryClient = new QueryClient();
-const projectId = '0f9ff0f0497c73187c253e88cf8680c9';
+
+const projectId = "0f9ff0f0497c73187c253e88cf8680c9";
+
+// ApeChain primero: es donde vive la coleccion.
+const networks: [AppKitNetwork, ...AppKitNetwork[]] = [apeChain, mainnet];
+
+const PRODUCTION_URL = "https://cultomizer.primalcult.xyz";
+
+// WalletConnect compara esta url contra el origen real desde donde se sirve la
+// app; si no coinciden, falla la verificacion de dominio. Antes estaba el
+// placeholder 'https://tu-sitio-web.com', que nunca se completo.
+// Tomarla de window.location hace que matchee sola en localhost, en los
+// preview de Vercel y en produccion, sin tener que mantener una lista.
+const appUrl = typeof window !== "undefined" ? window.location.origin : PRODUCTION_URL;
 
 const metadata = {
-  name: 'Prima Cult',
-  description: 'Prima Cult Wardrobe',
-  url: 'https://tu-sitio-web.com',
-  icons: ['/logo.png']
+    name: "Prima Cult",
+    description: "Prima Cult Wardrobe",
+    url: appUrl,
+    // Absoluta, no relativa: la resuelve la wallet, no el navegador.
+    icons: [`${appUrl}/logo.png`]
 };
-const chains = [apechain, mainnet] as const;
-const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
-createWeb3Modal({ wagmiConfig, projectId, chains });
+
+const wagmiAdapter = new WagmiAdapter({
+    networks,
+    projectId,
+    ssr: true
+});
+
+createAppKit({
+    adapters: [wagmiAdapter],
+    networks,
+    projectId,
+    metadata
+});
 
 export default function Web3ModalProvider({ children }: { children: ReactNode }) {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <WagmiProvider config={wagmiConfig} reconnectOnMount>
-        {children}
-      </WagmiProvider>
-    </QueryClientProvider>
-  );
+    return (
+        <WagmiProvider config={wagmiAdapter.wagmiConfig} reconnectOnMount>
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        </WagmiProvider>
+    );
 }
-
-
