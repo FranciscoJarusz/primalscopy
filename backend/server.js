@@ -77,6 +77,13 @@ app.use('/viewer', express.static(path.join(ASSETS_PATH, 'viewer'), {
   setHeaders: res => res.set('Cache-Control', 'no-cache')
 }));
 
+// Archivos sueltos que ya vivian en este subdominio y no tienen que ver con la
+// coleccion (la metadata no los referencia), pero pueden estar linkeados desde
+// la web, Twitter o Discord. Se migran para que el cambio de dominio no rompa
+// ningun link viejo. Son 46 archivos, 8,9 MB.
+app.use('/category', express.static(path.join(ASSETS_PATH, 'legacy', 'category'), { maxAge: '30d' }));
+app.use('/t', express.static(path.join(ASSETS_PATH, 'legacy', 't'), { maxAge: '30d' }));
+
 // Rutas de tu router
 app.use('/api/nft', nftRoutes);
 app.use('/api/admin', adminRoutes);
