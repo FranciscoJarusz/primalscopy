@@ -158,7 +158,7 @@ export default function SelectorPage() {
               Select your NFT
             </h1>
             <p className="text-lg sm:text-xl text-blue-200 mt-2 max-w-2xl">
-              Choose the character you want to modify in the Wardrobe
+              Choose the Primal you want to modify in the Cultomizer
             </p>
             {isConnected && address && (
               <div className="text-sm text-white/60 mt-1">
@@ -175,18 +175,12 @@ export default function SelectorPage() {
               {isLoading ? '🔄' : '🔄'} Refresh
             </button>
             <button
-              onClick={() => handleCheckNFT(nftToVerify)}
-              className="bg-purple-600 hover:bg-purple-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 text-sm sm:text-base"
-            >
-              🔍 Verify NFT #{nftToVerify}
-            </button>
-            <button
               onClick={() => {
                 router.push('/customizer?tokenId=1292');
               }}
               className="bg-green-600 hover:bg-green-700 px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 text-sm sm:text-base"
             >
-              Try with NFT #1292
+              Test Preview
             </button>
             <button
               onClick={handleDisconnect}

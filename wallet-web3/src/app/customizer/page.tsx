@@ -500,12 +500,25 @@ function CustomizerContent() {
         <div className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] text-white px-4 py-6 sm:p-8">
             <div className="max-w-7xl mx-auto flex flex-col gap-10">
                 {/* Header */}
-                <div className="flex justify-between items-center">
+                <div className="flex flex-wrap justify-between items-start gap-4">
                     <div>
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                            CUSTOMIZE: PRIMAL #{nftId}
-                        </h1>
-                        <p className="text-blue-200 mt-2">Customize your character</p>
+                        <div className="flex flex-wrap items-center gap-4">
+                            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                                Customizing: Primal #{nftId}
+                            </h1>
+                            {/* Vuelta al selector sin tener que usar el boton del
+                                navegador ni reconectar la wallet. */}
+                            <button
+                                onClick={handleBackToSelection}
+                                className="rounded-xl bg-yellow-300 px-5 py-2 font-bold text-black transition-colors duration-200 hover:bg-yellow-200"
+                            >
+                                Switch Primal
+                            </button>
+                        </div>
+                        <p className="text-blue-200 mt-2">
+                            Try different combinations and customize at your liking.
+                            Once you finish, validate ownership to update on-chain.
+                        </p>
                     </div>
                 </div>
 
@@ -524,7 +537,7 @@ function CustomizerContent() {
                             onClick={handleLoadNft} 
                             className="shrink-0 bg-blue-600 hover:bg-blue-700 px-4 sm:px-6 py-2 rounded-lg font-semibold transition-all duration-200 text-sm sm:text-base"
                         >
-                            Search
+                            Search other NFT
                         </button>
                     </div>
                 </div>
@@ -593,7 +606,7 @@ function CustomizerContent() {
                                         {exportingGif
                                             ? `Exporting ${Math.round(exportProgress)}%`
                                             : allAssetsSelected
-                                                ? 'Export'
+                                                ? 'Export GIF file'
                                                 : 'Complete traits'}
                                     </button>
                                 </div>
@@ -651,7 +664,7 @@ function CustomizerContent() {
                                                         {saving
                                                             ? 'Saving...'
                                                             : allAssetsSelected
-                                                                ? 'Save to my NFT'
+                                                                ? 'Update art on chain'
                                                                 : 'Complete traits'}
                                                     </button>
                                                     {saving && (
@@ -696,7 +709,7 @@ function CustomizerContent() {
                         {/* Columna derecha - Selector de traits */}
                         <div className="lg:col-span-2">
                             <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                                <h3 className="text-xl font-semibold mb-6">Customization</h3>
+                                <h3 className="text-xl font-semibold mb-6">Choose a trait</h3>
                                 
                                 {/* Selector de categorías */}
                                 <div className="flex flex-wrap gap-2 mb-6">
