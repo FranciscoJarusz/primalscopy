@@ -261,11 +261,18 @@ function CustomizerContent() {
                 setSaveResult({ kind: 'error', text: body.error || 'Could not save.' });
                 return;
             }
+            // Aviso explicito de la demora: los marketplaces cachean y el holder
+            // que no lo sepa va a pensar que no funciono.
+            //
+            // Si ademas no se pudo avisar al marketplace, la miniatura de las
+            // grillas puede quedar vieja bastante mas tiempo. Se dice, porque si
+            // no el unico sintoma es un usuario confundido.
+            const refreshOk = body.marketplaceRefresh?.requested !== false;
             setSaveResult({
                 kind: 'ok',
-                // Aviso explicito de la demora: los marketplaces cachean y el
-                // holder que no lo sepa va a pensar que no funciono.
-                text: 'Saved. Your wallet may take a while to refresh.'
+                text: refreshOk
+                    ? 'Saved. Your wallet may take a while to refresh.'
+                    : 'Saved, but the marketplace was not notified: the thumbnail may stay outdated for a while.'
             });
         } catch {
             setSaveResult({ kind: 'error', text: 'Could not reach the server.' });
