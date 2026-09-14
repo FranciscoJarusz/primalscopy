@@ -75,6 +75,22 @@ interface AssetsStatus {
     };
 }
 
+// Si el backend no puede escribir en el hosting de la coleccion, el customizer
+// deja guardar pero el cambio no se ve en ninguna wallet. Conviene saberlo
+// antes de que lo reporte un holder.
+interface PublisherStatus {
+    ok: boolean;
+    configured: boolean;
+    canRead?: boolean;
+    canWrite?: boolean;
+    host?: string;
+    remoteRoot?: string;
+    remoteImages?: number;
+    remoteMetadata?: number;
+    missing?: string[];
+    error?: string;
+}
+
 function formatBytes(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -97,6 +113,7 @@ export default function AdminPage() {
     const [dragging, setDragging] = useState<boolean>(false);
     const [storage, setStorage] = useState<StorageStatus | null>(null);
     const [assets, setAssets] = useState<AssetsStatus | null>(null);
+    const [publisher, setPublisher] = useState<PublisherStatus | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -206,8 +223,21 @@ export default function AdminPage() {
         return () => clearInterval(timer);
     }, [token, assets?.seeding.running, loadAssetsStatus]);
 
+    const loadPublisherStatus = useCallback(async (activeToken: string) => {
+        try {
+            const response = await fetch(`${BACKEND_URL}/admin/publisher`, {
+                headers: { Authorization: `Bearer ${activeToken}` }
+            });
+            if (!response.ok) return;
+            setPublisher(await response.json());
+        } catch {
+            // Que falle el diagnostico no debe romper el panel.
+        }
+    }, []);
+
     useEffect(() => {
         if (!token) return;
+        loadPublisherStatus(token);
         loadAssetsStatus(token);
         loadTraits(token);
         loadStorageStatus(token);
@@ -611,6 +641,39 @@ export default function AdminPage() {
                         </p>
                         <p className="text-sm text-emerald-100/70 mt-1">
                             Ya se puede apuntar el dominio a este servidor.
+                        </p>
+                    </div>
+                )}
+
+                {/* Estado de la publicacion en el hosting de la coleccion. */}
+                {publisher && !publisher.ok && (
+                    <div className="rounded-xl border-2 border-red-500 bg-red-500/20 px-6 py-5">
+                        <p className="text-lg font-bold text-red-200">
+                            Las customizaciones no se están publicando
+                        </p>
+                        <p className="text-sm text-red-200 mt-1">
+                            Los holders pueden guardar, pero el cambio no se va a ver en ninguna wallet.
+                        </p>
+                        {!publisher.configured ? (
+                            <p className="text-sm text-red-200/80 mt-2 font-mono">
+                                Faltan variables en el servidor: {publisher.missing?.join(", ")}
+                            </p>
+                        ) : (
+                            <p className="text-sm text-red-200/80 mt-2 font-mono">{publisher.error}</p>
+                        )}
+                    </div>
+                )}
+
+                {publisher?.ok && (
+                    <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-6 py-4">
+                        <p className="font-semibold text-emerald-300">
+                            ✓ Publicación activa
+                        </p>
+                        <p className="text-sm text-emerald-100/70 mt-1">
+                            El servidor puede escribir en el hosting de la colección
+                            {typeof publisher.remoteImages === "number" && (
+                                <> · {publisher.remoteImages} imágenes y {publisher.remoteMetadata} metadata allá</>
+                            )}
                         </p>
                     </div>
                 )}
