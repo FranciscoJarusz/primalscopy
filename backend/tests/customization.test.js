@@ -48,6 +48,27 @@ require.cache[ownershipPath] = {
     }
 };
 
+// El publisher remoto se sustituye para no tocar el hosting real de la
+// coleccion desde los tests. `modo` permite forzar una falla y comprobar que
+// un fallo al publicar no deja la copia local desincronizada.
+const publisherPath = require.resolve('../lib/remotePublisher');
+const publisher = { modo: 'ok', publicados: [] };
+require.cache[publisherPath] = {
+    id: publisherPath,
+    filename: publisherPath,
+    loaded: true,
+    exports: {
+        isConfigured: () => true,
+        missingConfig: () => [],
+        publishNft: async (tokenId, payload) => {
+            if (publisher.modo === 'falla') throw new Error('conexion rechazada');
+            publisher.publicados.push({ tokenId, bytes: payload.gif.length, image: payload.metadata.image });
+            return { imagePath: `/remoto/images/${tokenId}.gif`, metadataPath: `/remoto/metadata/${tokenId}` };
+        },
+        verifyAccess: async () => ({ ok: true })
+    }
+};
+
 let pass = 0;
 let fail = 0;
 const check = (name, ok, detail = '') => ok
@@ -153,6 +174,23 @@ async function main() {
     check('queda registrado que hay customizacion', estado.saved === true);
     check('registra las 7 capas aplicadas', Object.keys(estado.applied || {}).length === 7,
         `(${Object.keys(estado.applied || {}).length})`);
+
+    console.log('\n--- Publicacion en el hosting de la coleccion ---');
+    check('se publico al guardar', publisher.publicados.length === 1, `(${publisher.publicados.length})`);
+    check('se publico el token correcto', publisher.publicados[0]?.tokenId === TOKEN);
+    check('se publico la misma imagen que quedo guardada',
+        publisher.publicados[0]?.image === saved.image);
+
+    console.log('\n--- Si falla la publicacion, no se toca la copia local ---');
+    const antesDeFallar = await (await fetch(`${BASE}/metadata/${TOKEN}`)).json();
+    publisher.modo = 'falla';
+    r = await post(`${BASE}/api/nft/${TOKEN}/customization`, { selections: valid }, ownerToken);
+    check('devuelve 502 y no 200', r.status === 502, `(dio ${r.status})`);
+    const despuesDeFallar = await (await fetch(`${BASE}/metadata/${TOKEN}`)).json();
+    check('la metadata local quedo intacta',
+        despuesDeFallar.image === antesDeFallar.image,
+        `(${antesDeFallar.image} -> ${despuesDeFallar.image})`);
+    publisher.modo = 'ok';
 
     console.log('\n--- Guardar de nuevo cambia la version ---');
     await new Promise(res => setTimeout(res, 1100));

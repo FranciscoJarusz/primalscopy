@@ -11,6 +11,7 @@ const axios = require('axios');
 const { buildCustomizationOptions, resolveLayerPath } = require('./nftController');
 const { composeGif } = require('../lib/gifComposer');
 const assets = require('../lib/assetStore');
+const remote = require('../lib/remotePublisher');
 const fs = require('fs');
 
 // De atras hacia adelante. Es el mismo orden que usa el front; si difirieran,
@@ -119,15 +120,30 @@ async function saveCustomization(req, res) {
 
         const version = Date.now();
 
-        // Se escribe la imagen ANTES que la metadata. Si el proceso muere en el
-        // medio, la metadata sigue apuntando a la imagen anterior, que existe.
-        // Al reves quedaria apuntando a una imagen que todavia no se escribio.
-        assets.writeImage(nftId, gif);
-
         // Solo cambia "image". Los attributes quedan intactos a proposito: las
         // variantes son diseños alternativos del MISMO valor de trait, asi que
         // la rareza de la coleccion no se toca.
         const updated = { ...metadata, image: assets.publicImageUrl(nftId, version) };
+
+        // Primero el hosting donde vive la coleccion: es lo que leen las
+        // wallets y los marketplaces, o sea la fuente de verdad. Si esto falla,
+        // no se toca la copia local, para que no queden diciendo cosas
+        // distintas.
+        if (remote.isConfigured()) {
+            try {
+                await remote.publishNft(nftId, { gif, metadata: updated });
+            } catch (error) {
+                throw Object.assign(
+                    new Error(`No se pudo publicar en el hosting de la coleccion: ${error.message}`),
+                    { status: 502 }
+                );
+            }
+        }
+
+        // Copia espejo en el volumen. Sirve de respaldo y deja todo listo por
+        // si mas adelante se decide mudar el dominio aca. Va despues del
+        // publish y nunca antes.
+        assets.writeImage(nftId, gif);
         assets.writeMetadata(nftId, updated);
 
         assets.writeSelection(nftId, {
@@ -141,7 +157,8 @@ async function saveCustomization(req, res) {
             tokenId: nftId,
             image: updated.image,
             applied,
-            sizeBytes: gif.length
+            sizeBytes: gif.length,
+            published: remote.isConfigured()
         });
     } catch (error) {
         const status = error.status || 500;

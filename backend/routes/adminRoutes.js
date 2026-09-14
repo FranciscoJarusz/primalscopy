@@ -8,6 +8,7 @@ const { adminAuth } = require('../middleware/adminAuth');
 const { getStorageStatus } = require('../lib/traitsStore');
 const { getAssetsStatus } = require('../lib/assetStore');
 const { startSeeding, getSeedProgress, ORIGIN_URL, LAST_TOKEN } = require('../lib/assetSeeder');
+const remote = require('../lib/remotePublisher');
 const {
     listTraits,
     uploadTrait,
@@ -81,6 +82,13 @@ router.post('/assets/seed', (req, res) => {
     const result = startSeeding();
     if (!result.started) return res.status(409).json({ error: result.reason });
     res.status(202).json({ message: 'Migracion iniciada. Consultá GET /api/admin/assets para ver el avance.' });
+});
+
+// Comprueba que el backend pueda escribir en el hosting de la coleccion, que
+// es lo que hace falta para que una customizacion se vea en las wallets.
+// Escribe un temporal con nombre propio y lo borra: no toca ningun NFT.
+router.get('/publisher', async (req, res) => {
+    res.json(await remote.verifyAccess());
 });
 
 router.get('/traits', listTraits);
