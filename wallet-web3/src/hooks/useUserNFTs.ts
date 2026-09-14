@@ -3,7 +3,27 @@ import { useAccount, useReadContracts } from 'wagmi';
 import { erc721Abi } from 'viem';
 import { CONTRACTS } from '../config/contracts';
 
-const NFT_CONTRACT_ADDRESS = CONTRACTS.PRIMACULT_NFT.address as `0x${string}`; // Contrato Primal Cult en ApeChain 
+const NFT_CONTRACT_ADDRESS = CONTRACTS.PRIMACULT_NFT.address as `0x${string}`; // Contrato Primal Cult en ApeChain
+
+// La coleccion vive en ApeChain. Estas lecturas tienen que ir SIEMPRE contra
+// esa red, sin importar en cual este parada la wallet del usuario.
+//
+// Sin esto, wagmi usaba la red activa de la wallet: en el escritorio la
+// extension suele estar ya en ApeChain y funcionaba, pero una wallet de celular
+// se conecta por defecto en Ethereum. Ahi este contrato no existe, balanceOf
+// fallaba, y como el balance gatea todo el resto, la pantalla de seleccion
+// quedaba vacia sin siquiera intentar el fallback por API.
+const CHAIN_ID = CONTRACTS.PRIMACULT_NFT.chainId;
+
+// Este contrato NO implementa ERC721Enumerable: tokenOfOwnerByIndex revierte
+// (verificado contra ApeChain con la wallet de un holder real, que tiene
+// balanceOf = 1 y aun asi revierte en el indice 0).
+//
+// O sea que ese camino nunca pudo devolver nada, y ademas disparaba una
+// llamada RPC por cada NFT del usuario cada 30 segundos, todas condenadas a
+// fallar. Los token ids salen del endpoint del backend, que es lo que venia
+// funcionando en la practica.
+const CONTRATO_ES_ENUMERABLE = false;
 
 interface Nft { 
   id: string; 
@@ -45,11 +65,12 @@ export const useUserNFTs = () => {
 
   // Verificar balance de NFTs
   const { data: balanceData, error: balanceError, isLoading: balanceLoading } = useReadContracts({
-    contracts: [{ 
-      address: NFT_CONTRACT_ADDRESS, 
-      abi: erc721Abi, 
-      functionName: 'balanceOf', 
-      args: [address!] 
+    contracts: [{
+      address: NFT_CONTRACT_ADDRESS,
+      abi: erc721Abi,
+      functionName: 'balanceOf',
+      args: [address!],
+      chainId: CHAIN_ID
     }],
     query: { 
       enabled: isConnected && !!address,
@@ -60,12 +81,15 @@ export const useUserNFTs = () => {
   const balance = balanceData ? Number(balanceData[0].result) : 0;
   
   // Crear contratos para obtener token IDs
-  const tokenContracts = Array.from({ length: balance }).map((_, i) => ({
-    address: NFT_CONTRACT_ADDRESS, 
-    abi: erc721Abi, 
-    functionName: 'tokenOfOwnerByIndex', 
-    args: [address!, BigInt(i)]
-  }));
+  const tokenContracts = CONTRATO_ES_ENUMERABLE
+    ? Array.from({ length: balance }).map((_, i) => ({
+        address: NFT_CONTRACT_ADDRESS,
+        abi: erc721Abi,
+        functionName: 'tokenOfOwnerByIndex',
+        args: [address!, BigInt(i)],
+        chainId: CHAIN_ID
+      }))
+    : [];
   
   // Obtener token IDs
   const { 
@@ -73,9 +97,9 @@ export const useUserNFTs = () => {
     error: tokenIdsError, 
     isLoading: tokenIdsLoading 
   } = useReadContracts({
-    contracts: tokenContracts, 
-    query: { 
-      enabled: balance > 0 && isConnected && !!address,
+    contracts: tokenContracts,
+    query: {
+      enabled: CONTRATO_ES_ENUMERABLE && balance > 0 && isConnected && !!address,
       refetchInterval: 30000, // Refrescar cada 30 segundos
     },
   });

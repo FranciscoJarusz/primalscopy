@@ -124,6 +124,47 @@ function CustomizerContent() {
                     }
                 }
 
+                // Lo que el NFT tiene aplicado HOY, segun el servidor. Manda sobre
+                // todo lo demas: es la unica fuente que no depende del dispositivo.
+                //
+                // Sin esto, al abrir el customizer se veia lo que hubiera en el
+                // localStorage de esa maquina, o los traits originales de la
+                // metadata. Por eso un NFT ya customizado se veia distinto en la
+                // compu y en el celular, y ninguno de los dos mostraba lo que
+                // realmente tiene aplicado.
+                let appliedOnChain: { [key: string]: string } | null = null;
+                try {
+                    const savedResponse = await fetch(`${BACKEND_URL}/nft/${nftId}/customization`);
+                    if (savedResponse.ok) {
+                        const savedData = await savedResponse.json();
+                        if (savedData?.saved && savedData.applied) {
+                            const fromServer: { [key: string]: string } = {};
+                            for (const [traitType, variant] of Object.entries(savedData.applied)) {
+                                const imageUrl = (variant as { imageUrl?: string })?.imageUrl;
+                                // Se valida igual que el resto: un trait que ya no
+                                // existe no puede quedar seleccionado.
+                                const stillOffered = imageUrl && sanitizedData[traitType]?.variants
+                                    .some(v => getVariantSelectionValue(v) === imageUrl);
+                                if (stillOffered) fromServer[traitType] = imageUrl as string;
+                            }
+                            if (Object.keys(fromServer).length > 0) appliedOnChain = fromServer;
+                        }
+                    }
+                } catch {
+                    // Si no se puede consultar, se sigue con el comportamiento
+                    // anterior en vez de dejar la pagina sin cargar.
+                }
+
+                if (appliedOnChain) {
+                    const applied = { ...initialSelections, ...appliedOnChain };
+                    setSelectedVariants(applied);
+                    try { localStorage.setItem(`nft_custom_${nftId}`, JSON.stringify(applied)); } catch { /* storage lleno */ }
+                    const firstSection = LAYER_ORDER.find(trait => sanitizedData[trait]) || Object.keys(sanitizedData)[0] || null;
+                    setActiveTraitSection(firstSection);
+                    setLoading(false);
+                    return;
+                }
+
                 // Restaurar selecciones guardadas (si el usuario vuelve después de navegar)
                 try {
                     const saved = localStorage.getItem(`nft_custom_${nftId}`);
