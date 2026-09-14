@@ -175,6 +175,42 @@ async function main() {
     check('registra las 7 capas aplicadas', Object.keys(estado.applied || {}).length === 7,
         `(${Object.keys(estado.applied || {}).length})`);
 
+    console.log('\n--- Un trait renombrado o movido se recupera por contenido ---');
+    // Reproduce lo que paso de verdad: el archivo de Hat se movio a _GLOBAL con
+    // otro nombre. La customizacion guardada apunta a la ruta vieja y tiene que
+    // encontrarse igual, porque el contenido es el mismo.
+    const hatGuardado = (await (await fetch(`${BASE}/api/nft/${TOKEN}/customization`)).json()).applied.Hat;
+    const hatOrigen = path.join(TMP, ...hatGuardado.imageUrl.replace('/assets/traits/', '').split('/'));
+    const globalDir = path.join(TMP, 'HAT', '_GLOBAL');
+
+    if (fs.existsSync(hatOrigen)) {
+        // Se guardan los bytes para poder dejar todo como estaba: las pruebas
+        // que siguen vuelven a guardar, y sin este archivo fallarian en la
+        // validacion antes de llegar a lo que quieren probar.
+        const bytesOriginales = fs.readFileSync(hatOrigen);
+        fs.mkdirSync(globalDir, { recursive: true });
+        fs.renameSync(hatOrigen, path.join(globalDir, 'Z-MOVIDO.gif'));
+
+        const tras = await (await fetch(`${BASE}/api/nft/${TOKEN}/customization`)).json();
+        const hat = tras.applied?.Hat;
+        check('encuentra el trait movido por su contenido',
+            tras.relocated?.some(r => r.category === 'Hat'),
+            `(relocated: ${JSON.stringify(tras.relocated)})`);
+        check('devuelve la ruta nueva', Boolean(hat?.imageUrl?.includes('_GLOBAL/Z-MOVIDO.gif')), `(${hat?.imageUrl})`);
+        check('no lo marca como perdido', !hat?.missing);
+
+        // Y si el archivo directamente no esta, se informa en vez de callar.
+        fs.unlinkSync(path.join(globalDir, 'Z-MOVIDO.gif'));
+        const sinArchivo = await (await fetch(`${BASE}/api/nft/${TOKEN}/customization`)).json();
+        check('un trait borrado se marca como perdido', sinArchivo.applied?.Hat?.missing === true,
+            `(${JSON.stringify(sinArchivo.applied?.Hat)})`);
+
+        fs.writeFileSync(hatOrigen, bytesOriginales);
+        fs.rmSync(globalDir, { recursive: true, force: true });
+    } else {
+        check('preparacion del caso de trait movido', false, `(no existe ${hatOrigen})`);
+    }
+
     console.log('\n--- Publicacion en el hosting de la coleccion ---');
     check('se publico al guardar', publisher.publicados.length === 1, `(${publisher.publicados.length})`);
     check('se publico el token correcto', publisher.publicados[0]?.tokenId === TOKEN);

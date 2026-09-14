@@ -12,6 +12,7 @@ const { buildCustomizationOptions, resolveLayerPath } = require('./nftController
 const { composeGif } = require('../lib/gifComposer');
 const assets = require('../lib/assetStore');
 const remote = require('../lib/remotePublisher');
+const { fingerprint, findVariantByFingerprint } = require('../lib/traitFingerprint');
 const fs = require('fs');
 
 // De atras hacia adelante. Es el mismo orden que usa el front; si difirieran,
@@ -71,7 +72,14 @@ function resolveSelections(options, selections) {
         }
 
         layers.push(filePath);
-        applied[category] = { name: variant.name, imageUrl: variant.imageUrl };
+        // La huella del archivo se guarda junto a la ruta: si mañana el trait
+        // se renombra o se mueve de carpeta desde /admin, se lo puede volver a
+        // encontrar por contenido.
+        applied[category] = {
+            name: variant.name,
+            imageUrl: variant.imageUrl,
+            sha256: fingerprint(filePath)
+        };
     }
 
     if (layers.length === 0) {
@@ -169,16 +177,74 @@ async function saveCustomization(req, res) {
     }
 }
 
-// GET /api/nft/:nftId/customization — que hay guardado hoy para este token.
-function getCustomization(req, res) {
+// GET /api/nft/:nftId/customization — que hay puesto hoy este token.
+//
+// Si una ruta guardada ya no existe porque el trait se renombro o se movio, se
+// lo busca por huella entre las variantes que se ofrecen ahora. Sin esto, el
+// customizer mostraria el trait original en lugar del que el NFT tiene puesto
+// de verdad, que es justo lo que confundia.
+async function getCustomization(req, res) {
+    try {
+        await respondWithCustomization(req, res);
+    } catch (error) {
+        // Express 4 no atrapa los rechazos de un handler async: sin esto, un
+        // fallo aca dejaria la request colgada hasta el timeout del cliente.
+        console.error('[ERROR] getCustomization ->', error);
+        res.status(500).json({ error: 'No se pudo leer la customizacion.' });
+    }
+}
+
+async function respondWithCustomization(req, res) {
     const { nftId } = req.params;
     const selection = assets.readSelection(nftId);
     const metadata = assets.readMetadata(nftId);
+
+    if (!selection?.applied) {
+        return res.json({
+            tokenId: nftId,
+            saved: Boolean(selection),
+            applied: null,
+            updatedAt: selection?.updatedAt || null,
+            image: metadata?.image || null
+        });
+    }
+
+    const applied = {};
+    const relocated = [];
+    let options = null;
+
+    for (const [category, entry] of Object.entries(selection.applied)) {
+        const filePath = resolveLayerPath(entry.imageUrl);
+        if (filePath && fs.existsSync(filePath)) {
+            applied[category] = entry;
+            continue;
+        }
+
+        // La ruta murio. Buscar el mismo archivo entre lo que hay ahora.
+        if (!options) {
+            try {
+                options = await buildCustomizationOptions(nftId);
+            } catch {
+                options = {};
+            }
+        }
+        const match = findVariantByFingerprint(options[category]?.variants, entry.sha256, resolveLayerPath);
+        if (match) {
+            applied[category] = { name: match.name, imageUrl: match.imageUrl, sha256: entry.sha256 };
+            relocated.push({ category, from: entry.name, to: match.name });
+        } else {
+            // No esta en ningun lado: se informa igual para que el front pueda
+            // avisar en vez de mostrar otra cosa en silencio.
+            applied[category] = { ...entry, missing: true };
+        }
+    }
+
     res.json({
         tokenId: nftId,
-        saved: Boolean(selection),
-        applied: selection?.applied || null,
-        updatedAt: selection?.updatedAt || null,
+        saved: true,
+        applied,
+        relocated,
+        updatedAt: selection.updatedAt || null,
         image: metadata?.image || null
     });
 }
