@@ -634,17 +634,6 @@ export default function AdminPage() {
                     </div>
                 )}
 
-                {assets?.readyForDns && !assets.seeding.running && (
-                    <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-6 py-4">
-                        <p className="font-semibold text-emerald-300">
-                            ✓ Colección migrada: {assets.expected} imágenes y {assets.expected} metadata
-                        </p>
-                        <p className="text-sm text-emerald-100/70 mt-1">
-                            Ya se puede apuntar el dominio a este servidor.
-                        </p>
-                    </div>
-                )}
-
                 {/* Estado de la publicacion en el hosting de la coleccion. */}
                 {publisher && !publisher.ok && (
                     <div className="rounded-xl border-2 border-red-500 bg-red-500/20 px-6 py-5">
@@ -661,20 +650,6 @@ export default function AdminPage() {
                         ) : (
                             <p className="text-sm text-red-200/80 mt-2 font-mono">{publisher.error}</p>
                         )}
-                    </div>
-                )}
-
-                {publisher?.ok && (
-                    <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-6 py-4">
-                        <p className="font-semibold text-emerald-300">
-                            ✓ Publicación activa
-                        </p>
-                        <p className="text-sm text-emerald-100/70 mt-1">
-                            El servidor puede escribir en el hosting de la colección
-                            {typeof publisher.remoteImages === "number" && (
-                                <> · {publisher.remoteImages} imágenes y {publisher.remoteMetadata} metadata allá</>
-                            )}
-                        </p>
                     </div>
                 )}
 
