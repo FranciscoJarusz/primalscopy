@@ -13,6 +13,7 @@ const { composeGif } = require('../lib/gifComposer');
 const assets = require('../lib/assetStore');
 const remote = require('../lib/remotePublisher');
 const { fingerprint, findVariantByFingerprint } = require('../lib/traitFingerprint');
+const marketplaces = require('../lib/marketplaceRefresh');
 const fs = require('fs');
 
 // De atras hacia adelante. Es el mismo orden que usa el front; si difirieran,
@@ -161,12 +162,18 @@ async function saveCustomization(req, res) {
             updatedAt: new Date().toISOString()
         });
 
+        // Se le avisa a los marketplaces recien ahora, con todo ya escrito. Si
+        // no contestan no pasa nada: el NFT ya esta guardado y la miniatura se
+        // va a actualizar mas tarde por su cuenta.
+        const refresh = await marketplaces.refreshToken(nftId);
+
         res.json({
             tokenId: nftId,
             image: updated.image,
             applied,
             sizeBytes: gif.length,
-            published: remote.isConfigured()
+            published: remote.isConfigured(),
+            marketplaceRefresh: refresh
         });
     } catch (error) {
         const status = error.status || 500;
