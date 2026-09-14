@@ -16,7 +16,18 @@ import { ReactNode } from "react";
 
 const queryClient = new QueryClient();
 
-const projectId = "0f9ff0f0497c73187c253e88cf8680c9";
+// El projectId de Reown decide, entre otras cosas, desde que dominios se
+// permite parear por WalletConnect. El valor de abajo quedo de un proyecto de
+// un tercero, y cultomizer.primalcult.xyz no esta en su lista de dominios
+// permitidos: por eso el relay cierra la conexion con
+// "code: 3000 (Unauthorized: origin not allowed)" y las wallets moviles no
+// pueden conectarse. Las extensiones de escritorio si, porque no usan el relay.
+//
+// La salida es crear un proyecto propio en cloud.reown.com (son gratis) y
+// poner su id en NEXT_PUBLIC_REOWN_PROJECT_ID. Asi no hay que tocar el codigo
+// ni depender del dashboard ajeno, y de paso se pueden habilitar el login
+// social y por email, que son remoteFeatures y hoy estan apagados por lo mismo.
+const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "0f9ff0f0497c73187c253e88cf8680c9";
 
 // ApeChain primero: es donde vive la coleccion.
 const networks: [AppKitNetwork, ...AppKitNetwork[]] = [apeChain, mainnet];
