@@ -71,10 +71,12 @@ function CustomizerContent() {
     const nftDisplayRef = useRef<HTMLDivElement>(null);
 
     // Sesion probada ante el backend (firma) y si esa wallet es dueña de este
-    // token. Por ahora solo informa: el guardado todavia no existe. Cuando
-    // exista, el boton va a colgar de `ownership === 'owner'`.
+    // token. De esto cuelga el boton de guardar.
     const walletSession = useWalletSession();
     const { state: ownership, owner } = useNftOwnership(nftId || null, walletSession.token);
+
+    const [saving, setSaving] = useState<boolean>(false);
+    const [saveResult, setSaveResult] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
     const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || 'http://localhost:3001';
@@ -193,6 +195,42 @@ function CustomizerContent() {
             try { localStorage.setItem(`nft_custom_${nftId}`, JSON.stringify(updated)); } catch { /* storage lleno */ }
             return updated;
         });
+    };
+
+    // Guarda la combinacion en el NFT de verdad: el backend recompone la imagen
+    // y reescribe la metadata que leen las wallets. Tarda, porque componer un
+    // GIF de 2000x2000 no es instantaneo y ademas hay que subirlo.
+    const handleSaveToNft = async () => {
+        if (!walletSession.token || ownership !== 'owner' || !allAssetsSelected) return;
+
+        setSaving(true);
+        setSaveResult(null);
+        try {
+            const response = await fetch(`${BACKEND_URL}/nft/${nftId}/customization`, {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/json',
+                    authorization: `Bearer ${walletSession.token}`
+                },
+                body: JSON.stringify({ selections: selectedVariants })
+            });
+            const body = await response.json();
+
+            if (!response.ok) {
+                setSaveResult({ kind: 'error', text: body.error || 'Could not save.' });
+                return;
+            }
+            setSaveResult({
+                kind: 'ok',
+                // Aviso explicito de la demora: los marketplaces cachean y el
+                // holder que no lo sepa va a pensar que no funciono.
+                text: 'Saved. Your wallet may take a while to refresh.'
+            });
+        } catch {
+            setSaveResult({ kind: 'error', text: 'Could not reach the server.' });
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleLoadNft = () => {
@@ -551,7 +589,34 @@ function CustomizerContent() {
                                         <div className="flex flex-col gap-1">
                                             {ownership === 'checking' && <p className="text-blue-200">Checking ownership...</p>}
                                             {ownership === 'owner' && (
-                                                <p className="text-emerald-400 font-semibold">You own this NFT</p>
+                                                <>
+                                                    <p className="text-emerald-400 font-semibold">You own this NFT</p>
+                                                    <button
+                                                        onClick={handleSaveToNft}
+                                                        disabled={!allAssetsSelected || saving}
+                                                        className={`mt-2 w-full rounded-2xl px-6 py-3 text-base font-black uppercase tracking-[0.12em] transition-all duration-200 ${
+                                                            allAssetsSelected && !saving
+                                                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                                                : 'bg-white/10 text-white/40'
+                                                        } disabled:cursor-not-allowed`}
+                                                    >
+                                                        {saving
+                                                            ? 'Saving...'
+                                                            : allAssetsSelected
+                                                                ? 'Save to my NFT'
+                                                                : 'Complete traits'}
+                                                    </button>
+                                                    {saving && (
+                                                        <p className="text-white/45 text-xs">
+                                                            Building the image. This takes a few seconds, don&apos;t close the page.
+                                                        </p>
+                                                    )}
+                                                    {saveResult && !saving && (
+                                                        <p className={`text-xs ${saveResult.kind === 'ok' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                            {saveResult.text}
+                                                        </p>
+                                                    )}
+                                                </>
                                             )}
                                             {ownership === 'not-owner' && (
                                                 <>
