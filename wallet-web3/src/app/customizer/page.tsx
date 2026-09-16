@@ -30,6 +30,12 @@ const GIF_EXPORT_SIZE = 2000;
 const LAYER_ORDER = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Effect'];
 const NONE_SELECTION = '__NONE__';
 
+// Si se muestra el boton que lleva a "Recent Customizations". Apagado por
+// defecto: la pantalla ya esta publicada y funcionando, pero hasta que se
+// quiera anunciar solo llega el que tiene el link. Para encenderla, poner
+// NEXT_PUBLIC_SHOW_RECENT_FEED=true en el entorno del front y redeployar.
+const SHOW_RECENT_FEED = process.env.NEXT_PUBLIC_SHOW_RECENT_FEED === 'true';
+
 const isNoneVariant = (variant: TraitVariant): boolean => {
     if (!variant) return true;
     if (variant.isNone) return true;
@@ -537,13 +543,20 @@ function CustomizerContent() {
                     {/* Lo ultimo que publico la comunidad. No necesita wallet ni
                         token: es solo para mirar. Se lleva el id puesto para
                         que el boton de volver traiga al usuario a ESTE primal y
-                        no a la pantalla de "Token ID not specified". */}
-                    <button
-                        onClick={() => router.push(`/recent?from=${nftId}`)}
-                        className="rounded-xl border border-blue-400/60 bg-white/5 px-5 py-2 font-semibold text-blue-200 transition-colors duration-200 hover:bg-blue-500/20 hover:text-white"
-                    >
-                        Recent Customizations
-                    </button>
+                        no a la pantalla de "Token ID not specified".
+
+                        Mientras SHOW_RECENT_FEED este apagado el boton no
+                        aparece, pero /recent funciona igual para quien tenga el
+                        link: es asi a proposito, para poder probarlo en
+                        produccion antes de anunciarlo. */}
+                    {SHOW_RECENT_FEED && (
+                        <button
+                            onClick={() => router.push(`/recent?from=${nftId}`)}
+                            className="rounded-xl border border-blue-400/60 bg-white/5 px-5 py-2 font-semibold text-blue-200 transition-colors duration-200 hover:bg-blue-500/20 hover:text-white"
+                        >
+                            Recent Customizations
+                        </button>
+                    )}
                 </div>
 
                 {/* Input para cambiar NFT */}
