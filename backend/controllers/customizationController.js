@@ -14,6 +14,8 @@ const assets = require('../lib/assetStore');
 const remote = require('../lib/remotePublisher');
 const { fingerprint, findVariantByFingerprint } = require('../lib/traitFingerprint');
 const marketplaces = require('../lib/marketplaceRefresh');
+const feed = require('../lib/feedStore');
+const sharp = require('sharp');
 const fs = require('fs');
 
 // De atras hacia adelante. Es el mismo orden que usa el front; si difirieran,
@@ -26,6 +28,11 @@ const ORIGIN_METADATA_URL = (process.env.ORIGIN_METADATA_URL || 'https://ipfs.pr
 // memoria. Sin un limite, unos pocos pedidos simultaneos tumban el servicio.
 const enProceso = new Set();
 const MAX_SIMULTANEOS = 2;
+
+// Lado de la miniatura que va al feed. La grilla las muestra a menos de 300px
+// en pantalla; 512 alcanza para que se vean nitidas tambien en retina y deja
+// cada archivo en unos 40 KB, contra los varios MB que pesa el GIF.
+const FEED_THUMB_SIZE = 512;
 
 /**
  * Valida lo que manda el cliente contra lo que este token puede usar.
@@ -125,7 +132,13 @@ async function saveCustomization(req, res) {
         const { layers, applied } = resolveSelections(options, req.body?.selections);
 
         const metadata = await loadOrSeedMetadata(nftId);
-        const gif = composeGif(layers);
+
+        // El primer frame se aprovecha de la pasada que ya hace composeGif, en
+        // vez de decodificar y componer las siete capas una segunda vez.
+        let primerFrame = null;
+        const gif = composeGif(layers, {
+            onFirstFrame: (rgba, size) => { primerFrame = { rgba, size }; }
+        });
 
         const version = Date.now();
 
@@ -162,6 +175,11 @@ async function saveCustomization(req, res) {
             updatedAt: new Date().toISOString()
         });
 
+        // Recien aca entra al feed: una customizacion aparece en "Recent
+        // Customizations" solo si llego a publicarse de verdad. Si algo de
+        // arriba fallo, nunca se llega a esta linea.
+        await registrarEnFeed(nftId, req.walletAddress, primerFrame);
+
         // Se le avisa a los marketplaces recien ahora, con todo ya escrito. Si
         // no contestan no pasa nada: el NFT ya esta guardado y la miniatura se
         // va a actualizar mas tarde por su cuenta.
@@ -181,6 +199,31 @@ async function saveCustomization(req, res) {
         res.status(status).json({ error: error.message || 'No se pudo guardar la customizacion.' });
     } finally {
         enProceso.delete(nftId);
+    }
+}
+
+// Guarda la entrada del feed: el JPEG del primer frame mas quien y cuando.
+//
+// Todo lo que pasa aca es accesorio. La customizacion ya esta publicada y
+// escrita; si la miniatura falla se registra en el log y el usuario igual
+// recibe su 200, porque su NFT quedo bien guardado.
+async function registrarEnFeed(tokenId, wallet, primerFrame) {
+    if (!primerFrame) return null;
+    try {
+        const jpeg = await sharp(primerFrame.rgba, {
+            raw: { width: primerFrame.size, height: primerFrame.size, channels: 4 }
+        })
+            // Algun trait puede tener zonas transparentes; sin aplanar, el JPEG
+            // (que no tiene alpha) las pintaria de blanco sobre un fondo oscuro.
+            .flatten({ background: '#000000' })
+            .resize(FEED_THUMB_SIZE, FEED_THUMB_SIZE, { fit: 'cover' })
+            .jpeg({ quality: 82, mozjpeg: true })
+            .toBuffer();
+
+        return await feed.record({ tokenId, wallet, jpeg });
+    } catch (error) {
+        console.error('[feed] No se pudo registrar la customizacion ->', error.message);
+        return null;
     }
 }
 

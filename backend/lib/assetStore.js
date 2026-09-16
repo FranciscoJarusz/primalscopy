@@ -133,6 +133,8 @@ function getAssetsStatus() {
 
 module.exports = {
     ASSETS_ROOT,
+    // Lo usa feedStore para escribir sus archivos con el mismo cuidado.
+    writeAtomic,
     IMAGES_DIR,
     METADATA_DIR,
     SELECTIONS_DIR,

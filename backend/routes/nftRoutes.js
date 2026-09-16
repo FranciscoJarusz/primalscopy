@@ -11,6 +11,13 @@ const {
 const { requireWallet, requireTokenOwner } = require('../middleware/requireWallet');
 const { checkOwnership } = require('../lib/nftOwnership');
 const { saveCustomization, getCustomization } = require('../controllers/customizationController.js');
+const { listRecentCustomizations } = require('../controllers/feedController.js');
+
+// Las ultimas customizaciones publicadas, para la pantalla "Recent
+// Customizations". Va antes que las rutas con :nftId para que un token que se
+// llamara "recent-customizations" no se la coma; ademas es publica y no lleva
+// ninguna guarda.
+router.get('/recent-customizations', listRecentCustomizations);
 
 // Ruta para obtener las opciones de personalización de un NFT.
 // El frontend llama a: /api/nft/:nftId/customize-options

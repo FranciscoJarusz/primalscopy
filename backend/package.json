@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon --exec \"node --env-file-if-exists=.env server.js\"",
-    "test": "node tests/walletAuth.test.js && node tests/customization.test.js"
+    "test": "node tests/walletAuth.test.js && node tests/feed.test.js && node tests/customization.test.js"
   },
   "dependencies": {
     "axios": "^1.6.8",

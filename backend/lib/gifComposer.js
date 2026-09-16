@@ -114,8 +114,13 @@ function renderLayerFrames(layer) {
 /**
  * Compone las capas (en orden, de atras hacia adelante) en un GIF animado.
  * Devuelve un Buffer listo para escribir a disco.
+ *
+ * onFirstFrame, si viene, recibe el primer frame ya compuesto como RGBA crudo.
+ * Existe para que el feed de customizaciones pueda sacar su miniatura JPEG sin
+ * volver a decodificar y componer las siete capas: eso es la mitad del trabajo
+ * de esta funcion, y el endpoint que la llama ya tarda varios segundos.
  */
-function composeGif(layerPaths, { size = SIZE, quality = 10 } = {}) {
+function composeGif(layerPaths, { size = SIZE, quality = 10, onFirstFrame = null } = {}) {
     if (!Array.isArray(layerPaths) || layerPaths.length === 0) {
         throw new Error('No hay capas para componer.');
     }
@@ -152,6 +157,18 @@ function composeGif(layerPaths, { size = SIZE, quality = 10 } = {}) {
             compositeOver(output, rendered[frameIndex % rendered.length]);
         }
         composed.push(output);
+    }
+
+    // Antes de cuantizar: aca los colores son los reales, sin la perdida que
+    // mete la paleta de 255 del GIF.
+    if (onFirstFrame) {
+        try {
+            onFirstFrame(Buffer.from(composed[0].buffer, composed[0].byteOffset, composed[0].byteLength), size);
+        } catch (error) {
+            // La miniatura es un accesorio: si falla, el GIF igual se termina y
+            // se guarda. Nadie pierde su customizacion por el feed.
+            console.error('[feed] No se pudo tomar el primer frame ->', error.message);
+        }
     }
 
     // Una paleta global para todos los frames. Se calcula sobre un muestreo de

@@ -235,6 +235,29 @@ async function main() {
     check('la URL de la imagen cambia entre guardados', again.image !== saved.image,
         `(${saved.image} -> ${again.image})`);
 
+    console.log('\n--- Feed de customizaciones recientes ---');
+    // Hasta aca hubo dos guardados que salieron bien y uno que fallo al
+    // publicar. El feed tiene que tener exactamente los dos que salieron bien.
+    const feed = await (await fetch(`${BASE}/api/nft/recent-customizations`)).json();
+    check('el feed devuelve las dos publicaciones que salieron bien',
+        feed.items?.length === 2, `(${feed.items?.length})`);
+    check('el mismo token aparece una vez por cada update',
+        feed.items?.every(item => item.tokenId === TOKEN),
+        `(${JSON.stringify(feed.items?.map(item => item.tokenId))})`);
+    check('la mas nueva va primero',
+        new Date(feed.items[0]?.createdAt) >= new Date(feed.items[1]?.createdAt));
+    check('registra la wallet que lo customizo',
+        feed.items[0]?.wallet?.toLowerCase() === owner.address.toLowerCase(),
+        `(${feed.items[0]?.wallet})`);
+
+    const thumb = await fetch(`${BASE}${feed.items[0]?.thumbnailUrl}`);
+    const thumbBytes = Buffer.from(await thumb.arrayBuffer());
+    check('la miniatura se sirve', thumb.status === 200, `(dio ${thumb.status})`);
+    check('es un JPEG de verdad', thumbBytes[0] === 0xff && thumbBytes[1] === 0xd8,
+        `(${thumbBytes.subarray(0, 4)})`);
+    check('pesa mucho menos que el GIF', thumbBytes.length < saved.sizeBytes / 5,
+        `(jpg ${thumbBytes.length} vs gif ${saved.sizeBytes})`);
+
     console.log(`\n${pass} ok, ${fail} fallas\n`);
     fs.rmSync(TMP, { recursive: true, force: true });
     process.exit(fail ? 1 : 0);

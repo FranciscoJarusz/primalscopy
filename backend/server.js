@@ -8,6 +8,7 @@ const { TRAITS_PATH, seedTraitsIfEmpty } = require('./lib/traitsStore');
 const { isAdminEnabled, getAdminTokenLength } = require('./middleware/adminAuth');
 const { isWalletAuthEnabled } = require('./lib/walletAuth');
 const assets = require('./lib/assetStore');
+const feed = require('./lib/feedStore');
 const path = require('path');
 const fs = require('fs');
 
@@ -51,10 +52,19 @@ app.use('/assets', express.static(ASSETS_PATH));
 // exactamente asi porque el tokenURI del contrato ya apunta a
 // /metadata/<id>, y eso esta escrito on-chain: no se puede cambiar.
 assets.ensureDirs();
+feed.ensureDirs();
 
 // La imagen lleva ?v=<timestamp> en la metadata, asi que cada version es una
 // URL distinta y se puede cachear fuerte sin que nadie quede viendo la vieja.
 app.use('/images', express.static(assets.IMAGES_DIR, {
+  maxAge: '365d',
+  immutable: true
+}));
+
+// Las miniaturas del feed de customizaciones recientes. Cada una tiene un
+// nombre unico e irrepetible y se borra cuando su entrada sale de los ultimos
+// 10, asi que se puede cachear para siempre: nadie va a ver una vieja.
+app.use('/feed/thumbs', express.static(feed.THUMBS_DIR, {
   maxAge: '365d',
   immutable: true
 }));

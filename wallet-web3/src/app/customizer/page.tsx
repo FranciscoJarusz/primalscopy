@@ -89,6 +89,19 @@ function CustomizerContent() {
         fetch('/gif.worker.js').catch(() => {});
     }, []);
 
+    // El ultimo primal que se estuvo customizando. Es el respaldo para volver
+    // desde "Recent Customizations" cuando se llega a esa pantalla sin el id en
+    // la URL, por ejemplo entrando por un link directo.
+    useEffect(() => {
+        if (!nftId) return;
+        try {
+            sessionStorage.setItem('cultomizer:lastTokenId', nftId);
+        } catch {
+            // En modo privado puede tirar error. No pasa nada: el boton de
+            // volver cae en el selector, que es un destino valido.
+        }
+    }, [nftId]);
+
     const getVariantSelectionValue = (variant: TraitVariant): string => variant.imageUrl || NONE_SELECTION;
 
     // Cargar datos del NFT automáticamente
@@ -520,6 +533,17 @@ function CustomizerContent() {
                             Once you finish, validate ownership to update on-chain.
                         </p>
                     </div>
+
+                    {/* Lo ultimo que publico la comunidad. No necesita wallet ni
+                        token: es solo para mirar. Se lleva el id puesto para
+                        que el boton de volver traiga al usuario a ESTE primal y
+                        no a la pantalla de "Token ID not specified". */}
+                    <button
+                        onClick={() => router.push(`/recent?from=${nftId}`)}
+                        className="rounded-xl border border-blue-400/60 bg-white/5 px-5 py-2 font-semibold text-blue-200 transition-colors duration-200 hover:bg-blue-500/20 hover:text-white"
+                    >
+                        Recent Customizations
+                    </button>
                 </div>
 
                 {/* Input para cambiar NFT */}
