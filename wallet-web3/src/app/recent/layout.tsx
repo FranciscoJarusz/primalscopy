@@ -1,16 +1,13 @@
 // src/app/recent/layout.tsx
 //
-// Existe solo para el noindex. Mientras la pantalla este sin anunciar, no
-// queremos que Google la levante y la muestre en una busqueda: la idea es que
-// llegue el que tiene el link y nadie mas.
-//
-// Cuando se anuncie, se borra este archivo.
+// El titulo que ve el visitante en la pestaña del navegador y el que sale
+// cuando alguien comparte el link.
 
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: 'Recent Customizations',
-    robots: { index: false, follow: false }
+    description: 'The latest Primal Cult artworks updated onchain by the community.'
 };
 
 export default function RecentLayout({ children }: { children: React.ReactNode }) {
