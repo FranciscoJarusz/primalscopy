@@ -25,6 +25,10 @@ interface RecentItem {
     thumbnailUrl: string;
 }
 
+// De a 50 por pagina, que es lo que devuelve el backend por defecto. El
+// historial guarda hasta 1000, o sea 20 paginas.
+const PER_PAGE = 50;
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
 const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || 'http://localhost:3001';
 
@@ -75,21 +79,32 @@ function RecentCustomizationsContent() {
 
     const backHref = backTokenId ? `/customizer?tokenId=${backTokenId}` : '/selector-nft';
 
+    // La pagina vive en la URL y no solo en el estado: asi el boton de atras
+    // del navegador funciona y se puede compartir el link de una pagina.
+    const currentPage = Math.max(1, Number(searchParams.get('page')) || 1);
+
     const [items, setItems] = useState<RecentItem[]>([]);
+    const [totalPages, setTotalPages] = useState<number>(1);
+    const [total, setTotal] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     // Cuanto adelanta el reloj del visitante respecto del server.
     const [clockOffsetMs, setClockOffsetMs] = useState<number>(0);
 
-    const load = useCallback(async () => {
+    const load = useCallback(async (pageToLoad: number) => {
         setError(null);
         try {
             // Sin cache: la gracia de esta pantalla es mostrar lo ultimo.
-            const response = await fetch(BACKEND_URL + '/nft/recent-customizations', { cache: 'no-store' });
+            const response = await fetch(
+                `${BACKEND_URL}/nft/recent-customizations?page=${pageToLoad}&perPage=${PER_PAGE}`,
+                { cache: 'no-store' }
+            );
             if (!response.ok) throw new Error('Error ' + response.status);
             const data = await response.json();
 
             setItems(Array.isArray(data.items) ? data.items : []);
+            setTotalPages(Math.max(1, Number(data.pages) || 1));
+            setTotal(Number(data.total) || 0);
             if (data.serverTime) setClockOffsetMs(Date.now() - new Date(data.serverTime).getTime());
         } catch {
             setError('Could not load recent customizations. Try again in a moment.');
@@ -98,7 +113,26 @@ function RecentCustomizationsContent() {
         }
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        setLoading(true);
+        load(currentPage);
+    }, [load, currentPage]);
+
+    const goToPage = (destino: number) => {
+        const acotada = Math.min(Math.max(1, destino), totalPages);
+        if (acotada === currentPage) return;
+
+        const params = new URLSearchParams();
+        if (backTokenId) params.set('from', backTokenId);
+        // La pagina 1 va sin parametro, para que la URL quede limpia.
+        if (acotada > 1) params.set('page', String(acotada));
+        const query = params.toString();
+
+        router.push(query ? `/recent?${query}` : '/recent');
+        // Cambiar de pagina deja la vista donde estaba, o sea al pie de la
+        // grilla anterior. Sin esto, la pagina nueva arranca por la mitad.
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     // Los "X mins ago" se quedarian congelados en lo que decian al abrir la
     // pagina; este tick los mantiene al dia sin volver a pedirle nada al server.
@@ -146,7 +180,7 @@ function RecentCustomizationsContent() {
                             <div className="text-red-400 text-lg mb-2">Error</div>
                             <div className="text-red-300 mb-4">{error}</div>
                             <button
-                                onClick={() => { setLoading(true); load(); }}
+                                onClick={() => { setLoading(true); load(currentPage); }}
                                 className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg font-semibold transition-all duration-200"
                             >
                                 Retry
@@ -192,6 +226,33 @@ function RecentCustomizationsContent() {
                                 </div>
                             </button>
                         ))}
+                    </div>
+                )}
+
+                {/* Paginado. Aparece solo si hay mas de una pagina: con 30
+                    customizaciones en total, los botones no aportan nada. */}
+                {!loading && !error && totalPages > 1 && (
+                    <div className="flex flex-wrap items-center justify-center gap-3 pb-4">
+                        <button
+                            onClick={() => goToPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="rounded-lg border border-white/20 bg-white/5 px-4 py-2 font-semibold transition-colors duration-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-white/5"
+                        >
+                            Previous
+                        </button>
+
+                        <span className="text-blue-200 text-sm px-2">
+                            Page {currentPage} of {totalPages}
+                            <span className="text-blue-200/50"> · {total} customizations</span>
+                        </span>
+
+                        <button
+                            onClick={() => goToPage(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="rounded-lg border border-white/20 bg-white/5 px-4 py-2 font-semibold transition-colors duration-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-white/5"
+                        >
+                            Next
+                        </button>
                     </div>
                 )}
             </div>

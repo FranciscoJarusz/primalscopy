@@ -17,22 +17,34 @@ function thumbnailUrl(entry) {
     return `/feed/thumbs/${entry.thumbnail}`;
 }
 
-// GET /api/nft/recent-customizations
+// GET /api/nft/recent-customizations?page=1&perPage=50
+//
+// Pagina de a 50. El store recorta los valores fuera de rango, asi que una
+// pagina inventada devuelve la ultima real en vez de un error: esta pantalla es
+// para mirar, no hay nada que un parametro raro pueda romper.
 function listRecentCustomizations(req, res) {
     try {
-        const items = feed.list().map(entry => ({
-            id: entry.id,
-            tokenId: entry.tokenId,
-            wallet: entry.wallet,
-            createdAt: entry.createdAt,
-            thumbnailUrl: thumbnailUrl(entry)
-        }));
+        const resultado = feed.page({ page: req.query.page, perPage: req.query.perPage });
 
         // El "hace cuanto" lo calcula el front con createdAt, pero necesita
         // saber la hora del server: si el reloj del visitante esta corrido,
         // sin esto veria "en 3 horas" o "hace 5 horas" en cosas recien hechas.
         res.set('Cache-Control', 'no-cache');
-        res.json({ limit: feed.MAX_ITEMS, serverTime: new Date().toISOString(), items });
+        res.json({
+            page: resultado.page,
+            pages: resultado.pages,
+            perPage: resultado.perPage,
+            total: resultado.total,
+            limit: feed.MAX_ITEMS,
+            serverTime: new Date().toISOString(),
+            items: resultado.items.map(entry => ({
+                id: entry.id,
+                tokenId: entry.tokenId,
+                wallet: entry.wallet,
+                createdAt: entry.createdAt,
+                thumbnailUrl: thumbnailUrl(entry)
+            }))
+        });
     } catch (error) {
         console.error('[ERROR] listRecentCustomizations ->', error);
         res.status(500).json({ error: 'No se pudo leer el feed de customizaciones.' });

@@ -54,6 +54,12 @@ app.use('/assets', express.static(ASSETS_PATH));
 assets.ensureDirs();
 feed.ensureDirs();
 
+// Miniaturas que quedaron sin entrada en el indice, por ejemplo si el proceso
+// murio a mitad de un guardado. Se limpian una vez al arrancar y no en cada
+// customizacion: con el historial lleno son 1000 archivos para listar.
+const huerfanas = feed.cleanupOrphans();
+if (huerfanas > 0) console.log(`[feed] Se borraron ${huerfanas} miniatura(s) huerfana(s).`);
+
 // La imagen lleva ?v=<timestamp> en la metadata, asi que cada version es una
 // URL distinta y se puede cachear fuerte sin que nadie quede viendo la vieja.
 app.use('/images', express.static(assets.IMAGES_DIR, {
