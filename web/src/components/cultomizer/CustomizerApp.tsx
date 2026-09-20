@@ -1,0 +1,978 @@
+// Pantalla del Cultomizer (isla de React).
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import GIF from "gif.js/dist/gif.js";
+import { parseGIF, decompressFrames } from "gifuct-js";
+import { goTo, replaceWith, useSearchParams } from "../../lib/navigation";
+import {
+  useWalletSession,
+  useNftOwnership,
+} from "../../hooks/cultomizer/useWalletSession";
+
+// --- Interfaces para Tipado ---
+interface TraitVariant {
+  name: string;
+  imageUrl: string | null;
+  isNone?: boolean;
+}
+
+interface CustomizationOption {
+  currentValue: string;
+  variants: TraitVariant[];
+}
+
+interface CustomizationOptions {
+  [traitType: string]: CustomizationOption;
+}
+
+// --- Constantes ---
+const THUMBNAIL_SIZE = 80;
+const GIF_EXPORT_SIZE = 2000;
+const LAYER_ORDER = [
+  "Background",
+  "Fur",
+  "Tunic",
+  "Face",
+  "Eyes",
+  "Hat",
+  "Effect",
+];
+const NONE_SELECTION = "__NONE__";
+
+const isNoneVariant = (variant: TraitVariant): boolean => {
+  if (!variant) return true;
+  if (variant.isNone) return true;
+  return (variant.name || "").trim().toLowerCase() === "none";
+};
+
+interface GifFrame {
+  dims: { left: number; top: number; width: number; height: number };
+  delay?: number;
+  disposalType?: number;
+  patch: Uint8ClampedArray;
+}
+
+type LoadedImageLayer = { url: string; type: "image"; image: HTMLImageElement };
+type LoadedGifLayer = {
+  url: string;
+  type: "gif";
+  frames: GifFrame[];
+  origWidth: number;
+  origHeight: number;
+};
+type LoadedLayer = LoadedImageLayer | LoadedGifLayer;
+
+// --- Componente de Contenido ---
+function CustomizerContent() {
+  const searchParams = useSearchParams();
+
+  // Lee el ID de la URL
+  const tokenIdFromUrl = searchParams.get("tokenId");
+
+  const [nftId, setNftId] = useState<string>(tokenIdFromUrl || "");
+  const [inputNftId, setInputNftId] = useState<string>(tokenIdFromUrl || "");
+  const [customizationOptions, setCustomizationOptions] =
+    useState<CustomizationOptions | null>(null);
+  const [selectedVariants, setSelectedVariants] = useState<{
+    [key: string]: string;
+  }>({});
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [activeTraitSection, setActiveTraitSection] = useState<string | null>(
+    null,
+  );
+  // Capas cuyo archivo no cargó: se sacan del preview en vez de dejar que el
+  // navegador dibuje el ícono de imagen rota encima del NFT.
+  const [failedLayers, setFailedLayers] = useState<string[]>([]);
+  const [exportingGif, setExportingGif] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<number>(0);
+
+  const nftDisplayRef = useRef<HTMLDivElement>(null);
+
+  // Sesion probada ante el backend (firma) y si esa wallet es dueña de este
+  // token. De esto cuelga el boton de guardar.
+  const walletSession = useWalletSession();
+  const { state: ownership, owner } = useNftOwnership(
+    nftId || null,
+    walletSession.token,
+  );
+
+  const [saving, setSaving] = useState<boolean>(false);
+  const [saveResult, setSaveResult] = useState<{
+    kind: "ok" | "error";
+    text: string;
+  } | null>(null);
+
+  const BACKEND_URL =
+    import.meta.env.PUBLIC_BACKEND_URL || "http://localhost:3001/api";
+  const BACKEND_BASE_URL =
+    import.meta.env.PUBLIC_BACKEND_BASE_URL || "http://localhost:3001";
+
+  // Pre-cargar el worker de gif.js al montar la página.
+  // En iOS Safari, la primera vez que se usa el worker se descarga el script
+  // justo cuando el canvas ya consume RAM → pico de memoria → Safari mata el tab.
+  // Pre-cargándolo queda en caché del browser antes de que el usuario toque Export.
+  useEffect(() => {
+    fetch("/gif.worker.js").catch(() => {});
+  }, []);
+
+  // El ultimo primal que se estuvo customizando. Es el respaldo para volver
+  // desde "Recent Customizations" cuando se llega a esa pantalla sin el id en
+  // la URL, por ejemplo entrando por un link directo.
+  useEffect(() => {
+    if (!nftId) return;
+    try {
+      sessionStorage.setItem("cultomizer:lastTokenId", nftId);
+    } catch {
+      // En modo privado puede tirar error. No pasa nada: el boton de
+      // volver cae en el selector, que es un destino valido.
+    }
+  }, [nftId]);
+
+  const getVariantSelectionValue = (variant: TraitVariant): string =>
+    variant.imageUrl || NONE_SELECTION;
+
+  // Cargar datos del NFT automáticamente
+  useEffect(() => {
+    if (!nftId) return;
+    const loadNftData = async () => {
+      setLoading(true);
+      setError(null);
+      setCustomizationOptions(null);
+      setSelectedVariants({});
+      setFailedLayers([]);
+      try {
+        const optionsResponse = await fetch(
+          `${BACKEND_URL}/nft/${nftId}/customize-options`,
+        );
+        if (!optionsResponse.ok)
+          throw new Error(`Error: ${optionsResponse.status}`);
+        const data: CustomizationOptions = await optionsResponse.json();
+        const sanitizedData = Object.fromEntries(
+          Object.entries(data).map(([traitType, option]) => {
+            const variants = (option?.variants || []).filter(
+              (variant) => !isNoneVariant(variant),
+            );
+            return [traitType, { ...option, variants }];
+          }),
+        ) as CustomizationOptions;
+
+        setCustomizationOptions(sanitizedData);
+        const initialSelections: { [key: string]: string } = {};
+        for (const traitType in sanitizedData) {
+          const currentValue = (
+            sanitizedData[traitType].currentValue || ""
+          ).toLowerCase();
+          const defaultVariant =
+            sanitizedData[traitType].variants.find((variant) => {
+              if (!variant || !variant.name) return false;
+              return variant.name.toLowerCase() === currentValue;
+            }) || sanitizedData[traitType].variants[0];
+          if (defaultVariant) {
+            initialSelections[traitType] =
+              getVariantSelectionValue(defaultVariant);
+          }
+        }
+
+        // Lo que el NFT tiene aplicado HOY, segun el servidor. Manda sobre
+        // todo lo demas: es la unica fuente que no depende del dispositivo.
+        //
+        // Sin esto, al abrir el customizer se veia lo que hubiera en el
+        // localStorage de esa maquina, o los traits originales de la
+        // metadata. Por eso un NFT ya customizado se veia distinto en la
+        // compu y en el celular, y ninguno de los dos mostraba lo que
+        // realmente tiene aplicado.
+        let appliedOnChain: { [key: string]: string } | null = null;
+        try {
+          const savedResponse = await fetch(
+            `${BACKEND_URL}/nft/${nftId}/customization`,
+          );
+          if (savedResponse.ok) {
+            const savedData = await savedResponse.json();
+            if (savedData?.saved && savedData.applied) {
+              const fromServer: { [key: string]: string } = {};
+              for (const [traitType, variant] of Object.entries(
+                savedData.applied,
+              )) {
+                const imageUrl = (variant as { imageUrl?: string })?.imageUrl;
+                // Se valida igual que el resto: un trait que ya no
+                // existe no puede quedar seleccionado.
+                const stillOffered =
+                  imageUrl &&
+                  sanitizedData[traitType]?.variants.some(
+                    (v) => getVariantSelectionValue(v) === imageUrl,
+                  );
+                if (stillOffered) fromServer[traitType] = imageUrl as string;
+              }
+              if (Object.keys(fromServer).length > 0)
+                appliedOnChain = fromServer;
+            }
+          }
+        } catch {
+          // Si no se puede consultar, se sigue con el comportamiento
+          // anterior en vez de dejar la pagina sin cargar.
+        }
+
+        if (appliedOnChain) {
+          const applied = { ...initialSelections, ...appliedOnChain };
+          setSelectedVariants(applied);
+          try {
+            localStorage.setItem(
+              `nft_custom_${nftId}`,
+              JSON.stringify(applied),
+            );
+          } catch {
+            /* storage lleno */
+          }
+          const firstSection =
+            LAYER_ORDER.find((trait) => sanitizedData[trait]) ||
+            Object.keys(sanitizedData)[0] ||
+            null;
+          setActiveTraitSection(firstSection);
+          setLoading(false);
+          return;
+        }
+
+        // Restaurar selecciones guardadas (si el usuario vuelve después de navegar)
+        try {
+          const saved = localStorage.getItem(`nft_custom_${nftId}`);
+          if (saved) {
+            const savedSelections: { [key: string]: string } =
+              JSON.parse(saved);
+            // No alcanza con que la categoría siga existiendo: hay que validar
+            // la URL guardada contra las variantes de ahora. Si un trait se
+            // renombró o se borró desde /admin, el navegador se queda con la
+            // URL vieja y esa capa da 404. Ojo que el server es Linux: un
+            // cambio de mayúsculas (STANDART.gif → Standart.gif) ya es otro
+            // archivo, aunque en Windows local parezca el mismo.
+            const restored: { [key: string]: string } = {
+              ...initialSelections,
+            };
+            for (const traitType in savedSelections) {
+              const option = sanitizedData[traitType];
+              if (!option) continue;
+              const savedValue = savedSelections[traitType];
+              const stillExists =
+                savedValue === NONE_SELECTION ||
+                option.variants.some(
+                  (variant) => getVariantSelectionValue(variant) === savedValue,
+                );
+              // Si la selección murió, queda el default de la metadata.
+              if (stillExists) {
+                restored[traitType] = savedValue;
+              }
+            }
+            setSelectedVariants(restored);
+            // Reescribir lo guardado para que las selecciones muertas no
+            // vuelvan a aparecer en cada carga.
+            try {
+              localStorage.setItem(
+                `nft_custom_${nftId}`,
+                JSON.stringify(restored),
+              );
+            } catch {
+              /* storage lleno */
+            }
+          } else {
+            setSelectedVariants(initialSelections);
+          }
+        } catch {
+          setSelectedVariants(initialSelections);
+        }
+        const firstAvailableSection =
+          LAYER_ORDER.find((trait) => sanitizedData[trait]) ||
+          Object.keys(sanitizedData)[0] ||
+          null;
+        setActiveTraitSection(firstAvailableSection);
+      } catch (_error: unknown) {
+        setError(`Failed to load NFT #${nftId} data.`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadNftData();
+  }, [nftId, BACKEND_URL]);
+
+  const displayedLayers = useMemo(() => {
+    return LAYER_ORDER.map((traitType) => selectedVariants[traitType])
+      .filter((layerUrl) => Boolean(layerUrl) && layerUrl !== NONE_SELECTION)
+      .map((layerUrl) => {
+        if (!layerUrl) return null;
+        if (layerUrl.startsWith("http://") || layerUrl.startsWith("https://"))
+          return layerUrl;
+        return `${BACKEND_BASE_URL}${layerUrl}`;
+      })
+      .filter(Boolean) as string[];
+  }, [selectedVariants, BACKEND_BASE_URL]);
+
+  const allAssetsSelected = useMemo(() => {
+    if (!customizationOptions) return false;
+    return Object.keys(customizationOptions).every(
+      (traitType) => selectedVariants[traitType] !== undefined,
+    );
+  }, [selectedVariants, customizationOptions]);
+
+  const handleVariantChange = (traitType: string, variant: TraitVariant) => {
+    const nextValue = getVariantSelectionValue(variant);
+    setSelectedVariants((prev) => {
+      const updated = { ...prev };
+      if (updated[traitType] === nextValue) delete updated[traitType];
+      else updated[traitType] = nextValue;
+      // Persistir cambios para sobrevivir navegación
+      try {
+        localStorage.setItem(`nft_custom_${nftId}`, JSON.stringify(updated));
+      } catch {
+        /* storage lleno */
+      }
+      return updated;
+    });
+  };
+
+  // Guarda la combinacion en el NFT de verdad: el backend recompone la imagen
+  // y reescribe la metadata que leen las wallets. Tarda, porque componer un
+  // GIF de 2000x2000 no es instantaneo y ademas hay que subirlo.
+  const handleSaveToNft = async () => {
+    if (!walletSession.token || ownership !== "owner" || !allAssetsSelected)
+      return;
+
+    setSaving(true);
+    setSaveResult(null);
+    try {
+      const response = await fetch(
+        `${BACKEND_URL}/nft/${nftId}/customization`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${walletSession.token}`,
+          },
+          body: JSON.stringify({ selections: selectedVariants }),
+        },
+      );
+      const body = await response.json();
+
+      if (!response.ok) {
+        setSaveResult({ kind: "error", text: body.error || "Could not save." });
+        return;
+      }
+      // Aviso explicito de la demora: los marketplaces cachean y el holder
+      // que no lo sepa va a pensar que no funciono.
+      //
+      // Si ademas no se pudo avisar al marketplace, la miniatura de las
+      // grillas puede quedar vieja bastante mas tiempo. Se dice, porque si
+      // no el unico sintoma es un usuario confundido.
+      const refreshOk = body.marketplaceRefresh?.requested !== false;
+      setSaveResult({
+        kind: "ok",
+        text: refreshOk
+          ? "Saved. Your wallet may take a while to refresh."
+          : "Saved, but the marketplace was not notified: the thumbnail may stay outdated for a while.",
+      });
+    } catch {
+      setSaveResult({ kind: "error", text: "Could not reach the server." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLoadNft = () => {
+    const trimmedId = inputNftId.trim();
+    if (trimmedId && trimmedId !== nftId) {
+      setNftId(trimmedId);
+      // Actualizar la URL para que un reload en móvil mantenga el NFT correcto
+      replaceWith(`/cultomizer/edit?tokenId=${trimmedId}`);
+    }
+  };
+
+  const handleInputKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleLoadNft();
+  };
+
+  const handleBackToSelection = () => {
+    goTo("/cultomizer");
+  };
+
+  const handleExportGif = async () => {
+    if (!allAssetsSelected) {
+      alert("You must select an option in each category before exporting.");
+      return;
+    }
+
+    if (displayedLayers.length === 0) {
+      alert("There are no layers to export.");
+      return;
+    }
+
+    setExportingGif(true);
+    setExportProgress(0);
+
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    try {
+      // En iOS usamos tamaño reducido para no agotar la RAM del dispositivo
+      const exportSize = isIOS ? 1200 : GIF_EXPORT_SIZE;
+      const loadedLayers: LoadedLayer[] = await Promise.all(
+        displayedLayers.map(async (url) => {
+          if (url.endsWith(".gif")) {
+            const response = await fetch(url);
+            if (!response.ok)
+              throw new Error(`Failed to load GIF layer: ${url}`);
+            const buffer = await response.arrayBuffer();
+            const parsedGif = parseGIF(buffer);
+            const frames = decompressFrames(
+              parsedGif,
+              true,
+            ) as unknown as GifFrame[];
+            // Dimensiones originales del GIF: máximo de (left+width) y (top+height) entre todos los frames
+            const origWidth = Math.max(
+              ...frames.map((f) => f.dims.left + f.dims.width),
+            );
+            const origHeight = Math.max(
+              ...frames.map((f) => f.dims.top + f.dims.height),
+            );
+            return { url, type: "gif", frames, origWidth, origHeight };
+          }
+          const image = await new Promise<HTMLImageElement>(
+            (resolve, reject) => {
+              const img = new Image();
+              img.crossOrigin = "anonymous";
+              img.onload = () => resolve(img);
+              img.onerror = () =>
+                reject(new Error(`Failed to load image: ${url}`));
+              img.src = url;
+            },
+          );
+          return { url, type: "image", image };
+        }),
+      );
+
+      // GIF animado — iOS usa 500px + 1 worker para caber en RAM, desktop usa 2000px + 2 workers
+      const gif = new GIF({
+        workers: isIOS ? 1 : 2,
+        quality: isIOS ? 15 : 10,
+        width: exportSize,
+        height: exportSize,
+        workerScript: "/gif.worker.js",
+      });
+
+      const frameCanvas = document.createElement("canvas");
+      frameCanvas.width = exportSize;
+      frameCanvas.height = exportSize;
+      const frameCtx = frameCanvas.getContext("2d");
+
+      const patchCanvas = document.createElement("canvas");
+      const patchCtx = patchCanvas.getContext("2d");
+
+      if (!frameCtx || !patchCtx) {
+        throw new Error("Failed to initialize canvas for export.");
+      }
+
+      const gifLayerCache = new Map<string, HTMLCanvasElement>();
+      // Tracks the previous frame's disposal info for each GIF layer
+      const gifLayerPrevInfo = new Map<
+        string,
+        { dims: GifFrame["dims"]; disposalType: number; savedData?: ImageData }
+      >();
+
+      const animatedLayers = loadedLayers.filter(
+        (layer): layer is LoadedGifLayer => layer.type === "gif",
+      );
+      const totalFrames =
+        animatedLayers.length > 0
+          ? Math.max(...animatedLayers.map((layer) => layer.frames.length))
+          : 1;
+
+      for (let frameIndex = 0; frameIndex < totalFrames; frameIndex += 1) {
+        frameCtx.clearRect(0, 0, exportSize, exportSize);
+
+        for (const layer of loadedLayers) {
+          if (layer.type === "image") {
+            frameCtx.drawImage(layer.image, 0, 0, exportSize, exportSize);
+            continue;
+          }
+
+          const localFrameIndex = frameIndex % layer.frames.length;
+          const gifFrame = layer.frames[localFrameIndex];
+          if (!gifFrame) continue;
+
+          patchCanvas.width = gifFrame.dims.width;
+          patchCanvas.height = gifFrame.dims.height;
+
+          const imageData = patchCtx.createImageData(
+            gifFrame.dims.width,
+            gifFrame.dims.height,
+          );
+          imageData.data.set(gifFrame.patch);
+          patchCtx.putImageData(imageData, 0, 0);
+
+          let layerCanvas = gifLayerCache.get(layer.url);
+          if (!layerCanvas) {
+            layerCanvas = document.createElement("canvas");
+            layerCanvas.width = layer.origWidth;
+            layerCanvas.height = layer.origHeight;
+            gifLayerCache.set(layer.url, layerCanvas);
+          }
+
+          const layerCtx = layerCanvas.getContext("2d");
+          if (!layerCtx) continue;
+
+          // Cuando el GIF llega al frame 0 (primer frame o reinicio del loop),
+          // limpiar el canvas acumulado para que no queden restos del ciclo anterior
+          if (localFrameIndex === 0) {
+            layerCtx.clearRect(0, 0, layerCanvas.width, layerCanvas.height);
+            gifLayerPrevInfo.delete(layer.url);
+          }
+
+          // Aplicar el disposal del frame anterior antes de pintar el actual
+          const prevInfo = gifLayerPrevInfo.get(layer.url);
+          if (prevInfo) {
+            if (prevInfo.disposalType === 2) {
+              // Restore to background: borrar el área que ocupó el frame anterior
+              layerCtx.clearRect(
+                prevInfo.dims.left,
+                prevInfo.dims.top,
+                prevInfo.dims.width,
+                prevInfo.dims.height,
+              );
+            } else if (prevInfo.disposalType === 3 && prevInfo.savedData) {
+              // Restore to previous: restaurar el estado guardado
+              layerCtx.putImageData(
+                prevInfo.savedData,
+                prevInfo.dims.left,
+                prevInfo.dims.top,
+              );
+            }
+            // disposalType 0 o 1: no dispose / leave in place → no action needed
+          }
+
+          // Para disposal type 3: guardar el área actual antes de pintar
+          const frameDisposalType = gifFrame.disposalType ?? 1;
+          let savedData: ImageData | undefined;
+          if (frameDisposalType === 3) {
+            savedData = layerCtx.getImageData(
+              gifFrame.dims.left,
+              gifFrame.dims.top,
+              gifFrame.dims.width,
+              gifFrame.dims.height,
+            );
+          }
+
+          // Pintar el patch en sus coordenadas originales (sin escalar)
+          layerCtx.drawImage(
+            patchCanvas,
+            gifFrame.dims.left,
+            gifFrame.dims.top,
+          );
+
+          // Guardar info de este frame para el disposal del siguiente
+          gifLayerPrevInfo.set(layer.url, {
+            dims: gifFrame.dims,
+            disposalType: frameDisposalType,
+            savedData,
+          });
+
+          // Escalar el canvas acumulado al tamaño de exportación
+          frameCtx.drawImage(layerCanvas, 0, 0, exportSize, exportSize);
+        }
+
+        const animatedDelay =
+          animatedLayers[0]?.frames[
+            frameIndex % animatedLayers[0].frames.length
+          ]?.delay;
+        gif.addFrame(frameCanvas, { copy: true, delay: animatedDelay || 100 });
+        setExportProgress(((frameIndex + 1) / totalFrames) * 100);
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        gif.on("finished", (blob: Blob) => {
+          const url = URL.createObjectURL(blob);
+          if (isIOS) {
+            // iOS Safari no permite anchor.click() con blobs — navegar al blob
+            // directamente abre el GIF en Safari y el usuario lo guarda con Compartir.
+            window.location.href = url;
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+          } else {
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = `${nftId}.gif`;
+            anchor.click();
+            URL.revokeObjectURL(url);
+          }
+          resolve();
+        });
+
+        gif.on("abort", () => {
+          reject(new Error("GIF export aborted."));
+        });
+
+        gif.render();
+      });
+    } catch (exportError) {
+      console.error(exportError);
+      alert("Failed to export GIF. Check console for details.");
+    } finally {
+      setExportingGif(false);
+      setExportProgress(0);
+    }
+  };
+
+  // Si no hay tokenId, mostrar mensaje de error
+  if (!tokenIdFromUrl) {
+    return (
+      <div className="min-h-[calc(100vh-8rem)] text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <div className="text-2xl text-red-400 mb-4">
+            Token ID not specified
+          </div>
+          <div className="text-blue-200 mb-6">
+            You need to select an NFT first
+          </div>
+          <button
+            onClick={handleBackToSelection}
+            className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl font-semibold transition-all duration-200"
+          >
+            Back to Selection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-white">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-8 sm:py-8 flex flex-col gap-10">
+        {/* Header */}
+        <div className="flex flex-wrap justify-between items-start gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-4">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Customizing: Primal #{nftId}
+              </h1>
+              {/* Vuelta al selector sin tener que usar el boton del
+                                navegador ni reconectar la wallet. */}
+              <button
+                onClick={handleBackToSelection}
+                className="rounded-xl bg-yellow-300 px-5 py-2 font-bold text-black transition-colors duration-200 hover:bg-yellow-200"
+              >
+                Switch Primal
+              </button>
+            </div>
+            <p className="text-blue-200 mt-2">
+              Try different combinations and customize at your liking. Once you
+              finish, validate ownership to update on-chain.
+            </p>
+          </div>
+        </div>
+
+        {/* Input para cambiar NFT */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 sm:p-4">
+          <div className="flex gap-2 sm:gap-4 items-center">
+            <input
+              type="text"
+              value={inputNftId}
+              onChange={(e) => setInputNftId(e.target.value)}
+              onKeyPress={handleInputKeyPress}
+              placeholder="NFT ID"
+              className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded-lg px-3 sm:px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-blue-500 text-sm sm:text-base"
+            />
+            <button
+              onClick={handleLoadNft}
+              className="shrink-0 bg-blue-600 hover:bg-blue-700 px-4 sm:px-6 py-2 rounded-lg font-semibold transition-all duration-200 text-sm sm:text-base"
+            >
+              Search other NFT
+            </button>
+          </div>
+        </div>
+
+        {/* Estados de carga y error */}
+        {loading && (
+          <div className="text-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <div className="text-blue-200 text-xl">NFT Loading...</div>
+          </div>
+        )}
+
+        {error && (
+          <div className="text-center py-16">
+            <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-6 max-w-md mx-auto">
+              <div className="text-red-400 text-lg mb-2">⚠️ Error</div>
+              <div className="text-red-300">{error}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Contenido del customizer */}
+        {!loading && !error && customizationOptions && (
+          // items-start, no items-center: la columna de traits es mucho más
+          // alta que la del preview, y centrarlas dejaba el preview flotando
+          // en el medio con un hueco muerto arriba.
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start justify-center">
+            {/* Columna izquierda - Vista previa del NFT */}
+            <div className="lg:col-span-1">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                <h3 className="text-xl font-semibold mb-4 text-center">
+                  Preview
+                </h3>
+                <div
+                  ref={nftDisplayRef}
+                  className="relative mx-auto w-full max-w-[500px] aspect-square overflow-hidden rounded-lg"
+                >
+                  {displayedLayers
+                    .filter((layerSrc) => !failedLayers.includes(layerSrc))
+                    .map((layerSrc) => (
+                      <img
+                        key={layerSrc}
+                        src={layerSrc}
+                        // Las capas son decorativas y se apilan: un alt por
+                        // capa solo sirve para que el navegador lo dibuje
+                        // encima del preview cuando el archivo no carga.
+                        alt=""
+                        width={1000}
+                        height={1000}
+                        className="absolute inset-0 w-full h-full object-contain"
+                        style={{ imageRendering: "pixelated" }}
+                        onError={() =>
+                          setFailedLayers((prev) =>
+                            prev.includes(layerSrc)
+                              ? prev
+                              : [...prev, layerSrc],
+                          )
+                        }
+                      />
+                    ))}
+                </div>
+                <div className="mt-5">
+                  <button
+                    onClick={handleExportGif}
+                    disabled={!allAssetsSelected || exportingGif}
+                    className={`flex w-full items-center justify-center rounded-2xl px-6 py-3 text-lg font-black uppercase tracking-[0.12em] transition-all duration-200 ${
+                      allAssetsSelected
+                        ? "bg-blue-600 text-white hover:bg-blue-800"
+                        : "text-white/45"
+                    } disabled:cursor-not-allowed disabled:shadow-none`}
+                  >
+                    {exportingGif
+                      ? `Exporting ${Math.round(exportProgress)}%`
+                      : allAssetsSelected
+                        ? "Export GIF file"
+                        : "Complete traits"}
+                  </button>
+                </div>
+
+                {/* Estado de la wallet y de la propiedad del NFT.
+                                    Hoy solo informa; cuando exista el guardado, el boton
+                                    va a colgar de ownership === 'owner'. El chequeo real
+                                    lo hace el backend en cada escritura: esto es interfaz,
+                                    no seguridad. */}
+                <div className="mt-4 border-t border-white/10 pt-4 text-sm">
+                  {!walletSession.isConnected && (
+                    <p className="text-white/50">
+                      Connect your wallet to save changes to this NFT.
+                    </p>
+                  )}
+
+                  {walletSession.isConnected &&
+                    walletSession.status === "needs-signature" && (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-white/60">
+                          Verify your wallet to prove you own this NFT.
+                        </p>
+                        <button
+                          onClick={walletSession.signIn}
+                          className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-blue-700"
+                        >
+                          Verify wallet
+                        </button>
+                        <p className="text-white/35 text-xs">
+                          You will sign a message. It does not authorize any
+                          transaction.
+                        </p>
+                      </div>
+                    )}
+
+                  {(walletSession.status === "checking" ||
+                    walletSession.status === "signing") && (
+                    <p className="text-blue-200">
+                      {walletSession.status === "signing"
+                        ? "Waiting for signature..."
+                        : "Verifying session..."}
+                    </p>
+                  )}
+
+                  {walletSession.status === "ready" && (
+                    <div className="flex flex-col gap-1">
+                      {ownership === "checking" && (
+                        <p className="text-blue-200">Checking ownership...</p>
+                      )}
+                      {ownership === "owner" && (
+                        <>
+                          <p className="text-emerald-400 font-semibold">
+                            You own this NFT
+                          </p>
+                          <button
+                            onClick={handleSaveToNft}
+                            disabled={!allAssetsSelected || saving}
+                            className={`mt-2 w-full rounded-2xl px-6 py-3 text-base font-black uppercase tracking-[0.12em] transition-all duration-200 ${
+                              allAssetsSelected && !saving
+                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                : "bg-white/10 text-white/40"
+                            } disabled:cursor-not-allowed`}
+                          >
+                            {saving
+                              ? "Saving..."
+                              : allAssetsSelected
+                                ? "Update art on chain"
+                                : "Complete traits"}
+                          </button>
+                          {saving && (
+                            <p className="text-white/45 text-xs">
+                              Building the image. This takes a few seconds,
+                              don&apos;t close the page.
+                            </p>
+                          )}
+                          {saveResult && !saving && (
+                            <p
+                              className={`text-xs ${saveResult.kind === "ok" ? "text-emerald-400" : "text-red-400"}`}
+                            >
+                              {saveResult.text}
+                            </p>
+                          )}
+                        </>
+                      )}
+                      {ownership === "not-owner" && (
+                        <>
+                          <p className="text-amber-400 font-semibold">
+                            You don&apos;t own this NFT
+                          </p>
+                          {owner && (
+                            <p className="text-white/40 text-xs font-mono">
+                              Owner: {owner.slice(0, 6)}...{owner.slice(-4)}
+                            </p>
+                          )}
+                        </>
+                      )}
+                      {ownership === "not-found" && (
+                        <p className="text-white/50">
+                          This NFT does not exist.
+                        </p>
+                      )}
+                      {ownership === "unavailable" && (
+                        <p className="text-white/50">
+                          Could not verify ownership right now.
+                        </p>
+                      )}
+                      <p className="text-white/35 text-xs font-mono">
+                        {walletSession.address?.slice(0, 6)}...
+                        {walletSession.address?.slice(-4)}
+                      </p>
+                    </div>
+                  )}
+
+                  {walletSession.error && (
+                    <p className="mt-2 text-red-400 text-xs">
+                      {walletSession.error}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Columna derecha - Selector de traits */}
+            <div className="lg:col-span-2">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+                <h3 className="text-xl font-semibold mb-6">Choose a trait</h3>
+
+                {/* Selector de categorías */}
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {[
+                    ...LAYER_ORDER,
+                    ...Object.keys(customizationOptions).filter(
+                      (t) => !LAYER_ORDER.includes(t),
+                    ),
+                  ]
+                    .filter(
+                      (traitType, index, arr) =>
+                        arr.indexOf(traitType) === index,
+                    )
+                    .filter((traitType) =>
+                      Boolean(customizationOptions[traitType]),
+                    )
+                    .map((traitType) => (
+                      <button
+                        key={traitType}
+                        className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${
+                          activeTraitSection === traitType
+                            ? "bg-blue-600 text-white"
+                            : "bg-white/10 text-white/70 hover:bg-white/20"
+                        }`}
+                        onClick={() => setActiveTraitSection(traitType)}
+                      >
+                        {traitType}
+                      </button>
+                    ))}
+                </div>
+
+                {/* Variantes del trait seleccionado */}
+                {activeTraitSection &&
+                  customizationOptions[activeTraitSection] && (
+                    <div>
+                      <h4 className="text-lg font-semibold mb-4 text-blue-200">
+                        {activeTraitSection}
+                      </h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        {customizationOptions[activeTraitSection].variants.map(
+                          (variant) => (
+                            <div
+                              key={`${activeTraitSection}-${variant.name}`}
+                              className={`cursor-pointer transition-all duration-200 transform hover:scale-105 ${
+                                selectedVariants[activeTraitSection] ===
+                                getVariantSelectionValue(variant)
+                                  ? "ring-2 ring-blue-500 scale-105"
+                                  : ""
+                              }`}
+                              onClick={() =>
+                                handleVariantChange(activeTraitSection, variant)
+                              }
+                            >
+                              <div className="bg-white/10 rounded-lg p-2 mb-2">
+                                {variant.imageUrl ? (
+                                  <img
+                                    src={
+                                      variant.imageUrl.startsWith("http")
+                                        ? variant.imageUrl
+                                        : `${BACKEND_BASE_URL}${variant.imageUrl}`
+                                    }
+                                    alt={variant.name}
+                                    width={THUMBNAIL_SIZE}
+                                    height={THUMBNAIL_SIZE}
+                                    className="w-full aspect-square object-cover rounded"
+                                    style={{ imageRendering: "pixelated" }}
+                                  />
+                                ) : (
+                                  <div className="w-full aspect-square rounded bg-white/10 flex items-center justify-center text-xs text-white/70">
+                                    {variant.name}
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-center text-sm font-medium">
+                                {variant.name}
+                              </p>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// El Suspense que envolvia esto existia solo por el useSearchParams de Next,
+// que obligaba a un limite de suspension para poder prerenderizar. El
+// equivalente propio lee la URL directo, asi que no hace falta.
+export default CustomizerContent;

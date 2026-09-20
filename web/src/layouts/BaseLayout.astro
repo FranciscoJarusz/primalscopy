@@ -1,0 +1,35 @@
+---
+import "../styles/global.css";
+
+// La cascara comun a cualquier pagina del sitio: fuente, favicon, fondo. No
+// sabe nada de raffles ni de wallets — eso lo agrega cada layout especifico
+// (por ejemplo RafflesLayout) envolviendo a este.
+interface Props {
+  title?: string;
+}
+
+const { title = "Primal Cult" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <title>{title}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body
+    class="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] text-white"
+  >
+    <slot />
+  </body>
+</html>

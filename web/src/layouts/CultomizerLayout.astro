@@ -1,0 +1,26 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import CultomizerHeader from "../components/cultomizer/CultomizerHeader";
+import Footer from "../components/shared/Footer";
+
+interface Props {
+  title?: string;
+  activo?: string;
+}
+
+const { title = "Cultomizer - Primal Cult", activo = "cultomizer" } = Astro.props;
+---
+
+<BaseLayout title={title}>
+  <div class="min-h-screen flex flex-col">
+    <CultomizerHeader client:load activo={activo} />
+
+    <div class="flex-1">
+      <slot />
+    </div>
+
+    <div class="w-full max-w-7xl mx-auto px-4 pb-8 sm:px-8">
+      <Footer />
+    </div>
+  </div>
+</BaseLayout>

@@ -1,0 +1,21 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import Header from "../components/shared/Header";
+import Footer from "../components/shared/Footer";
+
+interface Props {
+  title?: string;
+  activo?: string;
+}
+
+const { title = "Primal Cult", activo = "home" } = Astro.props;
+---
+
+<BaseLayout title={title}>
+  <Header client:load activo={activo} />
+
+  <div class="max-w-7xl mx-auto px-4 py-8 sm:px-8 flex flex-col gap-16">
+    <slot />
+    <Footer />
+  </div>
+</BaseLayout>

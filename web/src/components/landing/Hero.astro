@@ -1,0 +1,39 @@
+---
+// El encabezado de la landing. Contenido sacado de primalcult.framer.website
+// (relevado el 2026-09-19): titulo, stats y el link de staking son los reales,
+// no inventados. Es .astro y no .tsx porque no necesita interactividad — nada
+// de esto cambia despues de cargar la pagina.
+const STATS = [
+  { valor: "987.12", etiqueta: "$APE burned" },
+  { valor: "2,712", etiqueta: "Primals" },
+  { valor: "600+", etiqueta: "Cultists" },
+];
+---
+
+<section class="flex flex-col items-center text-center gap-8 py-12 sm:py-20">
+  <h1 class="text-5xl sm:text-6xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+    Welcome to Primal Cult
+  </h1>
+
+  <p class="max-w-2xl text-lg text-blue-200">
+    2,712 glitchy gorillas. The first Cult on ApeChain to burn itself into legend.
+  </p>
+
+  <div class="flex flex-wrap justify-center gap-4 sm:gap-6">
+    {STATS.map((s) => (
+      <div class="bg-white/5 border border-white/10 rounded-xl px-6 py-4 min-w-[140px]">
+        <div class="text-2xl font-bold tabular-nums">{s.valor}</div>
+        <div class="text-xs uppercase tracking-wide text-blue-200/60 mt-1">{s.etiqueta}</div>
+      </div>
+    ))}
+  </div>
+
+  <a
+    href="https://app.blever.xyz/drops/primal-cult"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="rounded-xl bg-yellow-300 hover:bg-yellow-200 px-8 py-3 font-bold text-black transition-colors duration-200"
+  >
+    Staking Enabled
+  </a>
+</section>

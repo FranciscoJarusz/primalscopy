@@ -1,0 +1,9 @@
+---
+import CultomizerLayout from "../../layouts/CultomizerLayout.astro";
+import AdminApp from "../../components/cultomizer/AdminApp";
+---
+
+<CultomizerLayout title="Admin - Primal Cult" activo="cultomizer">
+  {/* No necesita wallet: se autentica con un token contra el backend. */}
+  <AdminApp client:only="react" />
+</CultomizerLayout>
