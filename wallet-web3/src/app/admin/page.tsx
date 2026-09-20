@@ -472,7 +472,7 @@ export default function AdminPage() {
 
   if (!token) {
     return (
-      <main className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] flex items-center justify-center p-4">
+      <main className="min-h-[calc(100vh-8rem)] flex items-center justify-center p-4">
         <div className="relative">
           <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 z-10">
             <div className="w-24 h-24 bg-[#000000] rounded-full flex items-center justify-center">
@@ -522,8 +522,8 @@ export default function AdminPage() {
   // --- Panel -------------------------------------------------------------
 
   return (
-    <main className="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] text-white px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-      <div className="max-w-7xl mx-auto flex flex-col gap-8">
+    <main className="text-white">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-8 sm:py-8 flex flex-col gap-8">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
           <div>

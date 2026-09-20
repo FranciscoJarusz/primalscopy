@@ -1,3 +1,34 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@theme {
+  --color-darkblue: #090050;
+  --color-blue: #052e8b;
+  --color-lightblue: #dfe8ff;
+  --color-yellow: #fdf468;
+}
+
+::selection {
+  background-color: #bfdbfe;
+  color: #090746;
+}
+
+html {
+  scrollbar-width: auto;
+  scrollbar-color: #bfdbfe #090746;
+}
+
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #090746;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1322d3;
+    border-radius: 8px;
+  }
+}

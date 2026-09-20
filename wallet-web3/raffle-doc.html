@@ -1,0 +1,394 @@
+<title>Primal Cult Raffles</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper: #F5F3FA;
+    --surface: #FFFFFF;
+    --surface-2: #EFEBF9;
+    --border: #E2DEEE;
+    --ink: #171220;
+    --ink-dim: #5F5875;
+    --violet: #5B32C4;
+    --violet-soft: #EFE9FC;
+    --gold: #9C6B12;
+    --gold-soft: #F7ECD6;
+    --good: #1F7A4D;
+    --good-soft: #E4F4EA;
+    --warn: #B4570B;
+    --warn-soft: #FCEBDD;
+    --shadow: 0 1px 2px rgba(23,18,32,.06), 0 8px 24px -12px rgba(23,18,32,.18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0B0714;
+      --surface: #16101F;
+      --surface-2: #1E1730;
+      --border: #2B2340;
+      --ink: #EDEAF7;
+      --ink-dim: #A79FC2;
+      --violet: #9B7CF0;
+      --violet-soft: #251C42;
+      --gold: #D9A94A;
+      --gold-soft: #362A15;
+      --good: #4ADE94;
+      --good-soft: #113322;
+      --warn: #F0975A;
+      --warn-soft: #3A2412;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px -12px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0B0714;
+    --surface: #16101F;
+    --surface-2: #1E1730;
+    --border: #2B2340;
+    --ink: #EDEAF7;
+    --ink-dim: #A79FC2;
+    --violet: #9B7CF0;
+    --violet-soft: #251C42;
+    --gold: #D9A94A;
+    --gold-soft: #362A15;
+    --good: #4ADE94;
+    --good-soft: #113322;
+    --warn: #F0975A;
+    --warn-soft: #3A2412;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px -12px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    padding-inline: 20px;
+    padding-block: calc(28px + env(safe-area-inset-top, 0px)) calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+  h1, h2, h3 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    text-wrap: balance;
+    color: var(--ink);
+    margin: 0;
+  }
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  a { color: var(--violet); }
+  .shell { max-width: 1040px; margin-inline: auto; }
+
+  /* ---------- header ---------- */
+  .masthead {
+    display: flex; flex-wrap: wrap; gap: 20px 32px;
+    align-items: flex-end; justify-content: space-between;
+    padding-bottom: 24px; margin-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 10px; display: block;
+  }
+  h1.title { font-size: clamp(30px, 4.2vw, 42px); line-height: 1.08; }
+  .dek { color: var(--ink-dim); font-size: 15.5px; margin-top: 8px; max-width: 46ch; }
+  .status-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; box-shadow: var(--shadow); min-width: 220px;
+  }
+  .status-card .num { font-family: "Fraunces", serif; font-size: 30px; font-weight: 600; color: var(--warn); line-height: 1; }
+  .status-card .label { color: var(--ink-dim); font-size: 13px; margin-top: 6px; }
+
+  /* ---------- layout ---------- */
+  .layout { display: grid; grid-template-columns: 200px 1fr; gap: 48px; align-items: start; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+
+  nav.toc {
+    position: sticky; top: calc(20px + env(safe-area-inset-top, 0px));
+    display: flex; flex-direction: column; gap: 3px;
+    font-size: 13.5px;
+  }
+  @media (max-width: 760px) {
+    nav.toc { position: static; flex-direction: row; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 8px; }
+  }
+  nav.toc a {
+    color: var(--ink-dim); text-decoration: none; padding: 5px 0;
+    border-left: 2px solid transparent; padding-left: 10px;
+  }
+  nav.toc a:hover { color: var(--violet); border-left-color: var(--violet); }
+  @media (max-width: 760px) { nav.toc a { border-left: none; padding-left: 0; } }
+
+  main { display: flex; flex-direction: column; gap: 52px; min-width: 0; }
+  section { scroll-margin-top: 20px; }
+  section > h2 {
+    font-size: 22px; display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px;
+  }
+  .sec-no {
+    font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--ink-dim);
+    background: var(--surface-2); border-radius: 6px; padding: 2px 7px;
+  }
+  section > p { max-width: 62ch; color: var(--ink); }
+  section > p.muted { color: var(--ink-dim); }
+
+  /* ---------- chips ---------- */
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; font-weight: 500;
+    letter-spacing: .03em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 100px; white-space: nowrap;
+  }
+  .chip.resolved { background: var(--good-soft); color: var(--good); }
+  .chip.open { background: var(--warn-soft); color: var(--warn); }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ---------- flow diagram ---------- */
+  .flow {
+    display: flex; align-items: stretch; gap: 0; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 22px; box-shadow: var(--shadow); margin-bottom: 14px;
+  }
+  .step {
+    flex: 1 1 150px; min-width: 140px;
+    padding: 14px 16px; border-radius: 10px; background: var(--surface-2);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .step .k { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--violet); text-transform: uppercase; letter-spacing: .06em; }
+  .step .v { font-weight: 600; font-size: 14.5px; }
+  .connector {
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+    color: var(--ink-dim); font-size: 18px; padding: 0 8px;
+  }
+  .connector::after { content: "→"; }
+  @media (max-width: 700px) {
+    .flow { flex-direction: column; }
+    .connector { padding: 4px 0; }
+    .connector::after { content: "↓"; }
+  }
+
+  .branch {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--gold-soft); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; font-size: 14.5px;
+  }
+  .branch .tag {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; text-transform: uppercase;
+    color: var(--gold); flex: 0 0 auto; padding-top: 2px;
+  }
+
+  /* ---------- table ---------- */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; background: var(--surface); }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-dim); background: var(--surface-2); }
+  tr:last-child td { border-bottom: none; }
+  td.rule { font-weight: 600; white-space: nowrap; }
+  td.why { color: var(--ink-dim); }
+
+  /* ---------- decision cards ---------- */
+  .decision {
+    border: 1px solid var(--border); border-radius: 14px; background: var(--surface);
+    box-shadow: var(--shadow); padding: 20px 22px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .decision.is-open { border-color: color-mix(in srgb, var(--warn) 35%, var(--border)); }
+  .decision-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+  .decision-head h3 { font-size: 17px; }
+  .decision p { margin: 0; font-size: 14.5px; }
+  .decision ul { margin: 0; padding-left: 18px; font-size: 14.5px; display: flex; flex-direction: column; gap: 6px; }
+  .math-check {
+    font-family: "IBM Plex Mono", monospace; font-size: 13px; background: var(--surface-2);
+    border-radius: 8px; padding: 12px 14px; line-height: 1.6; color: var(--ink);
+  }
+  .math-check .bad { color: var(--warn); font-weight: 600; }
+  .stack { display: flex; flex-direction: column; gap: 16px; }
+
+  .fork { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 600px) { .fork { grid-template-columns: 1fr; } }
+  .fork-card { background: var(--surface-2); border-radius: 10px; padding: 14px 16px; font-size: 14px; }
+  .fork-card .fk { font-family: "IBM Plex Mono", monospace; font-size: 11px; text-transform: uppercase; color: var(--violet); letter-spacing: .05em; }
+  .fork-card ul { margin: 8px 0 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; }
+
+  /* ---------- address block ---------- */
+  .addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .addr-grid { grid-template-columns: 1fr; } }
+  .addr-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .addr-card .net { font-size: 12.5px; color: var(--ink-dim); margin-bottom: 6px; }
+  .addr-card code { font-size: 12.5px; word-break: break-all; }
+  .caveat { font-size: 13px; color: var(--ink-dim); margin-top: 10px; }
+
+  /* ---------- checklist ---------- */
+  .checklist { display: flex; flex-direction: column; gap: 10px; }
+  .checklist li { list-style: none; display: flex; gap: 10px; font-size: 14.5px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .checklist li::before { content: "—"; color: var(--violet); flex: 0 0 auto; }
+  .checklist { padding: 0; margin: 0; }
+
+  footer {
+    margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border);
+    color: var(--ink-dim); font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+</style>
+
+<div class="shell">
+
+  <header class="masthead">
+    <div>
+      <span class="eyebrow">Primal Cult · pre-code spec</span>
+      <h1 class="title">Raffles</h1>
+      <p class="dek">How a raffle runs, what's locked in, and the two numbers it's waiting on before anyone writes Solidity.</p>
+    </div>
+    <div class="status-card">
+      <div class="num">3</div>
+      <div class="label">open decisions — jump to <a href="#decisions">§5–6</a></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc">
+      <a href="#overview">Overview</a>
+      <a href="#flow">How it runs</a>
+      <a href="#rules">Rules</a>
+      <a href="#randomness">Randomness</a>
+      <a href="#decisions">Open decisions</a>
+      <a href="#repo">Repo &amp; build order</a>
+      <a href="#before-mainnet">Before mainnet</a>
+    </nav>
+
+    <main>
+
+      <section id="overview">
+        <h2><span class="sec-no">01</span> Overview</h2>
+        <p>A raffle holds other people's APE and someone else's NFT while it runs. That's a different bar than the Cultomizer, which only ever touches a wallet's own token — so this ships as its own repo, on its own release schedule, not bolted onto <code>wallet-web3</code>. A different domain was the original ask; the real reason to separate it is that a bug here costs someone else's money, not just a broken page.</p>
+      </section>
+
+      <section id="flow">
+        <h2><span class="sec-no">02</span> How a raffle runs</h2>
+        <div class="flow">
+          <div class="step"><span class="k">1 · Setup</span><span class="v">Organizer deposits the NFT into the contract</span></div>
+          <div class="connector"></div>
+          <div class="step"><span class="k">2 · Selling</span><span class="v">Tickets go on sale, 5 max per wallet</span></div>
+          <div class="connector"></div>
+          <div class="step"><span class="k">3 · Trigger</span><span class="v">Cap is hit, or the organizer forces the start</span></div>
+          <div class="connector"></div>
+          <div class="step"><span class="k">4 · Draw</span><span class="v">vRNG requested → fulfilled ~later</span></div>
+          <div class="connector"></div>
+          <div class="step"><span class="k">5 · Settle</span><span class="v">NFT → winner. APE → dev / treasury, claimable</span></div>
+        </div>
+        <div class="branch">
+          <span class="tag">Escape hatch</span>
+          <span>If the deadline passes before the cap is hit and nobody forced the start, the raffle closes itself: the NFT goes back to whoever deposited it, and every ticket buyer can claim their APE back. No one has to be online for this — it isn't a person deciding to cancel, it's a rule firing on its own.</span>
+        </div>
+      </section>
+
+      <section id="rules">
+        <h2><span class="sec-no">03</span> Rules, locked in</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Rule</th><th>Setting</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td class="rule">Max tickets / wallet</td><td>5</td><td class="why">Stops the obvious case. Doesn't stop someone splitting across wallets — nothing on-chain can.</td></tr>
+              <tr><td class="rule">Organizer buys tickets</td><td>Not allowed</td><td class="why">Otherwise forcing an early draw lets the organizer win their own NFT back and keep the other buyers' APE.</td></tr>
+              <tr><td class="rule">Force-start before cap</td><td>Organizer only, any time</td><td class="why">Doesn't help them — fewer tickets sold means higher odds for whoever already bought in, and less revenue for the organizer. The incentive already points at waiting.</td></tr>
+              <tr><td class="rule">Force-start with 0 tickets</td><td>Draw skipped, NFT returned</td><td class="why">Can't pick a winner from an empty list.</td></tr>
+              <tr><td class="rule">Nobody ever forces it</td><td>Deadline is the backstop</td><td class="why">Past it, anyone can close the raffle. Nothing stays stuck waiting on one wallet.</td></tr>
+              <tr><td class="rule">Cancel at will</td><td>Not possible</td><td class="why">The deadline is the only exit. No one can pull a raffle after tickets are already sold.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="randomness">
+        <h2><span class="sec-no">04</span> Randomness</h2>
+        <p>Chainlink VRF isn't deployed on ApeChain — its supported list stops at Arbitrum, Base, Ronin, Soneium and a handful of others, no Orbit L3s. ApeChain runs its own native vRNG instead: no subscription to fund ahead of time, no whitelist. The contract just quotes a fee in APE via <code>getFee()</code> and pays it per request.</p>
+        <div class="addr-grid">
+          <div class="addr-card">
+            <div class="net">Mainnet · chain 33139</div>
+            <code>0xB9B0d73104BE5e286142258204AA497435a97415</code>
+          </div>
+          <div class="addr-card">
+            <div class="net">Curtis testnet · chain 33111</div>
+            <code>0xA899846c23c6af77Da3DA16C8c6137746a460449</code>
+          </div>
+        </div>
+        <p class="caveat">From docs.apechain.com/vrng — re-check there right before deploying, not copied once and trusted forever.</p>
+        <p>It's two transactions, not one: <code>requestRandomness()</code> fires the moment the cap is hit or the organizer forces the start — ticket sales lock right there — and <code>fulfillRandomness()</code> lands the number a while after. That gap is what gives the "results about an hour later" the community was told.</p>
+        <p class="muted">Two things the contract has to get right here: guard <code>fulfillRandomness()</code> so only the vRNG contract's address can call it — open it up and anyone can call it with whatever number makes them win. And reserve the vRNG fee out of ticket revenue <em>before</em> the dev/treasury split, or a raffle can end up without enough APE left to pay for its own draw.</p>
+      </section>
+
+      <section id="decisions">
+        <h2><span class="sec-no">05</span> Open — the split</h2>
+        <div class="decision is-open">
+          <div class="decision-head">
+            <h3>Dev / treasury split on ticket revenue</h3>
+            <span class="chip open">needs a number</span>
+          </div>
+          <p>Proposed out loud: 5 APE/ticket, "60/30" as a split, with 75 APE to dev and 175 APE to treasury on a 50-ticket raffle.</p>
+          <div class="math-check">
+            75 <span class="mono">(dev)</span> + 175 <span class="mono">(treasury)</span> = 250 APE = 50 tickets × 5 APE ✓<br>
+            75 / 250 = <span class="mono">30%</span> · 175 / 250 = <span class="mono">70%</span><br>
+            → that's <span class="bad">30/70</span>, not the 60/30 that was said. Same numbers, different split than stated — confirm which one's actually meant before it's hardcoded.
+          </div>
+          <p>Also worth deciding: fixed forever, or adjustable later behind an admin call with a hard ceiling (e.g. "dev cut can never exceed 30%") so the community can see the limit even if the exact number moves?</p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="sec-no">06</span> Open — one raffle or many</h2>
+        <div class="decision is-open">
+          <div class="decision-head">
+            <h3>Fixed parameters vs. a configurable raffle factory</h3>
+            <span class="chip open">changes the build size</span>
+          </div>
+          <p>Making ticket price and ticket count configurable per raffle — as asked — isn't a settings tweak. It changes what gets built.</p>
+          <div class="fork">
+            <div class="fork-card">
+              <div class="fk">Fixed</div>
+              <ul>
+                <li>Price &amp; cap baked in at deploy</li>
+                <li>One contract, one raffle at a time</li>
+                <li>Smallest surface to test and audit</li>
+                <li>Ships fast</li>
+              </ul>
+            </div>
+            <div class="fork-card">
+              <div class="fk">Configurable</div>
+              <ul>
+                <li>A factory: new raffles spun up with their own price / cap / prize</li>
+                <li>Needs access control — who's allowed to create one</li>
+                <li>Needs the admin panel itself, a second webapp</li>
+                <li>Real flexibility, real extra weeks</li>
+              </ul>
+            </div>
+          </div>
+          <p class="muted">Either is buildable. This just has to be picked before the contract's shape is decided — it isn't a parameter you add later.</p>
+        </div>
+      </section>
+
+      <section id="repo">
+        <h2><span class="sec-no">07</span> Repo &amp; build order</h2>
+        <ul class="checklist">
+          <li>New repo, separate from <code>wallet-web3</code> / <code>backend</code> — third-party funds and NFTs don't share a deploy with the Cultomizer.</li>
+          <li>Contract + tests first. The tests are the proof that every rule in §3 actually holds — max tickets per wallet, organizer locked out, zero-ticket force-start, the deadline backstop.</li>
+          <li>Full raffle end-to-end on Curtis (ApeChain testnet) — deposit, buy, force or fill, draw, claim — before anything touches mainnet.</li>
+          <li>The webapp to run it comes after the contract is solid, not alongside it.</li>
+        </ul>
+      </section>
+
+      <section id="before-mainnet">
+        <h2><span class="sec-no">08</span> Before real APE goes in</h2>
+        <ul class="checklist">
+          <li>External audit. Non-negotiable once it's holding someone else's funds and NFT — an error here doesn't get a hotfix.</li>
+          <li>The NFT has to be sitting in the contract before ticket sales open — never left in the organizer's wallet where it could be sold or moved mid-raffle.</li>
+          <li>The treasury address should be a multisig, not one wallet — that's the difference between the community seeing a treasury and seeing one person's balance with a different label.</li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>
+    <span>Draft v1 — everything above is settled except §5 and §6.</span>
+    <span>Send the numbers whenever; this gets republished, not rewritten.</span>
+  </footer>
+
+</div>
