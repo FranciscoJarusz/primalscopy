@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ape } from "../../lib/raffles/format";
+import { ape } from "@/lib/raffles/format";
 
 /// El selector de cantidad mas el boton de comprar. Lo usan el destacado y las
 /// tarjetas chicas, con la unica diferencia del tamano y del texto del boton.

@@ -1,8 +1,8 @@
 ---
-import CultomizerLayout from "../../layouts/CultomizerLayout.astro";
-import CultomizerEntry from "../../components/cultomizer/CultomizerEntry";
+import CultomizerLayout from "@/layouts/CultomizerLayout.astro";
+import CultomizerHero from "@/components/cultomizer/CultomizerHero.astro";
 ---
 
 <CultomizerLayout title="Cultomizer - Primal Cult" activo="cultomizer">
-  <CultomizerEntry client:only="react" />
+  <CultomizerHero />
 </CultomizerLayout>

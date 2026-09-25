@@ -1,5 +1,5 @@
-import WalletProvider from "./WalletProvider";
-import CustomizerApp from "./CustomizerApp";
+import WalletProvider from "@/components/cultomizer/WalletProvider";
+import CustomizerApp from "@/components/cultomizer/CustomizerApp";
 
 /// Misma razon que en CultomizerEntry: el proveedor tiene que envolver desde
 /// adentro de React. Si se anidaran en el .astro serian dos islas separadas y

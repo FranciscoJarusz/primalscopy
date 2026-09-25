@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
-import { useUserNFTs } from './useUserNFTs';
+import { useEffect, useState } from "react";
+import { useAccount } from "wagmi";
+import { useUserNFTs } from "@/hooks/cultomizer/useUserNFTs";
 
 interface AutoDetectionState {
   hasDetected: boolean;
@@ -14,29 +14,29 @@ export const useAutoNFTDetection = () => {
   const [detectionState, setDetectionState] = useState<AutoDetectionState>({
     hasDetected: false,
     isFirstConnection: false,
-    detectionComplete: false
+    detectionComplete: false,
   });
 
   useEffect(() => {
     // Cuando el usuario se conecta por primera vez
     if (isConnected && address && !detectionState.hasDetected) {
-      setDetectionState(prev => ({
+      setDetectionState((prev) => ({
         ...prev,
         hasDetected: true,
-        isFirstConnection: true
+        isFirstConnection: true,
       }));
-      
-      console.log('🔍 Starting automatic NFT detection for:', address);
+
+      console.log("🔍 Starting automatic NFT detection for:", address);
     }
 
     // Cuando la detección se completa
     if (detectionState.hasDetected && !isLoading && !error) {
-      setDetectionState(prev => ({
+      setDetectionState((prev) => ({
         ...prev,
         detectionComplete: true,
-        isFirstConnection: false
+        isFirstConnection: false,
       }));
-      
+
       console.log(`✅ Detection complete: ${nfts.length} NFTs found`);
     }
 
@@ -45,10 +45,17 @@ export const useAutoNFTDetection = () => {
       setDetectionState({
         hasDetected: false,
         isFirstConnection: false,
-        detectionComplete: false
+        detectionComplete: false,
       });
     }
-  }, [isConnected, address, isLoading, error, nfts.length, detectionState.hasDetected]);
+  }, [
+    isConnected,
+    address,
+    isLoading,
+    error,
+    nfts.length,
+    detectionState.hasDetected,
+  ]);
 
   return {
     ...detectionState,
@@ -56,7 +63,6 @@ export const useAutoNFTDetection = () => {
     isLoading,
     error,
     balance,
-    isConnected
+    isConnected,
   };
 };
-

@@ -1,16 +1,16 @@
 import { ethers } from "ethers";
-import PrimalImage from "../shared/PrimalImage";
-import Badge from "./Badge";
-import ProgressBar from "./ProgressBar";
-import BuyTickets from "./BuyTickets";
-import { countdown } from "../../lib/raffles/format";
+import PrimalImage from "@/components/shared/PrimalImage";
+import Badge from "@/components/raffles/Badge";
+import ProgressBar from "@/components/raffles/ProgressBar";
+import BuyTickets from "@/components/raffles/BuyTickets";
+import { countdown } from "@/lib/raffles/format";
 import {
   SELLING,
   DRAWING,
   MAX_TICKETS,
   type Item,
   type Actions,
-} from "../../lib/raffles/contrato";
+} from "@/lib/raffles/contrato";
 
 /// Un raffle en la grilla de abiertos.
 export default function RaffleCard({

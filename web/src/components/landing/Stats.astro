@@ -1,0 +1,45 @@
+---
+const initialStats = [
+    { value: '2,712', label: 'Primals' },
+    { value: '987.12', label: '$APE burned', id: 'ape-burned' },
+    { value: '+600', label: 'Cultists' },
+];
+---
+
+<section
+    class="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:flex lg:items-center lg:justify-between"
+    aria-label="Primal Cult stats"
+>
+    {initialStats.map((stat) => (
+        <div class="flex flex-col items-center justify-center gap-2 lg:gap-3 rounded-2xl sm:rounded-3xl bg-darkblue px-6 lg:px-12 pt-1 pb-4 text-center text-yellow shadow-lg shadow-darkblue/50">
+            <p id={stat.id} class="font-accent text-5xl sm:text-4xl lg:text-6xl">
+                {stat.value}
+            </p>
+            <span class="text-sm sm:text-base font-bold uppercase">{stat.label}</span>
+        </div>
+    ))}
+</section>
+
+<script>
+    const burned = document.querySelector<HTMLElement>('#ape-burned');
+
+    if (burned) {
+        const refreshBurned = async () => {
+            try {
+                const response = await fetch('/api/stats/burned');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                if (typeof data.value === 'number') {
+                    burned.textContent = data.value.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    });
+                }
+            } catch {}
+        };
+
+        refreshBurned();
+        window.setInterval(refreshBurned, 5 * 60 * 1000);
+    }
+</script>

@@ -1,0 +1,6 @@
+---
+// /admin no tiene contenido propio: lleva a la primera herramienta.
+import { ADMIN_SECCIONES } from "@/lib/admin";
+
+return Astro.redirect(ADMIN_SECCIONES[0].href);
+---

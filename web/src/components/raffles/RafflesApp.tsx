@@ -1,9 +1,9 @@
-import FeaturedRaffle from "./FeaturedRaffle";
-import RaffleCard from "./RaffleCard";
-import Results from "./Results";
-import ExpiredRaffles from "./ExpiredRaffles";
-import { useRaffles } from "../../hooks/raffles/useRaffles";
-import { SELLING, DRAWING, CLOSED, EXPIRED } from "../../lib/raffles/contrato";
+import FeaturedRaffle from "@/components/raffles/FeaturedRaffle";
+import RaffleCard from "@/components/raffles/RaffleCard";
+import Results from "@/components/raffles/Results";
+import ExpiredRaffles from "@/components/raffles/ExpiredRaffles";
+import { useRaffles } from "@/hooks/raffles/useRaffles";
+import { SELLING, DRAWING, CLOSED, EXPIRED } from "@/lib/raffles/contrato";
 
 /// El contenido de la pantalla de raffles. El header y el pie los pone el
 /// layout, asi que aca solo van las secciones.
@@ -100,7 +100,11 @@ export default function RafflesApp() {
       )}
 
       {!cargando && expirados.length > 0 && (
-        <ExpiredRaffles items={expirados} ocupado={ocupado} acciones={acciones} />
+        <ExpiredRaffles
+          items={expirados}
+          ocupado={ocupado}
+          acciones={acciones}
+        />
       )}
     </div>
   );

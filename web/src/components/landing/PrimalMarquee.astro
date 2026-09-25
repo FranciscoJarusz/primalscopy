@@ -1,0 +1,85 @@
+---
+interface Props {
+    desde: number;
+    hasta: number;
+    velocidad?: number;
+    reversa?: boolean;
+    tamano?: string;
+    aleatorio?: boolean;
+    cantidad?: number;
+}
+
+const {
+    desde,
+    hasta,
+    velocidad = 32,
+    reversa = false,
+    tamano = 'clamp(7rem, 14vw, 18rem)',
+    aleatorio = false,
+    cantidad,
+} = Astro.props;
+
+const tokens = Array.from(
+    { length: Math.max(0, hasta - desde + 1) },
+    (_, indice) => desde + indice
+);
+
+if (aleatorio) {
+    for (let i = tokens.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [tokens[i], tokens[j]] = [tokens[j], tokens[i]];
+    }
+}
+
+// Se muestra una muestra, no el rango entero. Las imagenes son copias de
+// 400px en WebP animado (public/images/primals/): los GIF originales son de
+// 2000x2000 y ~1,2 MB, y animar decenas a la vez laggeaba el scroll. Si se
+// cambian los rangos de index.astro, hay que generar las copias nuevas.
+const visibles = cantidad ? tokens.slice(0, cantidad) : tokens;
+---
+
+<section
+    data-marquee
+    class="relative left-1/2 ml-[-50vw] w-screen overflow-hidden bg-darkblue shadow-lg shadow-darkblue/50"
+    aria-label={`Primals ${desde} a ${hasta}`}
+    style={`--marquee-speed: ${velocidad}s; --primal-size: ${tamano};`}
+>
+    <div
+        class:list={[
+            'flex w-max animate-marquee will-change-transform motion-reduce:[animation-play-state:paused]',
+            reversa && '[animation-direction:reverse]',
+        ]}
+    >
+        {[visibles, visibles].map((grupo, indice) => (
+            <div class="flex shrink-0" aria-hidden={indice === 1}>
+                {grupo.map((tokenId) => (
+                    <img
+                        src={`/images/primals/${tokenId}.webp`}
+                        alt={indice === 0 ? `Primal Cult #${tokenId}` : ''}
+                        class="block size-(--primal-size) shrink-0 rounded-[10px] border-4 border-darkblue object-cover"
+                        loading={indice === 0 ? 'eager' : 'lazy'}
+                        fetchpriority={indice === 0 ? 'high' : 'auto'}
+                        decoding="async"
+                    />
+                ))}
+            </div>
+        ))}
+    </div>
+</section>
+
+<script>
+    // Fuera de pantalla el marquee no se ve: frenarlo ahorra el trabajo de
+    // seguir moviendo y pintando las imagenes mientras se scrollea otra cosa.
+    const observer = new IntersectionObserver((entradas) => {
+        for (const e of entradas) {
+            e.target.toggleAttribute('data-pausado', !e.isIntersecting);
+        }
+    });
+    document.querySelectorAll('[data-marquee]').forEach((m) => observer.observe(m));
+</script>
+
+<style>
+    [data-marquee][data-pausado] > div {
+        animation-play-state: paused;
+    }
+</style>

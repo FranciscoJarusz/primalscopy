@@ -1,5 +1,5 @@
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
-import { APECHAIN } from "../../lib/cultomizer/contracts";
+import { APECHAIN } from "@/lib/cultomizer/contracts";
 
 /// Avisa cuando la wallet esta parada en otra red y ofrece cambiarla.
 ///

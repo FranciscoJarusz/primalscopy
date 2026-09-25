@@ -1,9 +1,4 @@
 ---
-import CultomizerLayout from "../../layouts/CultomizerLayout.astro";
-import AdminApp from "../../components/cultomizer/AdminApp";
+// El panel se mudo a /admin: esto mantiene andando los links viejos.
+return Astro.redirect("/admin/traits", 301);
 ---
-
-<CultomizerLayout title="Admin - Primal Cult" activo="cultomizer">
-  {/* No necesita wallet: se autentica con un token contra el backend. */}
-  <AdminApp client:only="react" />
-</CultomizerLayout>

@@ -14,44 +14,44 @@ export type StoredPrimal = { tokenId: string; imageUrl?: string };
 type Mapa = Record<string, StoredPrimal>;
 
 function leerMapa(): Mapa {
-    if (typeof window === "undefined") return {};
-    try {
-        return JSON.parse(localStorage.getItem(CLAVE) || "{}") as Mapa;
-    } catch {
-        return {};
-    }
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(CLAVE) || "{}") as Mapa;
+  } catch {
+    return {};
+  }
 }
 
 /// El selector llama a esto cuando ya sabe qué Primals tiene la wallet.
 export function rememberPrimal(direccion: string, primal: StoredPrimal) {
-    if (typeof window === "undefined" || !direccion) return;
-    try {
-        const mapa = leerMapa();
-        mapa[direccion.toLowerCase()] = primal;
-        localStorage.setItem(CLAVE, JSON.stringify(mapa));
-        // El avatar puede estar montado en otra parte del arbol: este aviso es
-        // la forma de que se entere sin pasar props por toda la aplicacion.
-        window.dispatchEvent(new CustomEvent("primal-avatar-cambio"));
-    } catch {
-        // Si no se puede guardar (modo privado, sin espacio), el avatar
-        // generado sigue funcionando: no vale la pena romper nada por esto.
-    }
+  if (typeof window === "undefined" || !direccion) return;
+  try {
+    const mapa = leerMapa();
+    mapa[direccion.toLowerCase()] = primal;
+    localStorage.setItem(CLAVE, JSON.stringify(mapa));
+    // El avatar puede estar montado en otra parte del arbol: este aviso es
+    // la forma de que se entere sin pasar props por toda la aplicacion.
+    window.dispatchEvent(new CustomEvent("primal-avatar-cambio"));
+  } catch {
+    // Si no se puede guardar (modo privado, sin espacio), el avatar
+    // generado sigue funcionando: no vale la pena romper nada por esto.
+  }
 }
 
 export function readPrimal(direccion: string): StoredPrimal | null {
-    if (!direccion) return null;
-    return leerMapa()[direccion.toLowerCase()] ?? null;
+  if (!direccion) return null;
+  return leerMapa()[direccion.toLowerCase()] ?? null;
 }
 
 /// Si la wallet se desconecta no borramos nada: cuando vuelva, su foto ya está.
 export function forgetPrimal(direccion: string) {
-    if (typeof window === "undefined" || !direccion) return;
-    try {
-        const mapa = leerMapa();
-        delete mapa[direccion.toLowerCase()];
-        localStorage.setItem(CLAVE, JSON.stringify(mapa));
-        window.dispatchEvent(new CustomEvent("primal-avatar-cambio"));
-    } catch {
-        /* igual que arriba */
-    }
+  if (typeof window === "undefined" || !direccion) return;
+  try {
+    const mapa = leerMapa();
+    delete mapa[direccion.toLowerCase()];
+    localStorage.setItem(CLAVE, JSON.stringify(mapa));
+    window.dispatchEvent(new CustomEvent("primal-avatar-cambio"));
+  } catch {
+    /* igual que arriba */
+  }
 }

@@ -9,7 +9,7 @@ export default function Ticket({ className = "" }: { className?: string }) {
       className={`rounded-xl bg-black/30 border border-white/10 flex items-center justify-center px-6 py-5 ${className}`}
     >
       <img
-        src="/ticket.svg"
+        src="/icons/ticket.svg"
         alt="Primal Cult raffle ticket"
         className="w-full max-w-[280px] h-auto"
       />

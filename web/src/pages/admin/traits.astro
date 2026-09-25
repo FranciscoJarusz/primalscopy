@@ -1,0 +1,9 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import TraitsAdmin from "@/components/admin/TraitsAdmin";
+---
+
+<AdminLayout title="Traits - Admin - Primal Cult" activo="traits">
+  {/* No necesita wallet: se autentica con un token contra el backend. */}
+  <TraitsAdmin client:only="react" />
+</AdminLayout>

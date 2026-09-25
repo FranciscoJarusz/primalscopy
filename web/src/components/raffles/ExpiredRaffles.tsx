@@ -1,5 +1,5 @@
-import PrimalImage from "../shared/PrimalImage";
-import type { Item, Actions } from "../../lib/raffles/contrato";
+import PrimalImage from "@/components/shared/PrimalImage";
+import type { Item, Actions } from "@/lib/raffles/contrato";
 
 /// Los que nunca llegaron al cupo. Nadie gana y cada uno recupera lo suyo.
 export default function ExpiredRaffles({

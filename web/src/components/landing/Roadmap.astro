@@ -1,0 +1,110 @@
+---
+type Variante = 'finished' | 'implemented' | 'pending';
+
+interface Hito {
+    estado: string;
+    titulo: string;
+    texto: string;
+    variante: Variante;
+}
+
+const hitos: Hito[] = [
+    {
+        estado: 'Finished',
+        titulo: 'Smooth launch',
+        texto: 'Community creation around all the collection to get a smooth launch on Blever.',
+        variante: 'finished',
+    },
+    {
+        estado: 'Implemented',
+        titulo: 'Weekly raffles',
+        texto: 'Giveaways for members and holders, hosted on Discord and X.',
+        variante: 'implemented',
+    },
+    {
+        estado: 'Implemented',
+        titulo: 'Quests and events',
+        texto: 'Fun interactive actions made in order to activate engagement in the community.',
+        variante: 'implemented',
+    },
+    {
+        estado: 'Implemented',
+        titulo: 'Soft staking Discord',
+        texto: 'Earn passive income inside our Discord by just getting FOG eligible roles.',
+        variante: 'implemented',
+    },
+    {
+        estado: 'Implemented',
+        titulo: 'Otherside avatar',
+        texto: 'Our Legacy Model is ready to glitch the Yuga Labs Metaverse..',
+        variante: 'implemented',
+    },
+    {
+        estado: 'Implemented',
+        titulo: 'The Cultomizer',
+        texto: 'Customize your Primal on-chain, tailor it to your liking on our website.',
+        variante: 'implemented',
+    },
+    {
+        estado: 'In progress',
+        titulo: 'The settlement',
+        texto: 'Earn passive income inside our Discord by just getting FOG eligible roles.',
+        variante: 'pending',
+    },
+    {
+        estado: 'Upcoming',
+        titulo: 'The cult never dies',
+        texto: 'Website transitions into a living archive with a real-time Burn Tracker.',
+        variante: 'pending',
+    },
+    {
+        estado: 'Upcoming',
+        titulo: 'The legacy campaign',
+        texto: 'Community-led, decentralized campaigns on X. "Trade to Burn." The more we trade, the better.',
+        variante: 'pending',
+    },
+];
+
+const tarjeta: Record<Variante, string> = {
+    finished: 'bg-yellow text-darkblue shadow-lg shadow-darkblue/50',
+    implemented: 'bg-lightblue text-darkblue shadow-lg shadow-darkblue/50',
+    pending: 'bg-red text-lightblue shadow-lg shadow-darkblue/50',
+};
+
+const insignia: Record<Variante, string> = {
+    finished: 'bg-darkblue text-yellow',
+    implemented: 'bg-darkblue text-lightblue',
+    pending: 'bg-lightblue text-red',
+};
+---
+
+<section
+    id="roadmap"
+    class="scroll-mt-24 sm:scroll-mt-32 flex flex-col gap-4 sm:gap-7"
+    aria-labelledby="roadmap-titulo"
+>
+    <h2
+        id="roadmap-titulo"
+        class="rounded-2xl sm:rounded-[30px] bg-yellow pt-1 pb-5 sm:pt-2 sm:pb-7 xl:pb-9 text-center font-accent text-5xl sm:text-6xl xl:text-7xl uppercase text-darkblue shadow-lg shadow-darkblue/50"
+    >
+        Roadmap
+    </h2>
+
+    <div class="grid grid-cols-1 gap-4 sm:gap-7 md:grid-cols-2 lg:grid-cols-3">
+        {hitos.map((hito) => (
+            <article
+                class={`flex flex-col gap-3 sm:gap-4 rounded-2xl sm:rounded-[30px] p-6 sm:p-8 ${tarjeta[hito.variante]}`}
+            >
+                <span
+                    class={`w-fit rounded-[10px] px-4 py-1.5 text-xs font-bold uppercase tracking-wide ${insignia[hito.variante]}`}
+                >
+                    {hito.estado}
+                </span>
+
+                <h3 class="font-accent text-3xl sm:text-4xl uppercase">{hito.titulo}</h3>
+
+                <p class="text-base sm:text-lg leading-tight">{hito.texto}</p>
+            </article>
+        ))}
+    </div>
+</section>

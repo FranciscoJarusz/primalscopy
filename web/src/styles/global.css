@@ -1,18 +1,45 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Sunzone";
+  src: url("/fonts/sunzone.ttf") format("truetype");
+  ascent-override: 100%;
+  descent-override: 0%;
+  line-gap-override: 0%;
+}
+
 @theme {
-  --color-primacult: #1322d3;
-  --color-primacult-dark: #090746;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-darkblue: #090050;
+  --color-blue: #002e93;
+  --color-lightblue: #dfe8ff;
+  --color-yellow: #fdf468;
+  --color-red: #c20e35;
+
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-accent: "Sunzone", ui-sans-serif, system-ui, sans-serif;
+
+  --animate-marquee: marquee-scroll var(--marquee-speed, 32s) linear infinite;
+
+  @keyframes marquee-scroll {
+    to {
+      transform: translateX(-50%);
+    }
+  }
 }
 
-body {
-  font-family: var(--font-sans);
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+a {
+  line-height: 0.85;
 }
 
-html {
-  scrollbar-width: auto;
-  scrollbar-color: #bfdbfe #090746;
+::selection {
+  background-color: var(--color-darkblue);
+  color: var(--color-yellow);
 }
 
 @supports not (scrollbar-color: auto) {
@@ -21,10 +48,44 @@ html {
     height: 14px;
   }
   ::-webkit-scrollbar-track {
-    background: #090746;
+    background: var(--color-darkblue);
   }
   ::-webkit-scrollbar-thumb {
-    background: #1322d3;
+    background: var(--color-blue);
+    border-radius: 8px;
+  }
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-darkblue);
+  background-image: url("/brand/pattern.svg");
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+  background-attachment: fixed;
+  scrollbar-width: auto;
+  scrollbar-color: #bfdbfe #090746;
+  overflow-x: clip;
+}
+
+html {
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-yellow) var(--color-darkblue);
+}
+
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-darkblue);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-yellow);
     border-radius: 8px;
   }
 }

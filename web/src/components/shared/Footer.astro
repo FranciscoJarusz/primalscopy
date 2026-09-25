@@ -1,0 +1,64 @@
+---
+const REDES = [
+    {
+        nombre: 'Discord',
+        href: 'https://discord.gg/djJaV4keCQ',
+        img: '/icons/discord.svg',
+    },
+    {
+        nombre: 'X',
+        href: 'https://x.com/primal_cult',
+        img: '/icons/x.svg',
+    },
+    {
+        nombre: 'OpenSea',
+        href: 'https://opensea.io/collection/primalcult',
+        img: '/icons/opensea.svg',
+    },
+];
+
+const anio = new Date().getFullYear();
+
+interface Props {
+    class?: string;
+}
+
+const { class: clase = '' } = Astro.props;
+---
+
+<footer
+    class:list={[
+        'flex flex-col md:flex-row gap-5 md:gap-10 items-center justify-between rounded-2xl sm:rounded-[30px] px-4 py-6 sm:px-6 lg:px-10 text-center bg-darkblue shadow-lg shadow-darkblue/50',
+        clase,
+    ]}
+>
+    <div class="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4">
+        <a
+            href="/"
+            class="flex items-center gap-3 hover:scale-102 active:scale-97 transition-transform duration-300"
+        >
+            <img
+                src="/brand/logo-icon.svg"
+                alt="Primal Cult"
+                class="w-7 h-auto"
+            />
+        </a>
+        <p class="font-accent text-base sm:text-lg text-lightblue text-balance">
+            &copy; {anio} - Primal Cult. All rights reserved.
+        </p>
+    </div>
+
+    <div class="flex justify-center gap-6">
+        {REDES.map((red) => (
+            <a
+                href={red.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={red.nombre}
+                class="p-1 scale-100 hover:scale-102 active:scale-97 transition-all duration-300"
+            >
+                <img src={red.img} alt={red.nombre} width={28} height={28} />
+            </a>
+        ))}
+    </div>
+</footer>

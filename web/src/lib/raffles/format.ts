@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { ACCOUNTS } from "./accounts";
+import { ACCOUNTS } from "@/lib/raffles/accounts";
 
 /// Como se muestran las cosas. Nada de esto toca la blockchain.
 

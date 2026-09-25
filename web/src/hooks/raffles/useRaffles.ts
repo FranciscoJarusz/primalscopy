@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ethers } from "ethers";
 import { useStore } from "@nanostores/react";
-import { accountIndex, version, refresh } from "../../stores/raffles/session";
-import { ACCOUNTS } from "../../lib/raffles/accounts";
+import { accountIndex, version, refresh } from "@/stores/raffles/session";
+import { ACCOUNTS } from "@/lib/raffles/accounts";
 import {
   provider,
   HUB,
@@ -12,7 +12,7 @@ import {
   type Item,
   type Raffle,
   type Actions,
-} from "../../lib/raffles/contrato";
+} from "@/lib/raffles/contrato";
 
 export type Aviso = { tipo: "ok" | "error"; texto: string } | null;
 

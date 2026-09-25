@@ -1,12 +1,30 @@
 ---
-// La landing. Por ahora solo el Hero, con el contenido real de
-// primalcult.framer.website. Las otras 8 secciones (About, Roadmap, Benefits,
-// Cultomizer, Soft Staking, Mining, Team, IP Rights) quedan para la proxima
-// pasada de diseño — no se inventaron ni se recortaron aca.
-import LandingLayout from "../layouts/LandingLayout.astro";
-import Hero from "../components/landing/Hero.astro";
+import LandingLayout from "@/layouts/LandingLayout.astro";
+import Hero from "@/components/landing/Hero.astro";
+import Stats from "@/components/landing/Stats.astro";
+import PrimalMarquee from "@/components/landing/PrimalMarquee.astro";
+import PrimalCult from "@/components/landing/PrimalCult.astro";
+import Roadmap from "@/components/landing/Roadmap.astro";
+import CultomizerSec from "@/components/landing/CultomizerSec.astro";
+import StakingSec from "@/components/landing/StakingSec.astro";
+import Caves from "@/components/landing/Caves.astro";
+import IpRights from "@/components/landing/IpRights.astro";
+import TeamSec from "@/components/landing/TeamSec.astro";
 ---
 
 <LandingLayout title="Primal Cult" activo="home">
-  <Hero />
+  <div class="flex flex-col gap-20">
+    <Hero />
+    <PrimalMarquee desde={1} hasta={49} velocidad={10} aleatorio cantidad={14} />
+    <PrimalCult />
+    <Stats />
+    <Roadmap />
+    <PrimalMarquee desde={50} hasta={100} velocidad={10} aleatorio cantidad={14} />
+    <CultomizerSec />
+    <StakingSec />
+    <Caves />
+    <PrimalMarquee desde={1500} hasta={1550} velocidad={10} aleatorio cantidad={14} />
+    <TeamSec />
+    <IpRights />
+  </div>
 </LandingLayout>

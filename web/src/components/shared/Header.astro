@@ -1,0 +1,291 @@
+---
+import WalletIsland from '@/components/shared/WalletIsland';
+
+export type Seccion = { nombre: string; href: string; id: string; oculta?: boolean };
+
+export const SECCIONES: Seccion[] = [
+    { id: 'home', nombre: 'Home', href: '/' },
+    { id: 'cultomizer', nombre: 'Cultomizer', href: '/cultomizer' },
+    // Oculta hasta que Raffles salga: las paginas siguen andando por URL.
+    { id: 'raffles', nombre: 'Raffles', href: '/raffles', oculta: true },
+];
+
+interface Props {
+    activo?: string;
+    secciones?: Seccion[];
+}
+
+const { activo = 'home', secciones: todas = SECCIONES } = Astro.props;
+const secciones = todas.filter((s) => !s.oculta);
+
+const clase = (id: string) =>
+    id === activo
+        ? 'text-yellow'
+        : 'text-lightblue hover:text-yellow transition-all duration-300';
+---
+
+<header
+    class="sticky top-3 sm:top-4 z-30 flex items-center justify-between gap-x-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-10 lg:py-5"
+    data-header
+>
+    {/* El fondo del header es una caja aparte detras del contenido. Al abrir
+        el menu crece hacia abajo y al cerrarlo se encoge: una sola forma con
+        las esquinas siempre redondeadas, sin costura entre header y menu. */}
+    <div
+        data-fondo
+        aria-hidden="true"
+        class="absolute inset-x-0 top-0 -z-10 h-full bg-darkblue rounded-2xl sm:rounded-[30px] shadow-lg shadow-darkblue/50 motion-reduce:transition-none"
+    ></div>
+
+    <div class="flex items-center gap-6">
+        <a
+            href="/"
+            class="flex items-center gap-3 hover:scale-102 active:scale-97 transition-transform duration-300"
+        >
+            <img
+                src="/brand/logo.svg"
+                alt="Primal Cult"
+                class="w-22 sm:w-30 h-auto"
+            />
+        </a>
+    </div>
+
+    <nav class="hidden lg:flex items-center justify-center gap-6 xl:gap-10 text-xl uppercase font-accent text-lightblue mb-1">
+        {secciones.map((s) => (
+            <a
+                href={s.href}
+                class={
+                    s.id === activo
+                        ? 'text-yellow'
+                        : 'hover:text-yellow transition-all duration-300'
+                }
+            >
+                {s.nombre}
+            </a>
+        ))}
+    </nav>
+
+    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <slot name="derecha">
+            <WalletIsland
+                client:load
+                dato={activo === 'raffles' ? 'saldo' : 'primals'}
+            />
+        </slot>
+
+        <button
+            type="button"
+            aria-expanded="false"
+            aria-controls="menu-secciones"
+            aria-label="Abrir menu"
+            data-menu-toggle
+            class="lg:hidden cursor-pointer rounded-lg text-lightblue hover:text-yellow transition-colors duration-300"
+        >
+            <span class="relative block w-5 h-5" aria-hidden="true">
+                <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    data-icono="abrir"
+                    class="absolute inset-0 transition-all duration-300 ease-out motion-reduce:transition-none opacity-100"
+                >
+                    <line x1="3" y1="6" x2="17" y2="6"></line>
+                    <line x1="3" y1="10" x2="17" y2="10"></line>
+                    <line x1="3" y1="14" x2="17" y2="14"></line>
+                </svg>
+
+                <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    data-icono="cerrar"
+                    class="absolute inset-0 transition-all duration-300 ease-out motion-reduce:transition-none opacity-0 -rotate-90 scale-75"
+                >
+                    <line x1="5" y1="5" x2="15" y2="15"></line>
+                    <line x1="15" y1="5" x2="5" y2="15"></line>
+                </svg>
+            </span>
+        </button>
+    </div>
+
+    {/* Los links flotan debajo del header, sobre el fondo que se estira: tapan
+        la pagina en lugar de empujarla. */}
+    <div
+        data-menu-caja
+        class="lg:hidden absolute inset-x-0 top-full -mt-px invisible pointer-events-none [clip-path:inset(0_0_100%_0)]"
+    >
+        <div>
+            <nav
+                id="menu-secciones"
+                aria-hidden="true"
+                data-menu-nav
+                class="mx-4 sm:mx-6 border-t border-lightblue/15 pt-3 pb-3 sm:pb-4 flex flex-col gap-1 font-accent uppercase text-lg motion-reduce:transition-none opacity-0"
+            >
+                {secciones.map((s) => (
+                    <a
+                        href={s.href}
+                        tabindex="-1"
+                        class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
+                    >
+                        {s.nombre}
+                    </a>
+                ))}
+
+                <button
+                    type="button"
+                    tabindex="-1"
+                    data-menu-logout
+                    class="hidden in-data-wallet:flex items-center gap-2 mt-1 border-t border-lightblue/15 px-3 pt-2.5 pb-2.5 font-accent uppercase text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
+                >
+                    <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        aria-hidden="true"
+                    >
+                        <path d="M21,7V17a5.006,5.006,0,0,1-5,5H12a1,1,0,0,1,0-2h4a3,3,0,0,0,3-3V7a3,3,0,0,0-3-3H12a1,1,0,0,1,0-2h4A5.006,5.006,0,0,1,21,7Zm-6.293,4.293-4-4A1,1,0,1,0,9.293,8.707L11.586,11H4a1,1,0,0,0,0,2h7.586L9.293,15.293a1,1,0,1,0,1.414,1.414l4-4A1,1,0,0,0,14.707,11.293Z" />
+                    </svg>
+                    <span class="pb-1">Log out</span>
+                </button>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<script>
+    const header = document.querySelector<HTMLElement>('[data-header]');
+    if (header) {
+        const boton =
+            header.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+        const caja = header.querySelector<HTMLElement>('[data-menu-caja]');
+        const nav = header.querySelector<HTMLElement>('[data-menu-nav]');
+        const abrir = header.querySelector<HTMLElement>('[data-icono="abrir"]');
+        const cerrar = header.querySelector<HTMLElement>(
+            '[data-icono="cerrar"]'
+        );
+
+        let abierto = false;
+        const fondo = header.querySelector<HTMLElement>('[data-fondo]');
+
+        // Abrir: suave y con un poco de inercia. Cerrar: mas corto, que se
+        // sienta como que se guarda y no como que se corta.
+        const CURVA_ABRIR = '420ms cubic-bezier(0.22, 1, 0.36, 1)';
+        const CURVA_CERRAR = '320ms cubic-bezier(0.4, 0, 0.2, 1)';
+        const ABRIR = 'height ' + CURVA_ABRIR;
+        const CERRAR = 'height ' + CURVA_CERRAR;
+
+        const altoAbierto = () => header.offsetHeight + (caja?.offsetHeight ?? 0);
+
+        const pintar = () => {
+            boton?.setAttribute('aria-expanded', String(abierto));
+            boton?.setAttribute(
+                'aria-label',
+                abierto ? 'Cerrar menu' : 'Abrir menu'
+            );
+
+            if (fondo) {
+                // La altura se anima entre dos valores en px: se parte de la
+                // actual para que funcione tambien si se toca a mitad de camino.
+                fondo.style.height = fondo.offsetHeight + 'px';
+                void fondo.offsetHeight;
+                fondo.style.transition = abierto ? ABRIR : CERRAR;
+                fondo.style.height = (abierto ? altoAbierto() : header.offsetHeight) + 'px';
+            }
+
+            // Los links no se mueven: el recorte baja y sube junto con el
+            // fondo, asi el fondo los va descubriendo y tapando como una
+            // cortina. Al cerrar se ocultan recien cuando el recorte termino.
+            if (caja) {
+                caja.style.transition = abierto
+                    ? `clip-path ${CURVA_ABRIR}, visibility 0s`
+                    : `clip-path ${CURVA_CERRAR}, visibility 0s linear 320ms`;
+                caja.style.clipPath = abierto ? 'inset(0 0 0 0)' : 'inset(0 0 100% 0)';
+            }
+            caja?.classList.toggle('invisible', !abierto);
+            caja?.classList.toggle('pointer-events-none', !abierto);
+
+            // Un fundido corto encima del recorte, para que no aparezcan con
+            // un borde duro.
+            if (nav) {
+                nav.style.transition = abierto
+                    ? 'opacity 300ms ease-out 60ms'
+                    : 'opacity 200ms ease-in';
+            }
+            nav?.setAttribute('aria-hidden', String(!abierto));
+            nav?.classList.toggle('opacity-100', abierto);
+            nav?.classList.toggle('opacity-0', !abierto);
+            nav?.querySelectorAll('a, button').forEach((el) => {
+                (el as HTMLElement).tabIndex = abierto ? 0 : -1;
+            });
+
+            abrir?.classList.toggle('opacity-0', abierto);
+            abrir?.classList.toggle('rotate-90', abierto);
+            abrir?.classList.toggle('scale-75', abierto);
+            abrir?.classList.toggle('opacity-100', !abierto);
+
+            cerrar?.classList.toggle('opacity-100', abierto);
+            cerrar?.classList.toggle('opacity-0', !abierto);
+            cerrar?.classList.toggle('-rotate-90', !abierto);
+            cerrar?.classList.toggle('scale-75', !abierto);
+        };
+
+        fondo?.addEventListener('transitionend', () => {
+            if (!abierto) {
+                fondo.style.height = '';
+                fondo.style.transition = '';
+            }
+        });
+
+        // Si cambia el ancho con el menu abierto, el fondo se reacomoda.
+        window.addEventListener('resize', () => {
+            if (abierto && fondo) {
+                fondo.style.transition = 'none';
+                fondo.style.height = altoAbierto() + 'px';
+            }
+        });
+
+        boton?.addEventListener('click', () => {
+            abierto = !abierto;
+            pintar();
+        });
+
+        nav?.querySelectorAll('a').forEach((a) =>
+            a.addEventListener('click', () => {
+                abierto = false;
+                pintar();
+            })
+        );
+
+        header
+            .querySelector('[data-menu-logout]')
+            ?.addEventListener('click', () => {
+                window.dispatchEvent(new CustomEvent('primal:logout'));
+                abierto = false;
+                pintar();
+            });
+
+        // El menu tapa la pagina: tocar fuera del header lo cierra.
+        document.addEventListener('click', (e) => {
+            if (abierto && !header.contains(e.target as Node)) {
+                abierto = false;
+                pintar();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && abierto) {
+                abierto = false;
+                pintar();
+            }
+        });
+    }
+</script>

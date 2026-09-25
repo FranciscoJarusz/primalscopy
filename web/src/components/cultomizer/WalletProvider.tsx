@@ -1,7 +1,7 @@
 import { WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { wagmiConfig } from "../../lib/cultomizer/wallet";
+import { wagmiConfig } from "@/lib/cultomizer/wallet";
 
 // En Next este proveedor se pone una vez en el layout y cubre toda la app,
 // porque todo es un arbol de React. En Astro cada isla es un arbol aparte, asi

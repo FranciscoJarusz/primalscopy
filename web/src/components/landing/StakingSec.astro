@@ -1,0 +1,66 @@
+---
+const roles = [
+    { slug: 'primal', name: 'Primal', holding: '1', fog: '30' },
+    { slug: 'sentinel', name: 'Sentinel', holding: '2+', fog: '70' },
+    { slug: 'vanguard', name: 'Vanguard', holding: '10+', fog: '300' },
+    { slug: 'relicwarden', name: 'Relicwarden', holding: '30+', fog: '600' },
+    { slug: 'eminence', name: 'Eminence', holding: '50+', fog: '1000' },
+    { slug: 'paragon', name: 'Paragon', holding: '80+', fog: '1000' },
+    { slug: 'archon', name: 'Archon', holding: '100+', fog: '1000' },
+];
+---
+
+<section class="lg:min-h-100 flex flex-col gap-6 sm:gap-10 lg:gap-15">
+    <div class="flex flex-col lg:flex-row items-stretch justify-between gap-6 lg:gap-10 xl:gap-20">
+        <img
+            src="/images/landing/staking.webp"
+            alt="Primal Cult Staking"
+            class="order-last lg:order-none aspect-4/3 lg:aspect-auto h-auto lg:min-h-full w-full lg:w-[45%] rounded-2xl sm:rounded-[30px] object-cover object-center shadow-lg shadow-darkblue/50"
+        />
+
+        <div class="flex w-full lg:w-[50%] flex-col justify-between gap-6 lg:gap-10 rounded-2xl sm:rounded-[30px] bg-darkblue p-6 sm:p-8 lg:p-10 xl:p-12.5 shadow-lg shadow-darkblue/50">
+            <h2 class="max-w-4xl text-5xl sm:text-6xl xl:text-7xl font-accent uppercase text-yellow">
+                SOFT STAKING
+            </h2>
+
+            <div class="flex max-w-lg flex-col gap-2 text-base sm:text-lg text-lightblue">
+                <p>
+                    By being a Primal Cult Owner you will start to get daily
+                    passive income, with the Discord soft staking system.
+                </p>
+                <p>
+                    Each day an amount of FOG will be delivered to your user,
+                    and it will be the main source of income as a reward for the
+                    Primals that you hold.
+                </p>
+                <p>
+                    The roles in Discord are segmented in different Primal Cult
+                    holding amounts. They will give you a specific amount of FOG
+                    that will be stackable with the previous role income too.
+                </p>
+
+                <a
+                    href="https://discord.gg/w2VmvFwg8d"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="mt-2 w-fit bg-yellow text-darkblue font-accent uppercase px-6 pt-2 pb-3.5 rounded-[10px] hover:scale-102 active:scale-97 transition-all duration-300"
+                >
+                    Join the Discord
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <ul class="flex flex-wrap justify-center gap-3 sm:gap-5" aria-label="Discord soft staking roles">
+        {roles.map((role) => (
+            <li class="w-[calc((100%-1.5rem)/3)] sm:w-[calc((100%-3.75rem)/4)] lg:w-[calc((100%-7.5rem)/7)]">
+                <img
+                    src={`/images/roles/${role.slug}.webp`}
+                    alt={`${role.name}: holder of ${role.holding} Primals, earns ${role.fog} FOG daily`}
+                    class="w-full rounded-2xl shadow-lg shadow-darkblue/50"
+                    loading="lazy"
+                />
+            </li>
+        ))}
+    </ul>
+</section>

@@ -1,10 +1,8 @@
 ---
-import CultomizerLayout from "../../layouts/CultomizerLayout.astro";
-import RecentApp from "../../components/cultomizer/RecentApp";
+import CultomizerLayout from "@/layouts/CultomizerLayout.astro";
+import RecentApp from "@/components/cultomizer/RecentApp";
 ---
 
 <CultomizerLayout title="Recent Customizations" activo="cultomizer">
-  {/* client:only porque todo depende de datos que se piden al backend desde el
-      navegador: no hay nada util que renderizar en el servidor. */}
   <RecentApp client:only="react" />
 </CultomizerLayout>

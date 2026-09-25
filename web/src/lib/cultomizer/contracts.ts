@@ -5,7 +5,8 @@
 // con una API key de Infura escrita en el codigo. Nada de eso se usaba: todas
 // las consultas leen siempre la entrada de ApeChain. Por eso no se copiaron.
 
-export const NFT_CONTRACT_ADDRESS = (import.meta.env.PRIMACULT_CONTRACT_ADDRESS ||
+export const NFT_CONTRACT_ADDRESS = (import.meta.env
+  .PRIMACULT_CONTRACT_ADDRESS ||
   "0xe277a7643562775c4f4257e23b068ba8f45608b4") as `0x${string}`;
 
 export const APECHAIN = {

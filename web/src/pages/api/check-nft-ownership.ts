@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
-import { client, json, errorJson } from "../../lib/cultomizer/client";
-import { NFT_CONTRACT_ADDRESS, NFT_ABI } from "../../lib/cultomizer/contracts";
+import { client, json, errorJson } from "@/lib/cultomizer/client";
+import { NFT_CONTRACT_ADDRESS, NFT_ABI } from "@/lib/cultomizer/contracts";
 
 export const prerender = false;
 

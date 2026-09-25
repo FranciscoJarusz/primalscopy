@@ -1,10 +1,8 @@
 ---
-import Layout from "../../layouts/RafflesLayout.astro";
-import RafflesApp from "../../components/raffles/RafflesApp";
+import Layout from "@/layouts/RafflesLayout.astro";
+import RafflesApp from "@/components/raffles/RafflesApp";
 ---
 
 <Layout>
-  <!-- client:only porque la pagina entera depende de leer la blockchain desde
-       el navegador: no hay nada util que renderizar en el servidor. -->
   <RafflesApp client:only="react" />
 </Layout>

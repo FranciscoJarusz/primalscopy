@@ -1,9 +1,10 @@
 ---
-import BaseLayout from "./BaseLayout.astro";
-import RafflesHeader from "../components/raffles/RafflesHeader";
-import Footer from "../components/shared/Footer";
-import { shortAddress } from "../lib/raffles/format";
-import { HUB } from "../lib/raffles/contrato";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Header from "@/components/shared/Header.astro";
+import CuentaDemo from "@/components/raffles/CuentaDemo";
+import Footer from "@/components/shared/Footer.astro";
+import { shortAddress } from "@/lib/raffles/format";
+import { HUB } from "@/lib/raffles/contrato";
 
 interface Props {
   title?: string;
@@ -14,11 +15,13 @@ const { title = "Raffles - Primal Cult", activo = "raffles" } = Astro.props;
 ---
 
 <BaseLayout title={title}>
-  {/* client:load y no client:only: el header se ve enseguida, sin esperar a
-      que el navegador lea la cadena. */}
-  <RafflesHeader client:load activo={activo} />
+  {/* El header es HTML plano; lo unico que hidrata es el selector de cuenta,
+      y con client:load y no client:only para que se vea enseguida. */}
+  <Header activo={activo}>
+    <CuentaDemo client:load slot="derecha" />
+  </Header>
 
-  <div class="max-w-7xl mx-auto px-4 py-8 sm:px-8 flex flex-col gap-12">
+  <div class=" mx-auto px-4 py-8 sm:px-8 flex flex-col gap-12">
     <slot />
 
     <Footer />

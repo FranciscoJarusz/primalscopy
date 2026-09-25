@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAccount, useReadContracts } from "wagmi";
 import { erc721Abi } from "viem";
-import {
-  NFT_CONTRACT_ADDRESS,
-  APECHAIN,
-} from "../../lib/cultomizer/contracts";
+import { NFT_CONTRACT_ADDRESS, APECHAIN } from "@/lib/cultomizer/contracts";
 
 export interface Nft {
   id: string;
@@ -99,7 +96,8 @@ export function useUserNFTs() {
     (async () => {
       try {
         const response = await fetch(`/api/user/nfts?address=${address}`);
-        if (!response.ok) throw new Error(`El servidor respondio ${response.status}`);
+        if (!response.ok)
+          throw new Error(`El servidor respondio ${response.status}`);
 
         const data = await response.json();
         if (cancelled) return;
@@ -119,7 +117,9 @@ export function useUserNFTs() {
         setUltimaWallet(address);
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "No se pudieron cargar los NFTs");
+          setError(
+            e instanceof Error ? e.message : "No se pudieron cargar los NFTs",
+          );
         }
       } finally {
         if (!cancelled) setCargando(false);

@@ -1,6 +1,6 @@
-import PrimalImage from "../shared/PrimalImage";
-import { ape, nameOf } from "../../lib/raffles/format";
-import type { Item, Actions } from "../../lib/raffles/contrato";
+import PrimalImage from "@/components/shared/PrimalImage";
+import { ape, nameOf } from "@/lib/raffles/format";
+import type { Item, Actions } from "@/lib/raffles/contrato";
 
 /// Los raffles ya sorteados: que salio, quien lo gano y cuanto pago el pozo.
 export default function Results({

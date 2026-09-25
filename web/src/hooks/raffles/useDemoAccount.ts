@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ethers } from "ethers";
 import { useStore } from "@nanostores/react";
-import { accountIndex, version, refresh } from "../../stores/raffles/session";
-import { ACCOUNTS } from "../../lib/raffles/accounts";
-import { provider, HUB, ABI_HUB } from "../../lib/raffles/contrato";
+import { accountIndex, version, refresh } from "@/stores/raffles/session";
+import { ACCOUNTS } from "@/lib/raffles/accounts";
+import { provider, HUB, ABI_HUB } from "@/lib/raffles/contrato";
 
 /// Lo que necesita la barra de arriba: quien sos, cuanto tenes y cuanto podes
 /// retirar. Vive aparte de useRaffles porque el header esta en el layout, fuera
@@ -19,7 +19,12 @@ export function useDemoAccount() {
   const cuenta = ACCOUNTS[indice]!;
 
   const hub = useMemo(
-    () => new ethers.Contract(HUB, ABI_HUB, new ethers.Wallet(cuenta.clave, provider)),
+    () =>
+      new ethers.Contract(
+        HUB,
+        ABI_HUB,
+        new ethers.Wallet(cuenta.clave, provider),
+      ),
     [cuenta.clave],
   );
 

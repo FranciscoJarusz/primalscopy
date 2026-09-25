@@ -6,9 +6,11 @@ import "../styles/global.css";
 // (por ejemplo RafflesLayout) envolviendo a este.
 interface Props {
   title?: string;
+  // Paginas internas (admin): que los buscadores no las indexen.
+  noindex?: boolean;
 }
 
-const { title = "Primal Cult" } = Astro.props;
+const { title = "Primal Cult", noindex = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -16,20 +18,22 @@ const { title = "Primal Cult" } = Astro.props;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
   </head>
 
   <body
-    class="min-h-screen bg-gradient-to-l from-[#000000] to-[#090746] text-white"
+    class="min-h-screen"
   >
     <slot />
+
+    <script>
+      import { initLenis } from "@/lib/lenis";
+      initLenis();
+    </script>
   </body>
 </html>

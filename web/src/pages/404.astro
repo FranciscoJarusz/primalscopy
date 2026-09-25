@@ -1,0 +1,51 @@
+---
+import CultomizerLayout from "@/layouts/CultomizerLayout.astro";
+
+// Un Primal al azar de los que ya estan en public/images/primals (los del
+// primer marquee de la home), para que la pagina no sea siempre igual.
+const tokenId = 1 + Math.floor(Math.random() * 49);
+---
+
+<CultomizerLayout title="Page not found - Primal Cult" activo="">
+  <section
+    class="flex-1 grid grid-cols-1 lg:grid-cols-2 items-center gap-8 lg:gap-16 rounded-2xl sm:rounded-3xl bg-darkblue px-6 py-10 sm:px-10 xl:px-20 shadow-lg shadow-darkblue/50"
+  >
+    <div class="flex flex-col items-center lg:items-start gap-5 sm:gap-6 text-center lg:text-start">
+      <p class="font-accent text-8xl sm:text-9xl leading-none text-yellow">404</p>
+
+      <h1 class="font-accent uppercase text-4xl sm:text-5xl xl:text-6xl text-yellow max-w-xl">
+        Lost in the caves
+      </h1>
+
+      <p class="text-base sm:text-lg text-lightblue max-w-md">
+        This page doesn't exist, or it was burned along with the royalties.
+        Head back and keep exploring the Cult.
+      </p>
+
+      <div class="flex flex-wrap justify-center lg:justify-start gap-2.5 font-accent uppercase">
+        <a
+          href="/"
+          class="bg-yellow text-darkblue px-6 pt-2 pb-3.5 rounded-[10px] hover:scale-102 active:scale-97 transition-all duration-300"
+        >
+          Back home
+        </a>
+        <a
+          href="/cultomizer"
+          class="inset-ring-2 inset-ring-yellow text-yellow px-6 pt-2 pb-3.5 rounded-[10px] hover:bg-yellow hover:text-darkblue active:scale-97 transition-all duration-300"
+        >
+          Go to Cultomizer
+        </a>
+      </div>
+    </div>
+
+    {/* Mitad derecha: el Primal centrado en su columna, con un tope para que
+        en pantallas anchas no se vuelva gigante. */}
+    <div class="flex justify-center">
+    <img
+      src={`/images/primals/${tokenId}.webp`}
+      alt={`Primal Cult #${tokenId}`}
+      class="w-full max-w-40 sm:max-w-56 lg:max-w-sm aspect-square rounded-2xl object-cover shadow-lg shadow-darkblue/50"
+    />
+    </div>
+  </section>
+</CultomizerLayout>

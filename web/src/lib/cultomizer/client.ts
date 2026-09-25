@@ -1,6 +1,6 @@
 import { createPublicClient, http } from "viem";
 import { apeChain } from "viem/chains";
-import { APECHAIN } from "./contracts";
+import { APECHAIN } from "@/lib/cultomizer/contracts";
 
 // Se usa la definicion oficial de viem en vez de armar la chain a mano: trae
 // la direccion del contrato multicall3, sin la cual `client.multicall(...)`

@@ -4,15 +4,15 @@ Landing, Raffles y Cultomizer en un solo proyecto Astro, bajo un solo dominio.
 
 ## Rutas
 
-| Ruta | Que es |
-|---|---|
-| `/` | Landing |
-| `/raffles` | Sorteos on-chain (lee el contrato en ApeChain) |
-| `/cultomizer` | Entrada: login si no hay wallet, selector de NFT si la hay |
-| `/cultomizer/edit?tokenId=N` | El customizer |
-| `/cultomizer/recent` | Ultimas customizaciones publicadas |
-| `/cultomizer/admin` | Panel de traits |
-| `/api/*` | Consultas a la cadena del lado del servidor |
+| Ruta                         | Que es                                                     |
+| ---------------------------- | ---------------------------------------------------------- |
+| `/`                          | Landing                                                    |
+| `/raffles`                   | Sorteos on-chain (lee el contrato en ApeChain)             |
+| `/cultomizer`                | Entrada: login si no hay wallet, selector de NFT si la hay |
+| `/cultomizer/edit?tokenId=N` | El customizer                                              |
+| `/cultomizer/recent`         | Ultimas customizaciones publicadas                         |
+| `/admin/traits`              | Panel de traits (`/admin` y `/cultomizer/admin` redirigen) |
+| `/api/*`                     | Consultas a la cadena del lado del servidor                |
 
 ## Como esta organizado
 

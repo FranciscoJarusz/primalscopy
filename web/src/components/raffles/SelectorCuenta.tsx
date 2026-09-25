@@ -1,5 +1,5 @@
-import { ape } from "../../lib/raffles/format";
-import type { Account } from "../../lib/raffles/accounts";
+import { ape } from "@/lib/raffles/format";
+import type { Account } from "@/lib/raffles/accounts";
 
 /// Lo que va a la derecha del header mientras esto sea una demo local: elegir
 /// con que cuenta de anvil estas mirando la pagina.
