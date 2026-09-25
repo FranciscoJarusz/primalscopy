@@ -4,6 +4,7 @@ const cors = require('cors');
 const nftRoutes = require('./routes/nftRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
+const labRoutes = require('./routes/labRoutes');
 const { TRAITS_PATH, seedTraitsIfEmpty } = require('./lib/traitsStore');
 const { isAdminEnabled, getAdminTokenLength } = require('./middleware/adminAuth');
 const { isWalletAuthEnabled } = require('./lib/walletAuth');
@@ -104,6 +105,7 @@ app.use('/t', express.static(path.join(ASSETS_PATH, 'legacy', 't'), { maxAge: '3
 app.use('/api/nft', nftRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/lab', labRoutes);
 
 // Iniciar servidor
 app.listen(PORT, () => {
@@ -120,5 +122,8 @@ app.listen(PORT, () => {
     // Solo la longitud, nunca el token: sirve para detectar desde los logs un
     // pegado truncado o con espacios sin exponer el secreto.
     console.log(`[admin] Panel habilitado (token de ${getAdminTokenLength()} caracteres).`);
+  }
+  if (process.env.LAB_TEST_MODE === 'true') {
+    console.warn('[lab] MODO DE PRUEBA: rolls gratis y los cambios del LAB quedan solo en este server.');
   }
 });

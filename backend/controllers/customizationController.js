@@ -15,6 +15,7 @@ const remote = require('../lib/remotePublisher');
 const { fingerprint, findVariantByFingerprint } = require('../lib/traitFingerprint');
 const marketplaces = require('../lib/marketplaceRefresh');
 const feed = require('../lib/feedStore');
+const lab = require('../lib/labStore');
 const sharp = require('sharp');
 const fs = require('fs');
 
@@ -115,90 +116,137 @@ async function loadOrSeedMetadata(tokenId) {
     return data;
 }
 
+// Un NFT se escribe de a uno por vez, lo pida el customizer o el LAB: si dos
+// escrituras se pisaran, la metadata podria quedar con los traits de una y la
+// imagen de la otra. Tira con el status listo para responder.
+function tomarTurno(nftId) {
+    if (enProceso.has(nftId)) {
+        throw Object.assign(new Error('Ya se esta guardando un cambio de este NFT.'), { status: 409 });
+    }
+    if (enProceso.size >= MAX_SIMULTANEOS) {
+        throw Object.assign(
+            new Error('El servidor esta generando otras imagenes. Reintenta en unos segundos.'),
+            { status: 503 }
+        );
+    }
+    enProceso.add(nftId);
+}
+
+function soltarTurno(nftId) {
+    enProceso.delete(nftId);
+}
+
+/**
+ * Compone el GIF, lo publica y deja todo escrito. Lo usan el customizer y el
+ * LAB; el llamador tiene que tener el turno del NFT.
+ *
+ * `metadata` es la metadata completa que va a quedar publicada, salvo
+ * "image", que se arma aca. El customizer la pasa con los attributes intactos
+ * (las variantes son diseños del MISMO valor de trait); el LAB, con los
+ * traits que salieron en el roll.
+ *
+ * Con remoto=false no se toca el hosting de la coleccion ni se avisa a
+ * OpenSea: todo queda solo en el volumen. Es lo que usa el modo de prueba del
+ * LAB, para poder probarlo en local aunque el .env tenga las credenciales de
+ * produccion.
+ */
+async function publicarNft(nftId, { layers, applied, metadata, wallet, remoto = true }) {
+    const publicado = remoto && remote.isConfigured();
+    if (publicado && lab.isSandbox(nftId)) {
+        throw Object.assign(new Error(
+            `El NFT #${nftId} tiene cambios de prueba del LAB en este server y no se puede publicar. `
+            + 'Restauralo con: node scripts/lab-reset-sandbox.js'
+        ), { status: 409 });
+    }
+
+    // El primer frame se aprovecha de la pasada que ya hace composeGif, en
+    // vez de decodificar y componer las siete capas una segunda vez.
+    let primerFrame = null;
+    const gif = composeGif(layers, {
+        onFirstFrame: (rgba, size) => { primerFrame = { rgba, size }; }
+    });
+
+    const version = Date.now();
+    const updated = { ...metadata, image: assets.publicImageUrl(nftId, version) };
+
+    // Primero el hosting donde vive la coleccion: es lo que leen las
+    // wallets y los marketplaces, o sea la fuente de verdad. Si esto falla,
+    // no se toca la copia local, para que no queden diciendo cosas
+    // distintas.
+    if (publicado) {
+        try {
+            await remote.publishNft(nftId, { gif, metadata: updated });
+        } catch (error) {
+            throw Object.assign(
+                new Error(`No se pudo publicar en el hosting de la coleccion: ${error.message}`),
+                { status: 502 }
+            );
+        }
+    }
+
+    // Copia espejo en el volumen. Sirve de respaldo y deja todo listo por
+    // si mas adelante se decide mudar el dominio aca. Va despues del
+    // publish y nunca antes.
+    assets.writeImage(nftId, gif);
+    assets.writeMetadata(nftId, updated);
+
+    assets.writeSelection(nftId, {
+        tokenId: nftId,
+        wallet,
+        applied,
+        updatedAt: new Date().toISOString()
+    });
+
+    // Recien aca entra al feed: una customizacion aparece en "Recent
+    // Customizations" solo si llego a escribirse de verdad. Si algo de
+    // arriba fallo, nunca se llega a esta linea.
+    await registrarEnFeed(nftId, wallet, primerFrame);
+
+    // Se le avisa a los marketplaces recien ahora, con todo ya escrito. Si
+    // no contestan no pasa nada: el NFT ya esta guardado y la miniatura se
+    // va a actualizar mas tarde por su cuenta.
+    const refresh = remoto
+        ? await marketplaces.refreshToken(nftId)
+        : { requested: false, reason: 'modo de prueba: no se publica' };
+
+    return { updated, sizeBytes: gif.length, published: publicado, refresh };
+}
+
 // POST /api/nft/:nftId/customization
 async function saveCustomization(req, res) {
     const { nftId } = req.params;
 
-    if (enProceso.has(nftId)) {
-        return res.status(409).json({ error: 'Ya se esta guardando una customizacion de este NFT.' });
+    try {
+        tomarTurno(nftId);
+    } catch (error) {
+        return res.status(error.status).json({ error: error.message });
     }
-    if (enProceso.size >= MAX_SIMULTANEOS) {
-        return res.status(503).json({ error: 'El servidor esta generando otras imagenes. Reintenta en unos segundos.' });
-    }
-    enProceso.add(nftId);
 
     try {
         const options = await buildCustomizationOptions(nftId);
         const { layers, applied } = resolveSelections(options, req.body?.selections);
 
+        // Los attributes quedan intactos a proposito: las variantes son
+        // diseños alternativos del MISMO valor de trait, asi que la rareza de
+        // la coleccion no se toca. Los traits solo los cambia el LAB.
         const metadata = await loadOrSeedMetadata(nftId);
 
-        // El primer frame se aprovecha de la pasada que ya hace composeGif, en
-        // vez de decodificar y componer las siete capas una segunda vez.
-        let primerFrame = null;
-        const gif = composeGif(layers, {
-            onFirstFrame: (rgba, size) => { primerFrame = { rgba, size }; }
-        });
-
-        const version = Date.now();
-
-        // Solo cambia "image". Los attributes quedan intactos a proposito: las
-        // variantes son diseños alternativos del MISMO valor de trait, asi que
-        // la rareza de la coleccion no se toca.
-        const updated = { ...metadata, image: assets.publicImageUrl(nftId, version) };
-
-        // Primero el hosting donde vive la coleccion: es lo que leen las
-        // wallets y los marketplaces, o sea la fuente de verdad. Si esto falla,
-        // no se toca la copia local, para que no queden diciendo cosas
-        // distintas.
-        if (remote.isConfigured()) {
-            try {
-                await remote.publishNft(nftId, { gif, metadata: updated });
-            } catch (error) {
-                throw Object.assign(
-                    new Error(`No se pudo publicar en el hosting de la coleccion: ${error.message}`),
-                    { status: 502 }
-                );
-            }
-        }
-
-        // Copia espejo en el volumen. Sirve de respaldo y deja todo listo por
-        // si mas adelante se decide mudar el dominio aca. Va despues del
-        // publish y nunca antes.
-        assets.writeImage(nftId, gif);
-        assets.writeMetadata(nftId, updated);
-
-        assets.writeSelection(nftId, {
-            tokenId: nftId,
-            wallet: req.walletAddress,
-            applied,
-            updatedAt: new Date().toISOString()
-        });
-
-        // Recien aca entra al feed: una customizacion aparece en "Recent
-        // Customizations" solo si llego a publicarse de verdad. Si algo de
-        // arriba fallo, nunca se llega a esta linea.
-        await registrarEnFeed(nftId, req.walletAddress, primerFrame);
-
-        // Se le avisa a los marketplaces recien ahora, con todo ya escrito. Si
-        // no contestan no pasa nada: el NFT ya esta guardado y la miniatura se
-        // va a actualizar mas tarde por su cuenta.
-        const refresh = await marketplaces.refreshToken(nftId);
+        const result = await publicarNft(nftId, { layers, applied, metadata, wallet: req.walletAddress });
 
         res.json({
             tokenId: nftId,
-            image: updated.image,
+            image: result.updated.image,
             applied,
-            sizeBytes: gif.length,
-            published: remote.isConfigured(),
-            marketplaceRefresh: refresh
+            sizeBytes: result.sizeBytes,
+            published: result.published,
+            marketplaceRefresh: result.refresh
         });
     } catch (error) {
         const status = error.status || 500;
         if (status === 500) console.error('[ERROR] saveCustomization ->', error);
         res.status(status).json({ error: error.message || 'No se pudo guardar la customizacion.' });
     } finally {
-        enProceso.delete(nftId);
+        soltarTurno(nftId);
     }
 }
 
@@ -299,4 +347,13 @@ async function respondWithCustomization(req, res) {
     });
 }
 
-module.exports = { saveCustomization, getCustomization, LAYER_ORDER };
+module.exports = {
+    saveCustomization,
+    getCustomization,
+    LAYER_ORDER,
+    // Los usa el LAB para escribir el NFT por el mismo camino.
+    tomarTurno,
+    soltarTurno,
+    publicarNft,
+    loadOrSeedMetadata
+};

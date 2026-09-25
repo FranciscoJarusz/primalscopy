@@ -148,6 +148,7 @@ module.exports = {
     hasImage,
     imagePath,
     metadataPath,
+    selectionPath,
     publicImageUrl,
     getAssetsStatus
 };
