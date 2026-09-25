@@ -1,0 +1,9 @@
+---
+// LAB: elegir el Primal a rollear, como "Select your NFT" del Cultomizer.
+import CultomizerLayout from '@/layouts/CultomizerLayout.astro';
+import SelectorIsland from '@/components/lab/SelectorIsland';
+---
+
+<CultomizerLayout title="Lab - Primal Cult" activo="lab">
+    <SelectorIsland client:only="react" />
+</CultomizerLayout>

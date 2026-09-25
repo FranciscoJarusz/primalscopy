@@ -1,0 +1,66 @@
+---
+// Portada del LAB, con la misma forma que la del Cultomizer. La imagen es la
+// del Cultomizer hasta que haya una propia del LAB.
+---
+
+<section
+    class="relative flex flex-1 flex-col xl:flex-row items-start xl:items-center gap-8 overflow-hidden rounded-2xl sm:rounded-3xl bg-darkblue px-6 pt-8 sm:px-10 sm:pt-10 xl:px-20 xl:py-10 shadow-lg shadow-darkblue/50"
+    data-lab-hero
+>
+    <div class="relative z-10 flex flex-col items-start gap-6 text-start">
+        <h1 class="font-accent uppercase text-yellow text-5xl sm:text-7xl xl:text-8xl max-w-4xl">
+            Reroll your Primal
+        </h1>
+
+        <p class="max-w-lg text-lg sm:text-xl text-lightblue">
+            Keep up to 3 traits and roll the rest. You get two results: keep
+            one, or discard both. Rare traits come out as rarely as they do in
+            the collection.
+        </p>
+
+        <div class="flex flex-wrap items-center gap-2.5 font-accent uppercase">
+            <a
+                href="/lab/select"
+                data-empezar
+                class="bg-yellow text-darkblue px-6 pt-2 pb-3.5 rounded-[10px] hover:scale-102 active:scale-97 transition-all duration-300"
+            >
+                Start rolling
+            </a>
+        </div>
+    </div>
+
+    {/* Misma ubicacion que en el Cultomizer: debajo del texto hasta xl, y
+        desde xl flotando a la derecha. */}
+    <img
+        src="/images/cultomizer/hero.webp"
+        alt="Primal Cult mascot"
+        class="pointer-events-none relative z-0 self-center w-full max-w-md sm:max-w-lg -mb-16 sm:-mb-24 object-contain xl:absolute xl:self-auto xl:mb-0 xl:-right-10 xl:top-5 xl:w-auto xl:max-w-none xl:h-200"
+    />
+</section>
+
+<script>
+    // Sin wallet no hay Primals que listar: igual que "Customize", el boton
+    // abre el modal de conexion en vez de navegar.
+    import { getAccount, watchAccount } from '@wagmi/core';
+    import { appKit, wagmiConfig } from '@/lib/cultomizer/wallet';
+
+    const enlace = document.querySelector<HTMLAnchorElement>(
+        '[data-lab-hero] [data-empezar]'
+    );
+
+    if (enlace) {
+        let conectada = getAccount(wagmiConfig).isConnected;
+        watchAccount(wagmiConfig, {
+            onChange: (cuenta) => {
+                conectada = cuenta.isConnected;
+            },
+        });
+
+        enlace.addEventListener('click', (evento) => {
+            if (!conectada) {
+                evento.preventDefault();
+                appKit.open();
+            }
+        });
+    }
+</script>
