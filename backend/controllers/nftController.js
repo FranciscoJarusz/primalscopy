@@ -101,6 +101,32 @@ function buildVariantsForCategory(fsCategoryName, directoryName) {
     return [...ownVariants, ...uniqueGlobals];
 }
 
+// Tokens que pueden usar cualquier trait de su categoria, no solo los de su
+// carpeta. Es un permiso temporal y a mano: se lista el token en la variable,
+// se customiza, y se vuelve a sacar. Vacia (el default) no cambia nada.
+//
+// Como esta misma lista es la que valida el guardado, el permiso vale tambien
+// para guardar, y sigue haciendo falta ser el dueño del token.
+function isUnlocked(nftId) {
+    const tokens = (process.env.UNLOCKED_TOKENS || '')
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean);
+    return tokens.includes(String(nftId));
+}
+
+// La carpeta propia primero, para que el valor actual del token siga
+// apareciendo como seleccionado; despues las demas y al final _GLOBAL.
+function buildAllVariantsForCategory(fsCategoryName, ownDirectory, directories) {
+    const ordered = ownDirectory
+        ? [ownDirectory, ...directories.filter(d => d !== ownDirectory)]
+        : directories;
+
+    const variants = ordered.flatMap(dir => buildVariantsFromDirectory(fsCategoryName, dir, false));
+    const globals = buildVariantsFromDirectory(fsCategoryName, GLOBAL_DIR, true);
+    return [...variants, ...globals];
+}
+
 // La metadata sale del volumen, no de la red.
 //
 // Antes esto pedia siempre https://ipfs.primalcult.xyz/metadata/<id>. Una vez
@@ -164,7 +190,9 @@ async function buildCustomizationOptions(nftId) {
             const matchedDir = findVariantDirectoryByValue(categoryDir, rawCurrentValue);
             const directoryCandidates = getVariantDirectories(categoryDir);
             const selectedDirectory = matchedDir || directoryCandidates[0] || null;
-            const variants = buildVariantsForCategory(category.fsName, selectedDirectory);
+            const variants = isUnlocked(nftId)
+                ? buildAllVariantsForCategory(category.fsName, selectedDirectory, directoryCandidates)
+                : buildVariantsForCategory(category.fsName, selectedDirectory);
 
             if (variants.length === 0) continue;
 
