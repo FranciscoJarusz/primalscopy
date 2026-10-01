@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Disallow: /cultomizer/select
+Disallow: /cultomizer/edit
+Disallow: /forge/select
+Disallow: /forge/roll
+
+Sitemap: https://primalcult.xyz/sitemap.xml

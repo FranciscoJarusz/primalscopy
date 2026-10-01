@@ -3,7 +3,11 @@ import LandingLayout from '@/layouts/LandingLayout.astro';
 import StatsApp from '@/components/stats/StatsApp';
 ---
 
-<LandingLayout title="Stats - Primal Cult" activo="stats">
+<LandingLayout
+  title="Stats - Primal Cult"
+  description="Primal Cult in numbers: holders, burned Primals and collection data on ApeChain."
+  activo="stats"
+>
     <main class="mt-10 sm:mt-14">
         <StatsApp client:load />
     </main>

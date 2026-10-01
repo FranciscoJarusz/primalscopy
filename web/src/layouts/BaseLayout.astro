@@ -6,11 +6,25 @@ import "../styles/global.css";
 // (por ejemplo RafflesLayout) envolviendo a este.
 interface Props {
   title?: string;
-  // Paginas internas (admin): que los buscadores no las indexen.
+  // El texto que muestran Google y la tarjeta al compartir el link.
+  description?: string;
+  // Paginas internas (admin) o que solo sirven con wallet conectada: que los
+  // buscadores no las indexen.
   noindex?: boolean;
 }
 
-const { title = "Primal Cult", noindex = false } = Astro.props;
+const DESCRIPCION =
+  "2,712 Primals. Ancient gorillas, shrouded in mystery, bearers of forbidden symbols, weaving chaos into glitch. One of the first glitch collections on ApeChain.";
+
+const { title = "Primal Cult", description = DESCRIPCION, noindex = false } = Astro.props;
+
+// Siempre el dominio principal (site en astro.config), aunque se entre por
+// cultomizer.primalcult.xyz o un preview: Google junta todo en una sola URL.
+// Sin la barra final que agrega el build (/forge/): igual que los links del
+// sitio y el sitemap.
+const ruta = Astro.url.pathname.replace(/(.)\/$/, "$1");
+const canonica = new URL(ruta, Astro.site).href;
+const imagen = new URL("/og.png", Astro.site).href;
 ---
 
 <!doctype html>
@@ -19,8 +33,25 @@ const { title = "Primal Cult", noindex = false } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#0a0066" />
     <title>{title}</title>
-    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <meta name="description" content={description} />
+    {noindex ? <meta name="robots" content="noindex, nofollow" /> : <link rel="canonical" href={canonica} />}
+
+    <!-- La tarjeta que arman X, Discord, Telegram y WhatsApp al pegar el link. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Primal Cult" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonica} />
+    <meta property="og:image" content={imagen} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imagen} />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

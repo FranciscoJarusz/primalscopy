@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Las paginas publicas del sitio. Las que solo sirven con wallet conectada
+     (select, edit, roll) y el admin quedan afuera a proposito: ver robots.txt
+     y el noindex de BaseLayout. Si se agrega una pagina publica, va aca. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://primalcult.xyz/</loc></url>
+  <url><loc>https://primalcult.xyz/cultomizer</loc></url>
+  <url><loc>https://primalcult.xyz/cultomizer/recent</loc></url>
+  <url><loc>https://primalcult.xyz/forge</loc></url>
+  <url><loc>https://primalcult.xyz/stats</loc></url>
+</urlset>

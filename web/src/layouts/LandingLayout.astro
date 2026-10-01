@@ -5,13 +5,15 @@ import Footer from "@/components/shared/Footer.astro";
 
 interface Props {
   title?: string;
+  description?: string;
+  noindex?: boolean;
   activo?: string;
 }
 
-const { title = "Primal Cult", activo = "home" } = Astro.props;
+const { title = "Primal Cult", description, noindex, activo = "home" } = Astro.props;
 ---
 
-<BaseLayout title={title}>
+<BaseLayout title={title} description={description} noindex={noindex}>
   <div class="min-h-screen flex flex-col px-4 py-3 sm:px-8 sm:py-6 lg:px-16 xl:px-30 lg:py-10">
     <Header activo={activo} />
     <slot />  

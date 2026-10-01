@@ -22,6 +22,10 @@ const rafflesSoloEnDev = {
 
 // https://astro.build/config
 export default defineConfig({
+  // El dominio principal: de aca salen la URL canonica y la de la imagen para
+  // compartir (ver BaseLayout).
+  site: "https://primalcult.xyz",
+
   integrations: [react(), rafflesSoloEnDev],
 
   // El sitio sigue siendo estatico por defecto: la landing y el resto de las

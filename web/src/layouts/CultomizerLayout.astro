@@ -5,13 +5,15 @@ import Footer from "@/components/shared/Footer.astro";
 
 interface Props {
   title?: string;
+  description?: string;
+  noindex?: boolean;
   activo?: string;
 }
 
-const { title = "Cultomizer - Primal Cult", activo = "cultomizer" } = Astro.props;
+const { title = "Cultomizer - Primal Cult", description, noindex, activo = "cultomizer" } = Astro.props;
 ---
 
-<BaseLayout title={title}>
+<BaseLayout title={title} description={description} noindex={noindex}>
   <div class="min-h-dvh flex flex-col gap-6 sm:gap-10 px-4 py-3 sm:px-8 sm:py-6 lg:px-16 xl:px-30 lg:py-10">
     <Header activo={activo} />
     <div class="flex-1 flex flex-col">
