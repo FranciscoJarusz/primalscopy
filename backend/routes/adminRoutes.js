@@ -9,6 +9,7 @@ const { getStorageStatus } = require('../lib/traitsStore');
 const { getAssetsStatus } = require('../lib/assetStore');
 const { startSeeding, getSeedProgress, ORIGIN_URL, LAST_TOKEN } = require('../lib/assetSeeder');
 const remote = require('../lib/remotePublisher');
+const nicknames = require('../lib/nicknameStore');
 const {
     listTraits,
     uploadTrait,
@@ -95,6 +96,14 @@ router.get('/traits', listTraits);
 router.post('/traits', upload.single('file'), uploadTrait);
 router.patch('/traits', renameTrait);
 router.delete('/traits', deleteTrait);
+
+router.get('/nicknames', (req, res) => res.json(nicknames.listNicknames()));
+router.delete('/nicknames/:address', (req, res) => {
+    if (!nicknames.deleteNickname(req.params.address)) {
+        return res.status(404).json({ error: 'Esa wallet no tiene apodo.' });
+    }
+    res.json({ ok: true });
+});
 
 router.use(adminErrorHandler);
 

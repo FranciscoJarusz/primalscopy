@@ -108,8 +108,8 @@ export function useWalletSession() {
     };
   }, [address, isConnected]);
 
-  const signIn = useCallback(async () => {
-    if (!address) return false;
+  const signIn = useCallback(async (): Promise<string | null> => {
+    if (!address) return null;
     setError(null);
     setStatus("signing");
     try {
@@ -144,7 +144,7 @@ export function useWalletSession() {
       storeToken(address, session.token);
       setToken(session.token);
       setStatus("ready");
-      return true;
+      return session.token as string;
     } catch (err: unknown) {
       // Que el usuario cancele la firma en la wallet es lo normal, no un
       // error que valga la pena mostrar en rojo.
@@ -155,7 +155,7 @@ export function useWalletSession() {
       );
       setError(userRejected ? null : message);
       setStatus("needs-signature");
-      return false;
+      return null;
     }
   }, [address, signMessageAsync]);
 

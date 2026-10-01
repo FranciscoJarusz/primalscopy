@@ -3,6 +3,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GIF from 'gif.js/dist/gif.js';
 import { parseGIF, decompressFrames } from 'gifuct-js';
 import { goTo, replaceWith, useSearchParams } from '@/lib/navigation';
+import { miniaturaDeTrait } from '@/lib/miniaturas';
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import {
     useWalletSession,
     useNftOwnership,
@@ -88,6 +90,9 @@ function CustomizerContent() {
     // Capas cuyo archivo no cargó: se sacan del preview en vez de dejar que el
     // navegador dibuje el ícono de imagen rota encima del NFT.
     const [failedLayers, setFailedLayers] = useState<string[]>([]);
+    // Capas cuya miniatura de preview no cargo (por ejemplo, un backend sin
+    // ese tamaño todavia): esas se muestran con el GIF original.
+    const [sinMiniatura, setSinMiniatura] = useState<string[]>([]);
     const [exportingGif, setExportingGif] = useState<boolean>(false);
     const [exportingJpg, setExportingJpg] = useState<boolean>(false);
     const [exportProgress, setExportProgress] = useState<number>(0);
@@ -337,6 +342,38 @@ function CustomizerContent() {
             if (updated[traitType] === nextValue) delete updated[traitType];
             else updated[traitType] = nextValue;
             // Persistir cambios para sobrevivir navegación
+            try {
+                localStorage.setItem(
+                    `nft_custom_${nftId}`,
+                    JSON.stringify(updated)
+                );
+            } catch {
+                /* storage lleno */
+            }
+            return updated;
+        });
+    };
+
+    // El dado del Preview: una variante al azar en cada categoria, entre las
+    // que este Primal ya puede elegir a mano (incluidos los adornos de
+    // _GLOBAL). Nunca "ninguno": el dado no deja categorias vacias. Queda
+    // guardado igual que una eleccion manual.
+    const handleRandomize = () => {
+        if (!customizationOptions) return;
+        const random: { [traitType: string]: string } = {};
+        for (const [traitType, option] of Object.entries(
+            customizationOptions
+        )) {
+            const elegibles = option.variants.filter(
+                (v) => !v.isNone && v.imageUrl
+            );
+            if (elegibles.length === 0) continue;
+            const variant =
+                elegibles[Math.floor(Math.random() * elegibles.length)];
+            random[traitType] = getVariantSelectionValue(variant);
+        }
+        setSelectedVariants((prev) => {
+            const updated = { ...prev, ...random };
             try {
                 localStorage.setItem(
                     `nft_custom_${nftId}`,
@@ -849,7 +886,11 @@ function CustomizerContent() {
     return (
         <div className="w-full text-white flex flex-col gap-5 sm:gap-8">
             {/* Header */}
-            <div className="flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-4">
+            {/* Sin animaciones de entrada: es una herramienta, y el contenido
+                ya espera a que carguen los datos del NFT. Sumarle una
+                animacion lo hacia sentir lento. */}
+            <div className="flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-4"
+            >
                 <div>
                     <h1 className="font-accent uppercase text-yellow text-4xl sm:text-6xl lg:text-7xl">
                         Customizing: Primal #{nftId}
@@ -911,12 +952,70 @@ function CustomizerContent() {
                 // items-start, no items-center: la columna de traits es mucho más
                 // alta que la del preview, y centrarlas dejaba el preview flotando
                 // en el medio con un hueco muerto arriba.
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,2.85fr)] gap-5 sm:gap-8 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,2.85fr)] gap-5 sm:gap-8 items-start"
+                >
                     {/* Columna izquierda - Vista previa del NFT */}
                     <div className="shadow-lg shadow-darkblue/50 bg-darkblue rounded-2xl p-4 sm:p-5 flex flex-col gap-4">
-                        <h3 className="font-accent uppercase text-yellow text-2xl text-center">
-                            Preview
-                        </h3>
+                        <div className="relative flex items-center justify-center">
+                            <h3 className="font-accent uppercase text-yellow text-2xl text-center">
+                                Preview
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={handleRandomize}
+                                disabled={!customizationOptions}
+                                title="Randomize"
+                                aria-label="Randomize all traits"
+                                className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-9 h-9 rounded-md btn-rainbow text-darkblue cursor-pointer hover:rotate-12 active:scale-90 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    className="w-6 h-6"
+                                    aria-hidden="true"
+                                >
+                                    <rect
+                                        x="3"
+                                        y="3"
+                                        width="18"
+                                        height="18"
+                                        rx="4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                    />
+                                    <circle
+                                        cx="8"
+                                        cy="8"
+                                        r="1.6"
+                                        fill="currentColor"
+                                    />
+                                    <circle
+                                        cx="16"
+                                        cy="8"
+                                        r="1.6"
+                                        fill="currentColor"
+                                    />
+                                    <circle
+                                        cx="12"
+                                        cy="12"
+                                        r="1.6"
+                                        fill="currentColor"
+                                    />
+                                    <circle
+                                        cx="8"
+                                        cy="16"
+                                        r="1.6"
+                                        fill="currentColor"
+                                    />
+                                    <circle
+                                        cx="16"
+                                        cy="16"
+                                        r="1.6"
+                                        fill="currentColor"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
                         <div
                             ref={nftDisplayRef}
                             className="relative mx-auto w-full max-w-100 lg:max-w-125 aspect-square overflow-hidden rounded-lg"
@@ -926,10 +1025,24 @@ function CustomizerContent() {
                                     (layerSrc) =>
                                         !failedLayers.includes(layerSrc)
                                 )
-                                .map((layerSrc) => (
+                                .map((layerSrc) => {
+                                    // Se muestra la version de 1000 px: el GIF
+                                    // original es de 2000 y decodificar 7 capas
+                                    // asi trababa la pagina. Las exportaciones
+                                    // siguen usando el original.
+                                    const miniatura =
+                                        layerSrc.includes('/assets/traits/') &&
+                                        !sinMiniatura.includes(layerSrc);
+                                    return (
                                     <img
                                         key={layerSrc}
-                                        src={layerSrc}
+                                        src={
+                                            miniatura
+                                                ? miniaturaDeTrait(layerSrc, {
+                                                      tamano: 'preview',
+                                                  })
+                                                : layerSrc
+                                        }
                                         // Las capas son decorativas y se apilan: un alt por
                                         // capa solo sirve para que el navegador lo dibuje
                                         // encima del preview cuando el archivo no carga.
@@ -939,14 +1052,20 @@ function CustomizerContent() {
                                         className="absolute inset-0 w-full h-full object-contain"
                                         style={{ imageRendering: 'pixelated' }}
                                         onError={() =>
-                                            setFailedLayers((prev) =>
-                                                prev.includes(layerSrc)
-                                                    ? prev
-                                                    : [...prev, layerSrc]
-                                            )
+                                            miniatura
+                                                ? setSinMiniatura((prev) => [
+                                                      ...prev,
+                                                      layerSrc,
+                                                  ])
+                                                : setFailedLayers((prev) =>
+                                                      prev.includes(layerSrc)
+                                                          ? prev
+                                                          : [...prev, layerSrc]
+                                                  )
                                         }
                                     />
-                                ))}
+                                    );
+                                })}
                         </div>
                         {/* Dos exportaciones con un "OR" en el medio. Mientras una corre, las dos quedan
                             bloqueadas: comparten la RAM del canvas. */}
@@ -1165,14 +1284,38 @@ function CustomizerContent() {
                                                     }`}
                                                 >
                                                     {variant.imageUrl ? (
+                                                        // La miniatura de grilla (500 px,
+                                                        // el arte en su tamaño real): la
+                                                        // chica de 256 se estiraba en
+                                                        // pantallas de alta densidad, y la
+                                                        // grande de 640 pesaba ~720 KB. Sin
+                                                        // "pixelated": al achicar, tomar
+                                                        // pixeles sueltos deja los trazos
+                                                        // dentados. Si el backend todavia
+                                                        // no tiene ese tamaño, la grande.
                                                         <img
-                                                            src={
+                                                            src={miniaturaDeTrait(
                                                                 variant.imageUrl.startsWith(
                                                                     'http'
                                                                 )
                                                                     ? variant.imageUrl
-                                                                    : `${BACKEND_BASE_URL}${variant.imageUrl}`
-                                                            }
+                                                                    : `${BACKEND_BASE_URL}${variant.imageUrl}`,
+                                                                { tamano: 'grilla' }
+                                                            )}
+                                                            onError={(e) => {
+                                                                const img =
+                                                                    e.currentTarget;
+                                                                if (
+                                                                    img.src.includes(
+                                                                        't=grilla'
+                                                                    )
+                                                                )
+                                                                    img.src =
+                                                                        img.src.replace(
+                                                                            't=grilla',
+                                                                            't=grande'
+                                                                        );
+                                                            }}
                                                             alt={variant.name}
                                                             width={
                                                                 THUMBNAIL_SIZE
@@ -1182,10 +1325,6 @@ function CustomizerContent() {
                                                             }
                                                             loading="lazy"
                                                             className="w-full h-full object-cover"
-                                                            style={{
-                                                                imageRendering:
-                                                                    'pixelated',
-                                                            }}
                                                         />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center text-xs text-lightblue/70">
@@ -1210,11 +1349,11 @@ function CustomizerContent() {
                                             onClick={() =>
                                                 setTraitPage(paginaActual - 1)
                                             }
-                                            className="bg-lightblue text-darkblue rounded-md sm:rounded-sm w-9 h-8 sm:w-5 sm:h-4 text-xs sm:text-[8px] leading-none cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-lightblue transition-all duration-300 active:scale-97"
+                                            className="bg-lightblue text-darkblue rounded-md sm:rounded-sm w-9 h-8 sm:w-5 sm:h-4 flex items-center justify-center cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-lightblue transition-all duration-300 active:scale-97"
                                         >
-                                            ◀
+                                            <FiChevronLeft className="w-4 h-4 sm:w-3 sm:h-3" strokeWidth={3} />
                                         </button>
-                                        <span>
+                                        <span className="pb-1.5">
                                             Page {paginaActual + 1} of{' '}
                                             {totalPaginas}
                                         </span>
@@ -1227,9 +1366,9 @@ function CustomizerContent() {
                                             onClick={() =>
                                                 setTraitPage(paginaActual + 1)
                                             }
-                                            className="bg-lightblue text-darkblue rounded-md sm:rounded-sm w-9 h-8 sm:w-5 sm:h-4 text-xs sm:text-[8px] leading-none cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-lightblue transition-all duration-300 active:scale-97"
+                                            className="bg-lightblue text-darkblue rounded-md sm:rounded-sm w-9 h-8 sm:w-5 sm:h-4 flex items-center justify-center cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-lightblue transition-all duration-300 active:scale-97"
                                         >
-                                            ▶
+                                            <FiChevronRight className="w-4 h-4 sm:w-3 sm:h-3" strokeWidth={3} />
                                         </button>
                                     </div>
                                 )}

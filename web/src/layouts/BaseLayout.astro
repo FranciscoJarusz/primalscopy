@@ -24,6 +24,18 @@ const { title = "Primal Cult", noindex = false } = Astro.props;
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Antes de pintar: esconde lo que se va a animar (ver lib/animaciones.ts)
+         para que no aparezca y desaparezca. Si el JS no llega a sacar la
+         clase, se saca sola: el contenido nunca queda invisible. -->
+    <script is:inline>
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.documentElement.classList.add("anim-pendiente");
+        setTimeout(function () {
+          document.documentElement.classList.remove("anim-pendiente");
+        }, 3000);
+      }
+    </script>
   </head>
 
   <body
@@ -33,7 +45,14 @@ const { title = "Primal Cult", noindex = false } = Astro.props;
 
     <script>
       import { initLenis } from "@/lib/lenis";
-      initLenis();
+      const lenis = initLenis();
+
+      // En todas las paginas, aunque al cargar no haya nada marcado: las
+      // islas de React arman su HTML despues. Va en un chunk aparte para no
+      // demorar el resto de la pagina.
+      import("@/lib/animaciones")
+        .then(({ initAnimaciones }) => initAnimaciones(lenis))
+        .catch(() => document.documentElement.classList.remove("anim-pendiente"));
     </script>
   </body>
 </html>

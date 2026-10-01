@@ -84,13 +84,14 @@ const insignia: Record<Variante, string> = {
     aria-labelledby="roadmap-titulo"
 >
     <h2
+        data-anim="reveal"
         id="roadmap-titulo"
         class="rounded-2xl sm:rounded-[30px] bg-yellow pt-1 pb-5 sm:pt-2 sm:pb-7 xl:pb-9 text-center font-accent text-5xl sm:text-6xl xl:text-7xl uppercase text-darkblue shadow-lg shadow-darkblue/50"
     >
         Roadmap
     </h2>
 
-    <div class="grid grid-cols-1 gap-4 sm:gap-7 md:grid-cols-2 lg:grid-cols-3">
+    <div data-anim-stagger class="grid grid-cols-1 gap-4 sm:gap-7 md:grid-cols-2 lg:grid-cols-3">
         {hitos.map((hito) => (
             <article
                 class={`flex flex-col gap-3 sm:gap-4 rounded-2xl sm:rounded-[30px] p-6 sm:p-8 ${tarjeta[hito.variante]}`}

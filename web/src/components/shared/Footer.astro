@@ -1,21 +1,5 @@
 ---
-const REDES = [
-    {
-        nombre: 'Discord',
-        href: 'https://discord.gg/djJaV4keCQ',
-        img: '/icons/discord.svg',
-    },
-    {
-        nombre: 'X',
-        href: 'https://x.com/primal_cult',
-        img: '/icons/x.svg',
-    },
-    {
-        nombre: 'OpenSea',
-        href: 'https://opensea.io/collection/primalcult',
-        img: '/icons/opensea.svg',
-    },
-];
+import { REDES } from '@/lib/redes';
 
 const anio = new Date().getFullYear();
 
@@ -27,6 +11,7 @@ const { class: clase = '' } = Astro.props;
 ---
 
 <footer
+    data-anim="fade"
     class:list={[
         'flex flex-col md:flex-row gap-5 md:gap-10 items-center justify-between rounded-2xl sm:rounded-[30px] px-4 py-6 sm:px-6 lg:px-10 text-center bg-darkblue shadow-lg shadow-darkblue/50',
         clase,

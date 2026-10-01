@@ -4,8 +4,12 @@ const cors = require('cors');
 const nftRoutes = require('./routes/nftRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
-const labRoutes = require('./routes/labRoutes');
+const forgeRoutes = require('./routes/forgeRoutes');
+const profileRoutes = require('./routes/profileRoutes');
+const { paymentConfig } = require('./lib/forgePayments');
+const { formatEther } = require('viem');
 const { TRAITS_PATH, seedTraitsIfEmpty } = require('./lib/traitsStore');
+const { servirMiniatura, generarTodas } = require('./lib/traitThumbs');
 const { isAdminEnabled, getAdminTokenLength } = require('./middleware/adminAuth');
 const { isWalletAuthEnabled } = require('./lib/walletAuth');
 const assets = require('./lib/assetStore');
@@ -41,6 +45,10 @@ app.use('/generated_images', express.static(GENERATED_IMAGES_PATH));
 // Los traits salen de TRAITS_PATH (volumen persistente en producción), no de
 // la carpeta del repo. Va antes del /assets general para tener prioridad.
 app.use('/assets/traits', express.static(TRAITS_PATH));
+
+// Miniaturas animadas de los traits para las grillas (ver lib/traitThumbs.js).
+// Misma ruta que en /assets/traits, con /assets/thumbs adelante.
+app.get(/^\/assets\/thumbs\/(.+)$/, servirMiniatura);
 
 // Servir el resto de assets (base_primal, empty_canvas, etc.)
 const ASSETS_PATH = path.join(__dirname, 'assets');
@@ -105,11 +113,17 @@ app.use('/t', express.static(path.join(ASSETS_PATH, 'legacy', 't'), { maxAge: '3
 app.use('/api/nft', nftRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/lab', labRoutes);
+app.use('/api/forge', forgeRoutes);
+app.use('/api/profile', profileRoutes);
 
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
+  // Las miniaturas que falten, en segundo plano. Solo con el server lanzado
+  // directo: los tests cargan este archivo y no tienen por que generarlas.
+  if (require.main === module) {
+    setTimeout(() => generarTodas().catch(error => console.error('[thumbs]', error)), 3000);
+  }
   console.log(`[traits] Sirviendo traits desde ${TRAITS_PATH}`);
   if (!isWalletAuthEnabled()) {
     console.warn('[auth] WALLET_JWT_SECRET no definido: el login por wallet está deshabilitado.');
@@ -123,7 +137,15 @@ app.listen(PORT, () => {
     // pegado truncado o con espacios sin exponer el secreto.
     console.log(`[admin] Panel habilitado (token de ${getAdminTokenLength()} caracteres).`);
   }
-  if (process.env.LAB_TEST_MODE === 'true') {
-    console.warn('[lab] MODO DE PRUEBA: rolls gratis y los cambios del LAB quedan solo en este server.');
+  const forgeCobro = paymentConfig();
+  if (process.env.FORGE_TEST_MODE === 'true') {
+    console.warn(`[forge] MODO DE PRUEBA: los cambios del Forge quedan solo en este server. ${
+      forgeCobro ? 'Los rolls se cobran de verdad.' : 'Rolls gratis.'}`);
+  }
+  if (forgeCobro) {
+    console.log(`[forge] Cobro: ${formatEther(forgeCobro.priceWei)} APE por roll a ${forgeCobro.treasury} (cadena ${forgeCobro.chainId}).`);
+    if (forgeCobro.fromBlock === 0n) {
+      console.warn('[forge] FORGE_PAYMENTS_FROM_BLOCK no definido: se aceptan transferencias viejas al treasury como pago.');
+    }
   }
 });

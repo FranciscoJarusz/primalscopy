@@ -1,30 +1,30 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @font-face {
-  font-family: "Sunzone";
-  src: url("/fonts/sunzone.ttf") format("truetype");
-  ascent-override: 100%;
-  descent-override: 0%;
-  line-gap-override: 0%;
+    font-family: 'Sunzone';
+    src: url('/fonts/sunzone-v2.ttf') format('truetype');
+    ascent-override: 100%;
+    descent-override: 0%;
+    line-gap-override: 0%;
 }
 
 @theme {
-  --color-darkblue: #090050;
-  --color-blue: #002e93;
-  --color-lightblue: #dfe8ff;
-  --color-yellow: #fdf468;
-  --color-red: #c20e35;
+    --color-darkblue: #090050;
+    --color-blue: #002e93;
+    --color-lightblue: #dfe8ff;
+    --color-yellow: #fdf468;
+    --color-red: #c20e35;
 
-  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
-  --font-accent: "Sunzone", ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+    --font-accent: 'Sunzone', ui-sans-serif, system-ui, sans-serif;
 
-  --animate-marquee: marquee-scroll var(--marquee-speed, 32s) linear infinite;
+    --animate-marquee: marquee-scroll var(--marquee-speed, 32s) linear infinite;
 
-  @keyframes marquee-scroll {
-    to {
-      transform: translateX(-50%);
+    @keyframes marquee-scroll {
+        to {
+            transform: translateX(-50%);
+        }
     }
-  }
 }
 
 h1,
@@ -34,58 +34,109 @@ h4,
 h5,
 h6,
 a {
-  line-height: 0.85;
+    line-height: 0.85;
 }
 
 ::selection {
-  background-color: var(--color-darkblue);
-  color: var(--color-yellow);
+    background-color: var(--color-darkblue);
+    color: var(--color-yellow);
 }
 
 @supports not (scrollbar-color: auto) {
-  ::-webkit-scrollbar {
-    width: 14px;
-    height: 14px;
-  }
-  ::-webkit-scrollbar-track {
-    background: var(--color-darkblue);
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--color-blue);
-    border-radius: 8px;
-  }
+    ::-webkit-scrollbar {
+        width: 14px;
+        height: 14px;
+    }
+    ::-webkit-scrollbar-track {
+        background: var(--color-darkblue);
+    }
+    ::-webkit-scrollbar-thumb {
+        background: var(--color-blue);
+        border-radius: 8px;
+    }
 }
 
 body {
-  min-height: 100vh;
-  margin: 0;
-  font-family: var(--font-sans);
-  background-color: var(--color-darkblue);
-  background-image: url("/brand/pattern.svg");
-  background-repeat: no-repeat;
-  background-position: center center;
-  background-size: cover;
-  background-attachment: fixed;
-  scrollbar-width: auto;
-  scrollbar-color: #bfdbfe #090746;
-  overflow-x: clip;
+    min-height: 100vh;
+    margin: 0;
+    font-family: var(--font-sans);
+    background-color: var(--color-darkblue);
+    scrollbar-width: auto;
+    scrollbar-color: #bfdbfe #090746;
+    overflow-x: clip;
 }
 
+html.anim-pendiente [data-anim]:not([data-anim='intro']),
+html.anim-pendiente [data-anim='intro'] > *,
+html.anim-pendiente [data-anim-stagger] > * {
+    visibility: hidden;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100lvh;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url('/brand/pattern.svg');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+}
+.btn-rainbow {
+    background-image: linear-gradient(
+        90deg,
+        #ff5f6d,
+        #ffb347,
+        #fdf468,
+        #5ef08f,
+        #5ec8ff,
+        #a67bff,
+        #ff5f6d
+    );
+    background-size: 300% 100%;
+    animation: rainbow-shift 4s linear infinite;
+}
+
+.btn-rainbow:hover {
+    animation-duration: 1.2s;
+}
+
+@keyframes rainbow-shift {
+    to {
+        background-position: 150% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn-rainbow {
+        animation: none;
+    }
+}
+
+/* overflow-x tambien en html, no solo en body: si html no tiene overflow
+   propio, el navegador le pasa el del body a la ventana, y Safari en iPhone
+   ahi lo ignora. Con esto el body recorta de verdad lo que se sale de costado
+   (las animaciones que entran desde un lado) y la pagina no se corre. */
 html {
-  scrollbar-width: auto;
-  scrollbar-color: var(--color-yellow) var(--color-darkblue);
+    overflow-x: clip;
+    scrollbar-width: auto;
+    scrollbar-color: var(--color-yellow) var(--color-darkblue);
 }
 
 @supports not (scrollbar-color: auto) {
-  ::-webkit-scrollbar {
-    width: 14px;
-    height: 14px;
-  }
-  ::-webkit-scrollbar-track {
-    background: var(--color-darkblue);
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--color-yellow);
-    border-radius: 8px;
-  }
+    ::-webkit-scrollbar {
+        width: 14px;
+        height: 14px;
+    }
+    ::-webkit-scrollbar-track {
+        background: var(--color-darkblue);
+    }
+    ::-webkit-scrollbar-thumb {
+        background: var(--color-yellow);
+        border-radius: 8px;
+    }
 }

@@ -4,6 +4,7 @@
 // TRAITS_PATH, que en producción es un volumen persistente de Railway.
 
 const fs = require('fs');
+const { generarAhora } = require('../lib/traitThumbs');
 const path = require('path');
 
 const { TRAITS_PATH, GLOBAL_DIR, IMAGE_EXTENSION_REGEX } = require('../lib/traitsStore');
@@ -140,6 +141,7 @@ function uploadTrait(req, res, next) {
 
         fs.mkdirSync(dirPath, { recursive: true });
         fs.writeFileSync(filePath, req.file.buffer);
+        generarAhora(`${category}/${directory}/${fileName}`);
 
         res.status(201).json({
             message: 'Trait subido.',
@@ -180,6 +182,7 @@ function renameTrait(req, res, next) {
         }
 
         fs.renameSync(currentPath, nextPath);
+        generarAhora(`${category}/${directory}/${newFile}`);
 
         res.json({
             message: 'Trait renombrado.',

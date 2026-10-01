@@ -1,0 +1,10 @@
+---
+import LandingLayout from '@/layouts/LandingLayout.astro';
+import StatsApp from '@/components/stats/StatsApp';
+---
+
+<LandingLayout title="Stats - Primal Cult" activo="stats">
+    <main class="mt-10 sm:mt-14">
+        <StatsApp client:load />
+    </main>
+</LandingLayout>

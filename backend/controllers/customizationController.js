@@ -15,7 +15,7 @@ const remote = require('../lib/remotePublisher');
 const { fingerprint, findVariantByFingerprint } = require('../lib/traitFingerprint');
 const marketplaces = require('../lib/marketplaceRefresh');
 const feed = require('../lib/feedStore');
-const lab = require('../lib/labStore');
+const forge = require('../lib/forgeStore');
 const sharp = require('sharp');
 const fs = require('fs');
 
@@ -116,7 +116,7 @@ async function loadOrSeedMetadata(tokenId) {
     return data;
 }
 
-// Un NFT se escribe de a uno por vez, lo pida el customizer o el LAB: si dos
+// Un NFT se escribe de a uno por vez, lo pida el customizer o el Forge: si dos
 // escrituras se pisaran, la metadata podria quedar con los traits de una y la
 // imagen de la otra. Tira con el status listo para responder.
 function tomarTurno(nftId) {
@@ -138,24 +138,24 @@ function soltarTurno(nftId) {
 
 /**
  * Compone el GIF, lo publica y deja todo escrito. Lo usan el customizer y el
- * LAB; el llamador tiene que tener el turno del NFT.
+ * Forge; el llamador tiene que tener el turno del NFT.
  *
  * `metadata` es la metadata completa que va a quedar publicada, salvo
  * "image", que se arma aca. El customizer la pasa con los attributes intactos
- * (las variantes son diseños del MISMO valor de trait); el LAB, con los
+ * (las variantes son diseños del MISMO valor de trait); el Forge, con los
  * traits que salieron en el roll.
  *
  * Con remoto=false no se toca el hosting de la coleccion ni se avisa a
  * OpenSea: todo queda solo en el volumen. Es lo que usa el modo de prueba del
- * LAB, para poder probarlo en local aunque el .env tenga las credenciales de
+ * Forge, para poder probarlo en local aunque el .env tenga las credenciales de
  * produccion.
  */
 async function publicarNft(nftId, { layers, applied, metadata, wallet, remoto = true }) {
     const publicado = remoto && remote.isConfigured();
-    if (publicado && lab.isSandbox(nftId)) {
+    if (publicado && forge.isSandbox(nftId)) {
         throw Object.assign(new Error(
-            `El NFT #${nftId} tiene cambios de prueba del LAB en este server y no se puede publicar. `
-            + 'Restauralo con: node scripts/lab-reset-sandbox.js'
+            `El NFT #${nftId} tiene cambios de prueba del Forge en este server y no se puede publicar. `
+            + 'Restauralo con: node scripts/forge-reset-sandbox.js'
         ), { status: 409 });
     }
 
@@ -228,7 +228,7 @@ async function saveCustomization(req, res) {
 
         // Los attributes quedan intactos a proposito: las variantes son
         // diseños alternativos del MISMO valor de trait, asi que la rareza de
-        // la coleccion no se toca. Los traits solo los cambia el LAB.
+        // la coleccion no se toca. Los traits solo los cambia el Forge.
         const metadata = await loadOrSeedMetadata(nftId);
 
         const result = await publicarNft(nftId, { layers, applied, metadata, wallet: req.walletAddress });
@@ -351,7 +351,7 @@ module.exports = {
     saveCustomization,
     getCustomization,
     LAYER_ORDER,
-    // Los usa el LAB para escribir el NFT por el mismo camino.
+    // Los usa el Forge para escribir el NFT por el mismo camino.
     tomarTurno,
     soltarTurno,
     publicarNft,

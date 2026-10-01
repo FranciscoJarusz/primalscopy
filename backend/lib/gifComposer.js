@@ -14,7 +14,7 @@
 // que dependen de lo que quedo dibujado antes (eso es el "disposal").
 
 const fs = require('fs');
-const { parseGIF, decompressFrames } = require('gifuct-js');
+const { parseGIF, decompressFrame, decompressFrames } = require('gifuct-js');
 const { GIFEncoder, quantize, applyPalette } = require('gifenc');
 
 const SIZE = 2000;
@@ -109,6 +109,65 @@ function renderLayerFrames(layer) {
     return rendered;
 }
 
+// Una capa para componer cuadro por cuadro: el GIF parseado (todavia
+// comprimido) y un unico lienzo que va avanzando.
+function abrirCapa(filePath) {
+    const buf = fs.readFileSync(filePath);
+    const gif = parseGIF(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+    const cuadros = gif.frames.filter(f => f.image);
+    if (cuadros.length === 0) throw new Error(`El GIF no tiene frames: ${filePath}`);
+    const width = gif.lsd.width;
+    const height = gif.lsd.height;
+    return {
+        gif,
+        cuadros,
+        width,
+        height,
+        canvas: new Uint8ClampedArray(width * height * 4),
+        actual: -1, // cuadro que muestra el lienzo ahora
+        siguiente: 0, // proximo cuadro a dibujar
+        pending: null // disposal del ultimo cuadro dibujado
+    };
+}
+
+// Deja el lienzo de la capa en el cuadro `indice`: lo mismo que
+// renderLayerFrames(capa)[indice], sin guardar los demas. Los cuadros se
+// piden en orden; cuando la capa vuelve a empezar (loop), se arranca de un
+// lienzo vacio, igual que el cuadro 0 de renderLayerFrames.
+function avanzar(capa, indice) {
+    if (indice === capa.actual) return;
+    if (indice < capa.siguiente) {
+        capa.canvas.fill(0);
+        capa.siguiente = 0;
+        capa.pending = null;
+    }
+    while (capa.siguiente <= indice) {
+        const frame = decompressFrame(capa.cuadros[capa.siguiente], capa.gif.gct, true);
+        if (capa.pending && (capa.pending.disposalType === 2 || capa.pending.disposalType === 3)) {
+            clearRect(capa.canvas, capa.width, capa.pending.dims);
+        }
+        drawPatch(capa.canvas, capa.width, frame.patch, frame.dims);
+        capa.pending = { dims: frame.dims, disposalType: frame.disposalType };
+        capa.siguiente++;
+    }
+    capa.actual = indice;
+}
+
+// Los cuadros de salida: en cada uno, cada capa en su cuadro (las cortas en
+// loop) y todas superpuestas de atras hacia adelante.
+function componerCuadros(layers, totalFrames) {
+    const composed = [];
+    for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
+        const output = new Uint8ClampedArray(layers[0].width * layers[0].height * 4);
+        for (const layer of layers) {
+            avanzar(layer, frameIndex % layer.cuadros.length);
+            compositeOver(output, layer.canvas);
+        }
+        composed.push(output);
+    }
+    return composed;
+}
+
 // --- API --------------------------------------------------------------------
 
 /**
@@ -125,7 +184,14 @@ function composeGif(layerPaths, { size = SIZE, quality = 10, onFirstFrame = null
         throw new Error('No hay capas para componer.');
     }
 
-    const layers = layerPaths.map(loadLayer);
+    // Cada capa se lee comprimida (unos KB) y sus cuadros se decodifican de a
+    // uno, recien cuando hacen falta. Antes se decodificaban todos y se
+    // guardaba una copia del lienzo por cada cuadro de cada capa: con 7 capas
+    // de 6 cuadros a 2000x2000 eran ~1,8 GB de memoria para un solo GIF, y eso
+    // era lo que tenia la RAM del server en 1-2,6 GB. Ahora: un lienzo por capa
+    // (7 x 16 MB) mas los cuadros de salida. El GIF que sale es el mismo byte a
+    // byte.
+    const layers = layerPaths.map(abrirCapa);
 
     // Todas las capas son del mismo tamaño en esta coleccion, pero si alguna
     // difiere conviene enterarse por un error claro y no por una imagen torcida.
@@ -135,29 +201,20 @@ function composeGif(layerPaths, { size = SIZE, quality = 10, onFirstFrame = null
         }
     }
 
-    const renderedByLayer = layers.map(renderLayerFrames);
-
     // Las capas animadas tienen 6 frames y las estaticas 1. El resultado dura
     // lo que la mas larga, y las cortas se repiten en loop.
-    const totalFrames = Math.max(...layers.map(l => l.frames.length));
+    const totalFrames = Math.max(...layers.map(l => l.cuadros.length));
 
     // El delay sale de la primera capa animada que haya; si son todas estaticas
     // el valor no importa porque hay un solo frame.
-    const animated = layers.find(l => l.frames.length > 1);
-    const delay = animated ? (animated.frames[0].delay || DEFAULT_DELAY) : DEFAULT_DELAY;
+    const animated = layers.find(l => l.cuadros.length > 1);
+    const delay = animated
+        ? (decompressFrame(animated.cuadros[0], animated.gif.gct, false).delay || DEFAULT_DELAY)
+        : DEFAULT_DELAY;
 
     // Primero se componen todos los frames, porque para comprimir bien hace
     // falta comparar cada uno con el anterior.
-    const pixelCount = size * size * 4;
-    const composed = [];
-    for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
-        const output = new Uint8ClampedArray(pixelCount);
-        for (let i = 0; i < layers.length; i++) {
-            const rendered = renderedByLayer[i];
-            compositeOver(output, rendered[frameIndex % rendered.length]);
-        }
-        composed.push(output);
-    }
+    const composed = componerCuadros(layers, totalFrames);
 
     // Antes de cuantizar: aca los colores son los reales, sin la perdida que
     // mete la paleta de 255 del GIF.
@@ -236,4 +293,4 @@ function buildPalette(frames) {
 
 // Las piezas internas se exportan para poder medirlas por separado desde los
 // tests y los scripts de calibracion del encoder.
-module.exports = { composeGif, SIZE, loadLayer, renderLayerFrames, compositeOver };
+module.exports = { composeGif, SIZE, loadLayer, renderLayerFrames, compositeOver, abrirCapa, componerCuadros };

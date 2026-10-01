@@ -1,13 +1,24 @@
 ---
 import WalletIsland from '@/components/shared/WalletIsland';
+import { REDES } from '@/lib/redes';
+import { FiArrowUpRight, FiChevronDown } from 'react-icons/fi';
 
-export type Seccion = { nombre: string; href: string; id: string; oculta?: boolean };
+export type Seccion = {
+    nombre: string;
+    href: string;
+    id: string;
+    oculta?: boolean;
+};
 
 export const SECCIONES: Seccion[] = [
     { id: 'home', nombre: 'Home', href: '/' },
     { id: 'cultomizer', nombre: 'Cultomizer', href: '/cultomizer' },
-    // Oculta hasta que Raffles salga: las paginas siguen andando por URL.
+    { id: 'forge', nombre: 'Forge', href: '/forge' },
     { id: 'raffles', nombre: 'Raffles', href: '/raffles', oculta: true },
+];
+
+export const COMMUNITY: Seccion[] = [
+    { id: 'stats', nombre: 'Stats', href: '/stats' },
 ];
 
 interface Props {
@@ -17,6 +28,7 @@ interface Props {
 
 const { activo = 'home', secciones: todas = SECCIONES } = Astro.props;
 const secciones = todas.filter((s) => !s.oculta);
+const communityActivo = COMMUNITY.some((s) => s.id === activo);
 
 const clase = (id: string) =>
     id === activo
@@ -28,9 +40,6 @@ const clase = (id: string) =>
     class="sticky top-3 sm:top-4 z-30 flex items-center justify-between gap-x-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-10 lg:py-5"
     data-header
 >
-    {/* El fondo del header es una caja aparte detras del contenido. Al abrir
-        el menu crece hacia abajo y al cerrarlo se encoge: una sola forma con
-        las esquinas siempre redondeadas, sin costura entre header y menu. */}
     <div
         data-fondo
         aria-hidden="true"
@@ -63,6 +72,69 @@ const clase = (id: string) =>
                 {s.nombre}
             </a>
         ))}
+
+        <div class="relative" data-desplegable>
+            <button
+                type="button"
+                aria-expanded="false"
+                aria-controls="menu-community"
+                data-desplegable-boton
+                class:list={[
+                    'flex items-center gap-1.5 uppercase cursor-pointer',
+                    communityActivo
+                        ? 'text-yellow'
+                        : 'hover:text-yellow aria-expanded:text-yellow transition-all duration-300',
+                ]}
+            >
+                Community
+                <span aria-hidden="true" data-desplegable-flecha class="mt-1 flex transition-transform duration-300 motion-reduce:transition-none">
+                    <FiChevronDown size={18} />
+                </span>
+            </button>
+
+            <div
+                id="menu-community"
+                data-desplegable-panel
+                class="absolute left-1/2 top-full -translate-x-1/2 pt-6 invisible opacity-0 -translate-y-1 transition-all duration-200 ease-out motion-reduce:transition-none"
+            >
+                <div class="min-w-56 bg-darkblue rounded-2xl shadow-lg shadow-darkblue/50 p-2 flex flex-col text-lg">
+                    {COMMUNITY.map((s) => (
+                        <a
+                            href={s.href}
+                            tabindex="-1"
+                            class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
+                        >
+                            {s.nombre}
+                        </a>
+                    ))}
+
+                    <div class="my-1 mx-3 border-t border-lightblue/15"></div>
+
+                    {REDES.map((red) => (
+                        <a
+                            href={red.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            tabindex="-1"
+                            class="group flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-lightblue hover:text-yellow transition-all duration-300"
+                        >
+                            <span
+                                aria-hidden="true"
+                                class="mt-1 size-[20px] shrink-0 bg-current"
+                                style={`mask: url(${red.img}) center / contain no-repeat`}
+                            ></span>
+                            <span class="flex-1">{red.nombre}</span>
+                            <span
+                                aria-hidden="true"
+                                class="flex mt-1 opacity-50 group-hover:opacity-100 transition-opacity duration-300"
+                            >
+                                <FiArrowUpRight size={16} />
+                            </span>
+                        </a>
+                    ))}
+                </div>
+            </div>
+        </div>
     </nav>
 
     <div class="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -116,8 +188,6 @@ const clase = (id: string) =>
         </button>
     </div>
 
-    {/* Los links flotan debajo del header, sobre el fondo que se estira: tapan
-        la pagina en lugar de empujarla. */}
     <div
         data-menu-caja
         class="lg:hidden absolute inset-x-0 top-full -mt-px invisible pointer-events-none [clip-path:inset(0_0_100%_0)]"
@@ -136,6 +206,41 @@ const clase = (id: string) =>
                         class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
                     >
                         {s.nombre}
+                    </a>
+                ))}
+
+                {/* En mobile Community no se anida: es una seccion con titulo. */}
+                <p class="mt-1 border-t border-lightblue/15 px-3 pt-3 pb-1 text-sm text-lightblue/50">
+                    Community
+                </p>
+
+                {COMMUNITY.map((s) => (
+                    <a
+                        href={s.href}
+                        tabindex="-1"
+                        class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
+                    >
+                        {s.nombre}
+                    </a>
+                ))}
+
+                {REDES.map((red) => (
+                    <a
+                        href={red.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        tabindex="-1"
+                        class="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-lightblue hover:text-yellow transition-all duration-300"
+                    >
+                        <span
+                                aria-hidden="true"
+                                class="mt-1 size-[18px] shrink-0 bg-current"
+                                style={`mask: url(${red.img}) center / contain no-repeat`}
+                            ></span>
+                        <span>{red.nombre}</span>
+                        <span aria-hidden="true" class="flex mt-1 opacity-50">
+                            <FiArrowUpRight size={14} />
+                        </span>
                     </a>
                 ))}
 
@@ -176,14 +281,13 @@ const clase = (id: string) =>
         let abierto = false;
         const fondo = header.querySelector<HTMLElement>('[data-fondo]');
 
-        // Abrir: suave y con un poco de inercia. Cerrar: mas corto, que se
-        // sienta como que se guarda y no como que se corta.
         const CURVA_ABRIR = '420ms cubic-bezier(0.22, 1, 0.36, 1)';
         const CURVA_CERRAR = '320ms cubic-bezier(0.4, 0, 0.2, 1)';
         const ABRIR = 'height ' + CURVA_ABRIR;
         const CERRAR = 'height ' + CURVA_CERRAR;
 
-        const altoAbierto = () => header.offsetHeight + (caja?.offsetHeight ?? 0);
+        const altoAbierto = () =>
+            header.offsetHeight + (caja?.offsetHeight ?? 0);
 
         const pintar = () => {
             boton?.setAttribute('aria-expanded', String(abierto));
@@ -193,28 +297,24 @@ const clase = (id: string) =>
             );
 
             if (fondo) {
-                // La altura se anima entre dos valores en px: se parte de la
-                // actual para que funcione tambien si se toca a mitad de camino.
                 fondo.style.height = fondo.offsetHeight + 'px';
                 void fondo.offsetHeight;
                 fondo.style.transition = abierto ? ABRIR : CERRAR;
-                fondo.style.height = (abierto ? altoAbierto() : header.offsetHeight) + 'px';
+                fondo.style.height =
+                    (abierto ? altoAbierto() : header.offsetHeight) + 'px';
             }
 
-            // Los links no se mueven: el recorte baja y sube junto con el
-            // fondo, asi el fondo los va descubriendo y tapando como una
-            // cortina. Al cerrar se ocultan recien cuando el recorte termino.
             if (caja) {
                 caja.style.transition = abierto
                     ? `clip-path ${CURVA_ABRIR}, visibility 0s`
                     : `clip-path ${CURVA_CERRAR}, visibility 0s linear 320ms`;
-                caja.style.clipPath = abierto ? 'inset(0 0 0 0)' : 'inset(0 0 100% 0)';
+                caja.style.clipPath = abierto
+                    ? 'inset(0 0 0 0)'
+                    : 'inset(0 0 100% 0)';
             }
             caja?.classList.toggle('invisible', !abierto);
             caja?.classList.toggle('pointer-events-none', !abierto);
 
-            // Un fundido corto encima del recorte, para que no aparezcan con
-            // un borde duro.
             if (nav) {
                 nav.style.transition = abierto
                     ? 'opacity 300ms ease-out 60ms'
@@ -245,7 +345,6 @@ const clase = (id: string) =>
             }
         });
 
-        // Si cambia el ancho con el menu abierto, el fondo se reacomoda.
         window.addEventListener('resize', () => {
             if (abierto && fondo) {
                 fondo.style.transition = 'none';
@@ -273,7 +372,6 @@ const clase = (id: string) =>
                 pintar();
             });
 
-        // El menu tapa la pagina: tocar fuera del header lo cierra.
         document.addEventListener('click', (e) => {
             if (abierto && !header.contains(e.target as Node)) {
                 abierto = false;
@@ -287,5 +385,77 @@ const clase = (id: string) =>
                 pintar();
             }
         });
+
+        const desplegable =
+            header.querySelector<HTMLElement>('[data-desplegable]');
+        const dBoton = desplegable?.querySelector<HTMLButtonElement>(
+            '[data-desplegable-boton]'
+        );
+        const dPanel = desplegable?.querySelector<HTMLElement>(
+            '[data-desplegable-panel]'
+        );
+        const dFlecha = desplegable?.querySelector<HTMLElement>(
+            '[data-desplegable-flecha]'
+        );
+
+        if (desplegable && dBoton && dPanel) {
+            let dAbierto = false;
+            let porHover = false;
+            let espera: number | undefined;
+
+            const dPintar = (valor: boolean) => {
+                dAbierto = valor;
+                if (!valor) porHover = false;
+                dBoton.setAttribute('aria-expanded', String(valor));
+                dPanel.classList.toggle('invisible', !valor);
+                dPanel.classList.toggle('opacity-0', !valor);
+                dPanel.classList.toggle('-translate-y-1', !valor);
+                dFlecha?.classList.toggle('rotate-180', valor);
+                dPanel.querySelectorAll('a').forEach((a) => {
+                    a.tabIndex = valor ? 0 : -1;
+                });
+            };
+
+            desplegable.addEventListener('pointerenter', (e) => {
+                if (e.pointerType !== 'mouse') return;
+                clearTimeout(espera);
+                if (!dAbierto) {
+                    porHover = true;
+                    dPintar(true);
+                }
+            });
+
+            desplegable.addEventListener('pointerleave', (e) => {
+                if (e.pointerType !== 'mouse') return;
+                espera = window.setTimeout(() => dPintar(false), 150);
+            });
+
+            dBoton.addEventListener('click', () => {
+                if (porHover) {
+                    porHover = false;
+                    return;
+                }
+                dPintar(!dAbierto);
+            });
+
+            desplegable.addEventListener('focusout', (e) => {
+                if (!desplegable.contains(e.relatedTarget as Node)) {
+                    dPintar(false);
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (dAbierto && !desplegable.contains(e.target as Node)) {
+                    dPintar(false);
+                }
+            });
+
+            desplegable.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && dAbierto) {
+                    dPintar(false);
+                    dBoton.focus();
+                }
+            });
+        }
     }
 </script>

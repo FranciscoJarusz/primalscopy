@@ -23,6 +23,14 @@ const OWNER_OF_ABI = [{
     type: 'function'
 }];
 
+const BALANCE_OF_ABI = [{
+    inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function'
+}];
+
 const publicClient = createPublicClient({
     chain: apeChain,
     transport: http()
@@ -72,4 +80,15 @@ async function checkOwnership(address, tokenId) {
     return { status: isOwner ? 'owner' : 'not-owner', owner };
 }
 
-module.exports = { checkOwnership, getTokenOwner, CONTRACT_ADDRESS };
+// Cuantos Primals tiene una wallet. Si el RPC falla, tira: el llamador decide.
+async function getPrimalBalance(address) {
+    const balance = await publicClient.readContract({
+        address: CONTRACT_ADDRESS,
+        abi: BALANCE_OF_ABI,
+        functionName: 'balanceOf',
+        args: [getAddress(address)]
+    });
+    return Number(balance);
+}
+
+module.exports = { checkOwnership, getTokenOwner, getPrimalBalance, CONTRACT_ADDRESS };

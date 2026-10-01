@@ -1,13 +1,13 @@
 // scripts/snapshot-rarity.js
 //
 // Saca una foto de la rareza ORIGINAL de la coleccion: cuantos NFTs tienen
-// cada valor de trait. De ahi salen las probabilidades de los rolls del LAB
+// cada valor de trait. De ahi salen las probabilidades de los rolls del Forge
 // (el dueño lo decidio asi: un trait raro sale poco).
 //
-// Es una foto y no se recalcula a proposito. Cuando el LAB empiece a cambiar
+// Es una foto y no se recalcula a proposito. Cuando el Forge empiece a cambiar
 // traits, la rareza "en vivo" se mueve con lo que la gente elige: si se
 // recalculara, los traits mas elegidos serian cada vez mas faciles de sacar y
-// la rareza se deformaria sola. NO volver a correr esto despues de que el LAB
+// la rareza se deformaria sola. NO volver a correr esto despues de que el Forge
 // este en produccion: la foto dejaria de ser la de la coleccion original.
 //
 // Uso:
@@ -65,7 +65,7 @@ async function main() {
     for (const [id, metadata] of [...all].sort((a, b) => a[0] - b[0])) {
         const attributes = Array.isArray(metadata.attributes) ? metadata.attributes : [];
         // Las piezas unicas no tienen traits por capas: un solo atributo
-        // "1/1". No entran en la rareza ni en el LAB.
+        // "1/1". No entran en la rareza ni en el Forge.
         if (attributes.some(a => a?.trait_type === '1/1')) {
             oneOfOnes.push(id);
             continue;
@@ -85,7 +85,7 @@ async function main() {
     }
 
     const snapshot = {
-        description: 'Rareza original de la coleccion. No regenerar despues de que el LAB este en produccion.',
+        description: 'Rareza original de la coleccion. No regenerar despues de que el Forge este en produccion.',
         generatedAt: new Date().toISOString(),
         totalTokens: TOTAL_TOKENS,
         oneOfOnes,

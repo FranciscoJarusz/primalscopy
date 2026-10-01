@@ -11,6 +11,7 @@ import React, {
     useRef,
     useState,
 } from 'react';
+import { miniaturaDeTrait } from '@/lib/miniaturas';
 
 const BACKEND_URL =
     import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
@@ -535,7 +536,7 @@ export default function AdminPage() {
         <main className="text-white">
             <div className="flex flex-col gap-5 sm:gap-8">
                 {/* Header */}
-                <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 sm:gap-6">
+                <div data-anim="intro" className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 sm:gap-6">
                     <div>
                         <h1 className="font-accent uppercase text-yellow text-4xl sm:text-6xl lg:text-7xl">
                             Traits Admin
@@ -917,7 +918,7 @@ export default function AdminPage() {
                                         >
                                             <div className="bg-white/10 rounded-[10px] p-2 mb-2">
                                                 <img
-                                                    src={`${BACKEND_BASE_URL}${trait.url}`}
+                                                    src={`${BACKEND_BASE_URL}${miniaturaDeTrait(trait.url, { version: trait.updatedAt })}`}
                                                     alt={trait.name}
                                                     className="w-full aspect-square object-cover rounded-md"
                                                     style={{

@@ -23,7 +23,7 @@ export default function RafflesApp() {
 
   return (
     <div className="flex flex-col gap-12">
-      <div className="max-w-3xl">
+      <div data-anim="intro" className="max-w-3xl">
         <div className="flex flex-wrap items-center gap-4">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
             Primal Cult Raffles
@@ -76,7 +76,7 @@ export default function RafflesApp() {
               {resto.length} more on the line
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div data-anim-stagger="" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {resto.map((item) => (
               <RaffleCard
                 key={item.id}

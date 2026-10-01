@@ -1,6 +1,7 @@
 // Pantalla "Select your NFT" (isla de React).
 import { useEffect, useState, useMemo } from 'react';
 import { goTo } from '@/lib/navigation';
+import { FiChevronDown } from 'react-icons/fi';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useUserNFTs } from '@/hooks/cultomizer/useUserNFTs';
 import { useAutoNFTDetection } from '@/hooks/cultomizer/useAutoNFTDetection';
@@ -160,7 +161,7 @@ export default function SelectorPage({ demo }: { demo?: number }) {
             <div className="flex flex-col gap-6 sm:gap-8">
                 {/* Header */}
                 <div className="flex flex-col justify-center gap-6">
-                    <div>
+                    <div data-anim="intro">
                         <h1 className="font-accent uppercase text-yellow text-5xl sm:text-7xl">
                             Select your NFT
                         </h1>
@@ -236,18 +237,7 @@ export default function SelectorPage({ demo }: { demo?: number }) {
                                     <option value="id">Sort by ID</option>
                                     <option value="name">Sort by Name</option>
                                 </select>
-                                <svg
-                                    aria-hidden="true"
-                                    viewBox="0 0 20 20"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-darkblue"
-                                >
-                                    <path d="M5 8l5 5 5-5" />
-                                </svg>
+                                <FiChevronDown aria-hidden="true" strokeWidth={3} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-darkblue" />
                                 </div>
                                 <div className="text-xs text-lightblue/80 whitespace-nowrap sm:min-w-28 sm:text-right">
                                     {filteredAndSortedNfts.length} of{' '}
@@ -308,7 +298,7 @@ export default function SelectorPage({ demo }: { demo?: number }) {
                             </div>
                         ) : (
                             <>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-5 lg:gap-6">
+                                <div data-anim-stagger="" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-5 lg:gap-6">
                                     {filteredAndSortedNfts.map((nft) => (
                                         <button
                                             key={nft.id}

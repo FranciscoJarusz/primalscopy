@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { json } from '@/lib/cultomizer/client';
+import { readEnvValue } from '@/lib/env';
 
 export const prerender = false;
 
@@ -12,24 +11,6 @@ const INITIAL_VALUE = 987.12;
 const EXCLUDED_TX_HASHES = new Set([
     '0x2cba9b5bd0f6b9288593efb12b59340a002fbdb38922506edc84a894585623b9',
 ]);
-
-function readEnvValue(name: string) {
-    const directValue = process.env[name] || import.meta.env[name];
-    if (directValue) return String(directValue).trim();
-
-    try {
-        const envFile = readFileSync(resolve(process.cwd(), '.env'), 'utf8');
-        return (
-            envFile
-                .split(/\r?\n/)
-                .find((line) => line.startsWith(`${name}=`))
-                ?.slice(`${name}=`.length)
-                .trim() || ''
-        );
-    } catch {
-        return '';
-    }
-}
 
 const PRIMAL_SENDERS = new Set(
     (
@@ -109,7 +90,14 @@ export const GET: APIRoute = async () => {
             return json({ value: INITIAL_VALUE, live: false });
         }
 
-        return json({ value: totalValue, live: true });
+        // El CDN la guarda 10 minutos: sin esto cada visita a /stats le pega a
+        // ApeScan, que limita las llamadas por segundo.
+        const respuesta = json({ value: totalValue, live: true });
+        respuesta.headers.set(
+            'Cache-Control',
+            'public, s-maxage=600, stale-while-revalidate=3600'
+        );
+        return respuesta;
     } catch {
         return json({ value: INITIAL_VALUE, live: false });
     }

@@ -2,4 +2,5 @@
 // /admin; para sumar una, se agrega aca y se crea src/pages/admin/<id>.astro.
 export const ADMIN_SECCIONES = [
     { id: 'traits', nombre: 'Traits', href: '/admin/traits' },
+    { id: 'nicknames', nombre: 'Nicknames', href: '/admin/nicknames' },
 ];

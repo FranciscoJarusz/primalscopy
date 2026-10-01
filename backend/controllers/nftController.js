@@ -157,7 +157,7 @@ async function getNftMetadata(nftId) {
 // divergieran, se podria guardar una combinacion que el customizer nunca
 // ofrecio.
 //
-// `metadataOverride` lo usa el LAB para preguntar que variantes tendria el
+// `metadataOverride` lo usa el Forge para preguntar que variantes tendria el
 // token con otros traits (los de una opcion del roll) antes de aplicarlos.
 async function buildCustomizationOptions(nftId, metadataOverride = null) {
         const metadata = metadataOverride || await getNftMetadata(nftId);
@@ -290,7 +290,7 @@ async function generateAndSaveNftImage(req, res) {
     }
 }
 
-// Si un valor de trait tiene arte para dibujarse. El LAB no puede sortear un
+// Si un valor de trait tiene arte para dibujarse. El Forge no puede sortear un
 // trait sin carpeta o con la carpeta vacia: saldria una capa en blanco.
 function hasArtFor(fsCategoryName, value) {
     const directory = findVariantDirectoryByValue(path.join(TRAITS_PATH, fsCategoryName), value);

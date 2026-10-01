@@ -8,7 +8,7 @@
 
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
-import { apeChain, mainnet } from "@reown/appkit/networks";
+import { apeChain, mainnet, defineChain } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
 
 // El projectId decide, entre otras cosas, desde que dominios se permite parear
@@ -23,8 +23,23 @@ import type { AppKitNetwork } from "@reown/appkit/networks";
 const projectId =
   import.meta.env.PUBLIC_REOWN_PROJECT_ID || "0f9ff0f0497c73187c253e88cf8680c9";
 
+// La blockchain local de anvil (la levanta dev.ps1), para probar el pago del
+// Forge con APE de mentira. Solo existe con `astro dev`: el build de
+// produccion no la incluye.
+const anvilLocal = defineChain({
+  id: 31337,
+  caipNetworkId: "eip155:31337",
+  chainNamespace: "eip155",
+  name: "Anvil (local)",
+  nativeCurrency: { name: "ApeCoin", symbol: "APE", decimals: 18 },
+  rpcUrls: { default: { http: ["http://127.0.0.1:8545"] } },
+  testnet: true,
+});
+
 // ApeChain primero: es donde vive la coleccion.
-const networks: [AppKitNetwork, ...AppKitNetwork[]] = [apeChain, mainnet];
+const networks: [AppKitNetwork, ...AppKitNetwork[]] = import.meta.env.DEV
+  ? [apeChain, mainnet, anvilLocal]
+  : [apeChain, mainnet];
 
 export const wagmiAdapter = new WagmiAdapter({
   networks,

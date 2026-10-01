@@ -193,7 +193,7 @@ function RecentCustomizationsContent() {
 
     return (
         <main className="w-full text-white flex flex-col gap-5 sm:gap-8">
-            <div className="flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div data-anim="intro" className="flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
                     <h1 className="font-accent uppercase text-yellow text-4xl sm:text-6xl lg:text-7xl">
                         Recent customizations
@@ -253,7 +253,7 @@ function RecentCustomizationsContent() {
             )}
 
             {!cargando && !fallo && visibles.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-5 lg:gap-6">
+                <div data-anim-stagger="" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-5 lg:gap-6">
                     {visibles.map((item) => (
                         <button
                             key={item.id}

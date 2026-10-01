@@ -1,18 +1,51 @@
 ---
 const team = [
-    { slug: 'troutxyz', name: 'Troutxyz', role: 'Artist & Founder' },
-    { slug: 'torch', name: 'Torch', role: 'Project Coordinator & Strategist' },
-    { slug: 'gorty', name: 'Gorty', role: 'Community & Event Management' },
-    { slug: 'fransz', name: 'Fransz', role: 'Main Developer' },
+    {
+        slug: 'troutxyz',
+        name: 'Troutxyz',
+        role: 'Artist & Founder',
+        link: 'https://x.com/troutxyz',
+    },
+    {
+        slug: 'torch',
+        name: 'Torch',
+        role: 'Project Coordinator & Strategist',
+        link: 'https://x.com/we_are_torch',
+    },
+    {
+        slug: 'gorty',
+        name: 'Gorty',
+        role: 'Vault & Events Manager',
+        link: 'https://x.com/Thebar111',
+    },
+    {
+        slug: 'fransz',
+        name: 'Fransz',
+        role: 'Main Developer',
+        link: 'https://x.com/franszdev',
+    },
+    {
+        slug: 'sal',
+        name: 'Sal',
+        role: 'Discord Moderator & Community Manager',
+        link: 'https://x.com/RealBigDaddySal',
+    },
 ];
 ---
 
-<section class="flex w-full flex-col gap-6 sm:gap-10 xl:gap-15 rounded-2xl sm:rounded-[30px] bg-darkblue p-6 sm:p-8 lg:p-10 xl:p-12.5 shadow-lg shadow-darkblue/50">
+<section
+    data-anim="reveal"
+    class="flex w-full flex-col gap-6 sm:gap-10 xl:gap-15 rounded-2xl sm:rounded-[30px] bg-darkblue p-6 sm:p-8 lg:p-10 xl:p-12.5 shadow-lg shadow-darkblue/50"
+>
     <h2 class="max-w-4xl text-5xl sm:text-6xl xl:text-7xl font-accent uppercase text-yellow">
-        The people behind the cult
+        The inner council
     </h2>
 
-    <ul class="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 xl:gap-8" aria-label="Team">
+    <ul
+        data-anim-stagger
+        class="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 xl:gap-8"
+        aria-label="Team"
+    >
         {team.map((member) => (
             <li class="flex flex-col items-center gap-3 sm:gap-4 rounded-2xl sm:rounded-[30px] bg-[#0a0a5c] p-4 sm:p-6">
                 <img
@@ -29,6 +62,15 @@ const team = [
                         {member.role}
                     </span>
                 </div>
+                <a
+                    href={member.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={member.name}
+                    class="w-5 h-auto hover:scale-102 active:scale-97 transition-all duration-300"
+                >
+                    <img src="/icons/x.svg" alt="Logo X" />
+                </a>
             </li>
         ))}
     </ul>

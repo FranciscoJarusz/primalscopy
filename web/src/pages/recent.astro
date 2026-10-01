@@ -1,0 +1,8 @@
+---
+// Ruta del Cultomizer viejo (cultomizer.primalcult.xyz, en Next). Ese dominio
+// redirige a este sitio conservando la ruta: esto la lleva a la nueva, con su
+// query string (?tokenId=, ?page=) intacto.
+export const prerender = false;
+
+return Astro.redirect(`/cultomizer/recent${Astro.url.search}`, 308);
+---
