@@ -29,6 +29,8 @@ export function useForge(tokenId: string, sessionToken: string | null) {
     const [aviso, setAviso] = useState<Aviso | null>(null);
     const [paidRolls, setPaidRolls] = useState(0);
     const [fase, setFase] = useState<FasePago | null>(null);
+    // Se quedo con una opcion: Roll.tsx muestra el popup del Primal nuevo.
+    const [forjado, setForjado] = useState(false);
     const { address } = useAccount();
     const cobra = status?.payment.required === true;
 
@@ -153,10 +155,7 @@ export function useForge(tokenId: string, sessionToken: string | null) {
                 throw new Error(data.error || 'Could not apply the option.');
             setKeep([]);
             await cargar();
-            setAviso({
-                ok: true,
-                texto: 'Done! Your Primal has its new traits.',
-            });
+            setForjado(true);
         });
     };
 
@@ -190,6 +189,8 @@ export function useForge(tokenId: string, sessionToken: string | null) {
         aviso,
         paidRolls,
         fase,
+        forjado,
+        cerrarForjado: () => setForjado(false),
         rollear,
         elegir,
         descartar,

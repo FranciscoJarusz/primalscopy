@@ -1,4 +1,5 @@
 // Constantes y ayudas compartidas por las pantallas del Forge.
+import { NFT_CONTRACT_ADDRESS } from '@/lib/cultomizer/contracts';
 
 export const BACKEND_URL =
     import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
@@ -24,3 +25,8 @@ export const imagenPublica = (id: string) =>
     `https://ipfs.primalcult.xyz/images/${id}.gif`;
 
 export const urlDeRoll = (tokenId: string) => `/forge/roll?tokenId=${tokenId}`;
+
+// La pagina del Primal en OpenSea. La direccion va en minusculas, como la usa
+// OpenSea en sus links.
+export const urlOpenSea = (tokenId: string) =>
+    `https://opensea.io/item/ape_chain/${NFT_CONTRACT_ADDRESS.toLowerCase()}/${tokenId}`;

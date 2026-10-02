@@ -13,6 +13,7 @@ import Cargando from './Cargando';
 import Odds from './Odds';
 import Opcion from './Opcion';
 import Confirmacion from './Confirmacion';
+import Forjado from './Forjado';
 import { card, tituloCard, botonClaro, botonAmarillo, input } from './estilos';
 import {
     BACKEND_BASE_URL,
@@ -25,6 +26,10 @@ import { rarezaDe } from './rareza';
 
 export default function Roll() {
     const tokenId = useSearchParam('tokenId') ?? '';
+    // `?preview=forged` abre el popup del final sin rollear, para ajustar su
+    // diseño. Solo en dev: en produccion el parametro no hace nada.
+    const previewParam = useSearchParam('preview');
+    const preview = import.meta.env.DEV && previewParam === 'forged';
     const valido = /^\d{1,10}$/.test(tokenId);
 
     const session = useWalletSession();
@@ -392,6 +397,17 @@ export default function Roll() {
                         There are no take backs.
                     </p>
                 </Confirmacion>
+            )}
+
+            {(forge.forjado || (preview && status)) && (
+                <Forjado
+                    tokenId={tokenId}
+                    imagen={imagen}
+                    onCerrar={() => {
+                        forge.cerrarForjado();
+                        if (preview) replaceWith(urlDeRoll(tokenId));
+                    }}
+                />
             )}
 
             {pregunta?.tipo === 'descartar' && (
