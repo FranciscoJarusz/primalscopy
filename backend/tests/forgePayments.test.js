@@ -63,6 +63,9 @@ process.env.FORGE_CONFIRMATIONS = '2';
 process.env.FORGE_RPC_URL = RPC;
 process.env.FORGE_CHAIN_ID = '31337';
 process.env.FORGE_PAYMENTS_FROM_BLOCK = '0';
+// La metadata de prueba vive solo en el volumen: sin esto se iria a buscar la
+// del hosting real y pisaria la de prueba.
+process.env.ORIGIN_METADATA_URL = '';
 
 const metadataDir = path.join(TMP, '_generated', 'metadata');
 fs.mkdirSync(metadataDir, { recursive: true });

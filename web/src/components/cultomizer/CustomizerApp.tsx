@@ -200,6 +200,19 @@ function CustomizerContent() {
                     );
                     if (savedResponse.ok) {
                         const savedData = await savedResponse.json();
+                        // El NFT cambio fuera del customizer (lo edito el dueño
+                        // de la coleccion). Lo que este navegador tenia guardado
+                        // era sobre la imagen de antes: se olvida, una sola vez
+                        // por cambio, para no borrar lo que se elija despues.
+                        const supersededAt = savedData?.supersededAt;
+                        const resetKey = `nft_custom_${nftId}_reset`;
+                        if (
+                            supersededAt &&
+                            localStorage.getItem(resetKey) !== supersededAt
+                        ) {
+                            localStorage.removeItem(`nft_custom_${nftId}`);
+                            localStorage.setItem(resetKey, supersededAt);
+                        }
                         if (savedData?.saved && savedData.applied) {
                             const fromServer: { [key: string]: string } = {};
                             for (const [traitType, variant] of Object.entries(

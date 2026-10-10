@@ -1,20 +1,16 @@
 // controllers/nftcontroller.js - VERSIÓN FINAL Y LIMPIA
 
-const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 
-const assets = require('../lib/assetStore');
+const { currentMetadata } = require('../lib/metadataSync');
 const {
     TRAITS_PATH,
     GLOBAL_DIR,
     IMAGE_EXTENSION_REGEX
 } = require('../lib/traitsStore');
 
-// Solo se usa como respaldo si un token no esta en el volumen. Configurable
-// para poder apuntarlo al origen viejo si hiciera falta.
-const METADATA_BASE_URL = (process.env.ORIGIN_METADATA_URL || 'https://ipfs.primalcult.xyz/metadata/').trim();
 const GENERATED_IMAGES_PATH = path.join(__dirname, '../generated_images');
 const NFT_WIDTH = 2000;
 const NFT_HEIGHT = 2000;
@@ -127,24 +123,13 @@ function buildAllVariantsForCategory(fsCategoryName, ownDirectory, directories) 
     return [...variants, ...globals];
 }
 
-// La metadata sale del volumen, no de la red.
-//
-// Antes esto pedia siempre https://ipfs.primalcult.xyz/metadata/<id>. Una vez
-// que ese dominio apunte a este mismo servicio, eso seria el server
-// llamandose a si mismo por internet: innecesario, mas lento, y ademas
-// dependiente de que nuestra propia ruta publica y el DNS esten sanos. Hay
-// plataformas que directamente no enrutan bien un pedido de un contenedor a
-// su propio dominio publico.
-//
-// El fallback por HTTP queda para un token que todavia no este en el volumen.
-// Despues de la migracion no deberia usarse nunca.
+// La metadata sale del hosting de la coleccion, con la copia del volumen de
+// respaldo: el dueño puede cambiar un NFT ahi sin pasar por este server, y
+// con la copia sola se ofrecian las variantes de los traits viejos. Ver
+// lib/metadataSync.js.
 async function getNftMetadata(nftId) {
-    const local = assets.readMetadata(nftId);
-    if (local) return local;
-
     try {
-        const { data } = await axios.get(`${METADATA_BASE_URL}${nftId}`);
-        return data;
+        return await currentMetadata(nftId);
     } catch (err) {
         console.error(`[ERROR] No metadata for NFT ${nftId} ->`, err.message);
         return null;

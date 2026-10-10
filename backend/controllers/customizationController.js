@@ -7,10 +7,10 @@
 // pide es dueño del token EN ESTE MOMENTO. Lo que falta validar es el
 // contenido: que las variantes elegidas sean de las que este token puede usar.
 
-const axios = require('axios');
 const { buildCustomizationOptions, resolveLayerPath } = require('./nftController');
 const { composeGif } = require('../lib/gifComposer');
 const assets = require('../lib/assetStore');
+const { currentMetadata } = require('../lib/metadataSync');
 const remote = require('../lib/remotePublisher');
 const { fingerprint, findVariantByFingerprint } = require('../lib/traitFingerprint');
 const marketplaces = require('../lib/marketplaceRefresh');
@@ -22,8 +22,6 @@ const fs = require('fs');
 // De atras hacia adelante. Es el mismo orden que usa el front; si difirieran,
 // el NFT guardado no se pareceria al preview.
 const LAYER_ORDER = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Effect'];
-
-const ORIGIN_METADATA_URL = (process.env.ORIGIN_METADATA_URL || 'https://ipfs.primalcult.xyz/metadata/').trim();
 
 // Componer un GIF de 2000x2000 tarda entre 4 y 10 segundos y usa bastante
 // memoria. Sin un limite, unos pocos pedidos simultaneos tumban el servicio.
@@ -98,22 +96,11 @@ function resolveSelections(options, selections) {
     return { layers, applied };
 }
 
-// La metadata original vive en el servidor viejo hasta que se migre todo. Si
-// todavia no esta en el volumen, se trae una vez y se guarda.
-//
-// Esto NO reemplaza la migracion completa: cuando el dominio apunte aca,
-// tienen que estar los 2712 archivos, no solo los de los tokens que alguien
-// customizo.
+// La metadata vigente, que es la que se va a reescribir. Tiene que salir del
+// hosting y no de la copia del volumen: si el dueño cambio el NFT por afuera,
+// guardar con la copia vieja desharia su cambio. Ver lib/metadataSync.js.
 async function loadOrSeedMetadata(tokenId) {
-    const local = assets.readMetadata(tokenId);
-    if (local) return local;
-
-    const { data } = await axios.get(`${ORIGIN_METADATA_URL}${tokenId}`, { timeout: 15000 });
-    if (!data || typeof data !== 'object') {
-        throw Object.assign(new Error('La metadata original no es un JSON valido.'), { status: 502 });
-    }
-    assets.writeMetadata(tokenId, data);
-    return data;
+    return currentMetadata(tokenId);
 }
 
 // Un NFT se escribe de a uno por vez, lo pida el customizer o el Forge: si dos
@@ -294,8 +281,15 @@ async function getCustomization(req, res) {
 
 async function respondWithCustomization(req, res) {
     const { nftId } = req.params;
+    // Primero la metadata: si el NFT cambio por afuera, esto da por vencida
+    // la seleccion antes de leerla.
+    let metadata = null;
+    try {
+        metadata = await currentMetadata(nftId);
+    } catch {
+        metadata = assets.readMetadata(nftId);
+    }
     const selection = assets.readSelection(nftId);
-    const metadata = assets.readMetadata(nftId);
 
     if (!selection?.applied) {
         return res.json({
@@ -303,6 +297,9 @@ async function respondWithCustomization(req, res) {
             saved: Boolean(selection),
             applied: null,
             updatedAt: selection?.updatedAt || null,
+            // Cuando el NFT cambio fuera del customizer. El front lo usa para
+            // olvidar lo que tenia guardado en el navegador de antes.
+            supersededAt: selection?.superseded?.at || null,
             image: metadata?.image || null
         });
     }

@@ -31,6 +31,9 @@ process.env.WALLET_JWT_SECRET = 'secreto-solo-para-tests';
 process.env.PORT = String(PORT);
 process.env.PUBLIC_ASSETS_URL = BASE;
 process.env.FORGE_TEST_MODE = 'true';
+// La metadata de prueba vive solo en el volumen: sin esto se iria a buscar la
+// del hosting real y pisaria la de prueba.
+process.env.ORIGIN_METADATA_URL = '';
 
 // La metadata original del #54, fija para no depender de la red.
 const ORIGINAL = {

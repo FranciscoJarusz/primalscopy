@@ -11,6 +11,7 @@
 // Correr con: npm test
 
 const fs = require('fs');
+const http = require('http');
 const os = require('os');
 const path = require('path');
 const { privateKeyToAccount } = require('viem/accounts');
@@ -28,6 +29,35 @@ process.env.TRAITS_PATH = TMP;
 process.env.WALLET_JWT_SECRET = 'secreto-solo-para-tests';
 process.env.PORT = String(PORT);
 process.env.PUBLIC_ASSETS_URL = BASE;
+
+// El hosting de la coleccion, de mentira. Es la fuente de verdad de la
+// metadata: el publisher de abajo escribe aca, y los tests lo cambian "por
+// afuera" para simular al dueño editando un NFT sin pasar por el server.
+const ORIGIN_PORT = PORT + 1;
+const ORIGINAL = {
+    name: 'Primal Cult #54',
+    image: 'https://ipfs.primalcult.xyz/images/54.gif',
+    description: 'Metadata de prueba.',
+    attributes: [
+        { trait_type: 'Effect', value: 'Standart' },
+        { trait_type: 'Hat', value: 'Spikes' },
+        { trait_type: 'Eyes', value: 'Trader' },
+        { trait_type: 'Tunic', value: 'Black' },
+        { trait_type: 'Face', value: 'Gumball Eyes' },
+        { trait_type: 'Fur', value: 'White' },
+        { trait_type: 'Background', value: 'Aquamarine' }
+    ]
+};
+const origen = { metadata: structuredClone(ORIGINAL), caido: false };
+const origenServer = http.createServer((req, res) => {
+    if (origen.caido || req.url !== `/metadata/${TOKEN}`) {
+        res.writeHead(origen.caido ? 500 : 404);
+        return res.end();
+    }
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(origen.metadata));
+});
+process.env.ORIGIN_METADATA_URL = `http://localhost:${ORIGIN_PORT}/metadata/`;
 
 // La propiedad se resuelve antes de cargar el server, para que el middleware
 // tome esta version en vez de la que consulta ApeChain.
@@ -63,6 +93,7 @@ require.cache[publisherPath] = {
         publishNft: async (tokenId, payload) => {
             if (publisher.modo === 'falla') throw new Error('conexion rechazada');
             publisher.publicados.push({ tokenId, bytes: payload.gif.length, image: payload.metadata.image });
+            origen.metadata = structuredClone(payload.metadata);
             return { imagePath: `/remoto/images/${tokenId}.gif`, metadataPath: `/remoto/metadata/${tokenId}` };
         },
         verifyAccess: async () => ({ ok: true })
@@ -101,6 +132,7 @@ async function waitForServer() {
 }
 
 async function main() {
+    await new Promise(res => origenServer.listen(ORIGIN_PORT, res));
     require('../server.js');
     await waitForServer();
 
@@ -141,9 +173,7 @@ async function main() {
     check('falta una categoria -> 400', r.status === 400, `(dio ${r.status})`);
 
     console.log('\n--- Guardado real ---');
-    // El "antes" es la metadata que hoy esta publicada de verdad, no la del
-    // volumen de prueba, que arranca vacio.
-    const original = await (await fetch(`https://ipfs.primalcult.xyz/metadata/${TOKEN}`)).json();
+    const original = ORIGINAL;
 
     r = await post(`${BASE}/api/nft/${TOKEN}/customization`, { selections: valid }, ownerToken);
     const saved = await r.json();
@@ -258,7 +288,50 @@ async function main() {
     check('pesa mucho menos que el GIF', thumbBytes.length < saved.sizeBytes / 5,
         `(jpg ${thumbBytes.length} vs gif ${saved.sizeBytes})`);
 
+    console.log('\n--- El dueño cambia el NFT directo en el hosting ---');
+    // Lo que paso con el #54: el hosting pasa a decir otros traits, y el
+    // volumen sigue con la copia de antes.
+    const NUEVOS = ORIGINAL.attributes.map(a =>
+        a.trait_type === 'Fur' ? { ...a, value: 'Golden' }
+            : a.trait_type === 'Background' ? { ...a, value: 'Black' }
+                : a);
+    origen.metadata = { ...origen.metadata, attributes: NUEVOS };
+
+    const opciones = await (await fetch(`${BASE}/api/nft/${TOKEN}/customize-options`)).json();
+    check('ofrece las variantes del trait nuevo',
+        opciones.Fur?.variants.some(v => v.imageUrl.includes('/FUR/GOLDEN/'))
+        && !opciones.Fur?.variants.some(v => v.imageUrl.includes('/FUR/WHITE/')),
+        `(${opciones.Fur?.variants.map(v => v.imageUrl).slice(0, 2)})`);
+
+    const vencida = await (await fetch(`${BASE}/api/nft/${TOKEN}/customization`)).json();
+    check('la customizacion de antes ya no se ofrece como aplicada', vencida.applied === null,
+        `(${JSON.stringify(vencida.applied)?.slice(0, 80)})`);
+    check('avisa cuando cambio', Boolean(vencida.supersededAt));
+    check('la copia del volumen se puso al dia',
+        JSON.stringify((await (await fetch(`${BASE}/metadata/${TOKEN}`)).json()).attributes) === JSON.stringify(NUEVOS));
+
+    const validoNuevo = {};
+    for (const [category, option] of Object.entries(opciones)) {
+        validoNuevo[category] = option.variants[0].imageUrl;
+    }
+    r = await post(`${BASE}/api/nft/${TOKEN}/customization`, { selections: validoNuevo }, ownerToken);
+    check('se puede guardar sobre el NFT nuevo -> 200', r.status === 200, `(dio ${r.status})`);
+    check('guardar no deshace el cambio del dueño',
+        JSON.stringify(origen.metadata.attributes) === JSON.stringify(NUEVOS),
+        `(${JSON.stringify(origen.metadata.attributes)?.slice(0, 120)})`);
+    const otraVez = await (await fetch(`${BASE}/api/nft/${TOKEN}/customization`)).json();
+    check('despues de guardar vuelve a haber customizacion aplicada',
+        Object.keys(otraVez.applied || {}).length === 7 && !otraVez.supersededAt);
+
+    console.log('\n--- Si el hosting no contesta, se usa la copia ---');
+    origen.caido = true;
+    r = await fetch(`${BASE}/api/nft/${TOKEN}/customize-options`);
+    const conCopia = await r.json();
+    check('las opciones cargan igual', r.status === 200 && Boolean(conCopia.Fur), `(dio ${r.status})`);
+    origen.caido = false;
+
     console.log(`\n${pass} ok, ${fail} fallas\n`);
+    origenServer.close();
     fs.rmSync(TMP, { recursive: true, force: true });
     process.exit(fail ? 1 : 0);
 }
