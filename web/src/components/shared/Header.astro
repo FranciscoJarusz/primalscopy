@@ -1,7 +1,6 @@
 ---
 import WalletIsland from '@/components/shared/WalletIsland';
 import { REDES } from '@/lib/redes';
-import { FiArrowUpRight, FiChevronDown } from 'react-icons/fi';
 
 export type Seccion = {
     nombre: string;
@@ -87,9 +86,21 @@ const clase = (id: string) =>
                 ]}
             >
                 Community
-                <span aria-hidden="true" data-desplegable-flecha class="mt-1 flex transition-transform duration-300 motion-reduce:transition-none">
-                    <FiChevronDown size={18} />
-                </span>
+                <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                    data-desplegable-flecha
+                    class="mt-1 transition-transform duration-300 motion-reduce:transition-none"
+                >
+                    <polyline points="3,5 7,9 11,5"></polyline>
+                </svg>
             </button>
 
             <div
@@ -118,17 +129,19 @@ const clase = (id: string) =>
                             tabindex="-1"
                             class="group flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-lightblue hover:text-yellow transition-all duration-300"
                         >
-                            <span
-                                aria-hidden="true"
-                                class="mt-1 size-[20px] shrink-0 bg-current"
-                                style={`mask: url(${red.img}) center / contain no-repeat`}
-                            ></span>
+                            <img
+                                src={red.img}
+                                alt=""
+                                width={20}
+                                height={20}
+                                class="mt-1"
+                            />
                             <span class="flex-1">{red.nombre}</span>
                             <span
                                 aria-hidden="true"
-                                class="flex mt-1 opacity-50 group-hover:opacity-100 transition-opacity duration-300"
+                                class="text-base opacity-50 group-hover:opacity-100 transition-opacity duration-300"
                             >
-                                <FiArrowUpRight size={16} />
+                                ↗
                             </span>
                         </a>
                     ))}
@@ -209,7 +222,6 @@ const clase = (id: string) =>
                     </a>
                 ))}
 
-                {/* En mobile Community no se anida: es una seccion con titulo. */}
                 <p class="mt-1 border-t border-lightblue/15 px-3 pt-3 pb-1 text-sm text-lightblue/50">
                     Community
                 </p>
@@ -232,14 +244,16 @@ const clase = (id: string) =>
                         tabindex="-1"
                         class="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-lightblue hover:text-yellow transition-all duration-300"
                     >
-                        <span
-                                aria-hidden="true"
-                                class="mt-1 size-[18px] shrink-0 bg-current"
-                                style={`mask: url(${red.img}) center / contain no-repeat`}
-                            ></span>
+                        <img
+                            src={red.img}
+                            alt=""
+                            width={18}
+                            height={18}
+                            class="mt-1"
+                        />
                         <span>{red.nombre}</span>
-                        <span aria-hidden="true" class="flex mt-1 opacity-50">
-                            <FiArrowUpRight size={14} />
+                        <span aria-hidden="true" class="text-sm opacity-50">
+                            ↗
                         </span>
                     </a>
                 ))}
