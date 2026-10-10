@@ -26,10 +26,13 @@
     </div>
 
     <div data-anim="reveal" class="relative z-0 self-center w-full max-w-150 xl:absolute xl:self-auto xl:max-w-none xl:w-250 xl:-right-60 xl:-bottom-50">
-        <img
-            src="/images/landing/hero.webp"
-            alt="Primal Cult hero"
-            class="h-auto w-full object-cover object-center drop-shadow-2xl drop-shadow-darkblue/50"
-        />
+        <picture class="contents">
+            <source media="(max-width: 1023px)" srcset="/images/landing/hero-m.webp" />
+            <img
+                src="/images/landing/hero.webp"
+                alt="Primal Cult hero"
+                class="h-auto w-full object-cover object-center drop-shadow-2xl drop-shadow-darkblue/50"
+            />
+        </picture>
     </div>
 </section>

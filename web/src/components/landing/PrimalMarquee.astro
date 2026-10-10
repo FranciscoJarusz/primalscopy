@@ -35,6 +35,10 @@ if (aleatorio) {
 // 400px en WebP animado (public/images/primals/): los GIF originales son de
 // 2000x2000 y ~1,2 MB, y animar decenas a la vez laggeaba el scroll. Si se
 // cambian los rangos de index.astro, hay que generar las copias nuevas.
+//
+// En celular se sirven copias de 240px (primals/m/). Cada WebP animado se
+// decodifica cuadro por cuadro en memoria, y con las de 400px la home pasaba
+// el limite de Safari en iPhone, que recargaba la pagina una y otra vez.
 const visibles = cantidad ? tokens.slice(0, cantidad) : tokens;
 ---
 
@@ -53,14 +57,17 @@ const visibles = cantidad ? tokens.slice(0, cantidad) : tokens;
         {[visibles, visibles].map((grupo, indice) => (
             <div class="flex shrink-0" aria-hidden={indice === 1}>
                 {grupo.map((tokenId) => (
-                    <img
-                        src={`/images/primals/${tokenId}.webp`}
-                        alt={indice === 0 ? `Primal Cult #${tokenId}` : ''}
-                        class="block size-(--primal-size) shrink-0 rounded-[10px] border-4 border-darkblue object-cover"
-                        loading={indice === 0 ? 'eager' : 'lazy'}
-                        fetchpriority={indice === 0 ? 'high' : 'auto'}
-                        decoding="async"
-                    />
+                    <picture class="contents">
+                        <source media="(max-width: 767px)" srcset={`/images/primals/m/${tokenId}.webp`} />
+                        <img
+                            src={`/images/primals/${tokenId}.webp`}
+                            alt={indice === 0 ? `Primal Cult #${tokenId}` : ''}
+                            class="block size-(--primal-size) shrink-0 rounded-[10px] border-4 border-darkblue object-cover"
+                            loading={indice === 0 ? 'eager' : 'lazy'}
+                            fetchpriority={indice === 0 ? 'high' : 'auto'}
+                            decoding="async"
+                        />
+                    </picture>
                 ))}
             </div>
         ))}

@@ -12,12 +12,15 @@ const roles = [
 
 <section class="lg:min-h-100 flex flex-col gap-6 sm:gap-10 lg:gap-15">
     <div class="flex flex-col lg:flex-row items-stretch justify-between gap-6 lg:gap-10 xl:gap-20">
-        <img
-            data-anim="reveal-left"
-            src="/images/landing/staking.webp"
-            alt="Primal Cult Staking"
-            class="order-last lg:order-none aspect-4/3 lg:aspect-auto h-auto lg:min-h-full w-full lg:w-[45%] rounded-2xl sm:rounded-[30px] object-cover object-center shadow-lg shadow-darkblue/50"
-        />
+        <picture class="contents">
+            <source media="(max-width: 1023px)" srcset="/images/landing/staking-m.webp" />
+            <img
+                data-anim="reveal-left"
+                src="/images/landing/staking.webp"
+                alt="Primal Cult Staking"
+                class="order-last lg:order-none aspect-4/3 lg:aspect-auto h-auto lg:min-h-full w-full lg:w-[45%] rounded-2xl sm:rounded-[30px] object-cover object-center shadow-lg shadow-darkblue/50"
+            />
+        </picture>
 
         <div data-anim="reveal-right" class="flex w-full lg:w-[50%] flex-col justify-between gap-6 lg:gap-10 rounded-2xl sm:rounded-[30px] bg-darkblue p-6 sm:p-8 lg:p-10 xl:p-12.5 shadow-lg shadow-darkblue/50">
             <h2 class="max-w-4xl text-5xl sm:text-6xl xl:text-7xl font-accent uppercase text-yellow">
