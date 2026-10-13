@@ -87,7 +87,11 @@ const clase = (id: string) =>
                 ]}
             >
                 Community
-                <span aria-hidden="true" data-desplegable-flecha class="mt-1 flex transition-transform duration-300 motion-reduce:transition-none">
+                <span
+                    aria-hidden="true"
+                    data-desplegable-flecha
+                    class="mt-1 flex transition-transform duration-300 motion-reduce:transition-none"
+                >
                     <FiChevronDown size={18} />
                 </span>
             </button>
@@ -120,7 +124,7 @@ const clase = (id: string) =>
                         >
                             <span
                                 aria-hidden="true"
-                                class="mt-1 size-[20px] shrink-0 bg-current"
+                                class="mt-1 size-5 shrink-0 bg-current"
                                 style={`mask: url(${red.img}) center / contain no-repeat`}
                             ></span>
                             <span class="flex-1">{red.nombre}</span>
@@ -233,10 +237,10 @@ const clase = (id: string) =>
                         class="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-lightblue hover:text-yellow transition-all duration-300"
                     >
                         <span
-                                aria-hidden="true"
-                                class="mt-1 size-[18px] shrink-0 bg-current"
-                                style={`mask: url(${red.img}) center / contain no-repeat`}
-                            ></span>
+                            aria-hidden="true"
+                            class="mt-1 size-4.5 shrink-0 bg-current"
+                            style={`mask: url(${red.img}) center / contain no-repeat`}
+                        ></span>
                         <span>{red.nombre}</span>
                         <span aria-hidden="true" class="flex mt-1 opacity-50">
                             <FiArrowUpRight size={14} />
