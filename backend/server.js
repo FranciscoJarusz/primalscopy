@@ -6,6 +6,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 const forgeRoutes = require('./routes/forgeRoutes');
 const profileRoutes = require('./routes/profileRoutes');
+const promoRoutes = require('./routes/promoRoutes');
 const { paymentConfig } = require('./lib/forgePayments');
 const { formatEther } = require('viem');
 const { TRAITS_PATH, seedTraitsIfEmpty } = require('./lib/traitsStore');
@@ -19,6 +20,10 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Railway pone un proxy adelante: sin esto req.ip seria la del proxy para
+// todos, y el limite de intentos de los codigos frenaria a todo el mundo junto.
+app.set('trust proxy', 1);
 
 // Prepara el volumen persistente antes de atender el primer request.
 seedTraitsIfEmpty();
@@ -115,6 +120,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/forge', forgeRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/promo', promoRoutes);
 
 // Iniciar servidor
 app.listen(PORT, () => {

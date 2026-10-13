@@ -3,7 +3,7 @@ import { useAccount, useBalance, useDisconnect, useReadContract } from 'wagmi';
 import { formatUnits } from 'viem';
 import { useStore } from '@nanostores/react';
 import { useEffect, useRef, useState } from 'react';
-import { FiChevronDown, FiEdit2, FiCreditCard } from 'react-icons/fi';
+import { FiChevronDown, FiEdit2, FiCreditCard, FiGift } from 'react-icons/fi';
 import AvatarWallet from '@/components/cultomizer/AvatarWallet';
 import {
     APECHAIN,
@@ -14,6 +14,8 @@ import { version } from '@/stores/raffles/session';
 import { wagmiConfig } from '@/lib/cultomizer/wallet';
 import { useWalletSession } from '@/hooks/cultomizer/useWalletSession';
 import NicknameModal from '@/components/shared/NicknameModal';
+import RedeemModal from '@/components/shared/RedeemModal';
+import { EVENTO_ABRIR_CANJE } from '@/lib/promo';
 import {
     leerNicknames,
     nicknameSalteado,
@@ -91,6 +93,12 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
     useEffect(() => {
         document.documentElement.toggleAttribute('data-wallet', !!direccion);
     }, [direccion]);
+    // Otra pagina pide abrir el canje. Sin wallet, primero hay que conectarla.
+    useEffect(() => {
+        const abrir = () => (conectada ? setCanje(true) : open());
+        window.addEventListener(EVENTO_ABRIR_CANJE, abrir);
+        return () => window.removeEventListener(EVENTO_ABRIR_CANJE, abrir);
+    }, [conectada, open]);
     useEffect(() => {
         const salir = () => disconnect();
         window.addEventListener('primal:logout', salir);
@@ -118,6 +126,7 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
     const session = useWalletSession();
     const [nickname, setNickname] = useState<string | null | undefined>(undefined);
     const [modal, setModal] = useState(false);
+    const [canje, setCanje] = useState(false);
     const [menu, setMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const holder = primals !== undefined && primals > 0n;
@@ -253,6 +262,17 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                         role="menuitem"
                         onClick={() => {
                             setMenu(false);
+                            setCanje(true);
+                        }}
+                        className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left text-lightblue hover:text-yellow cursor-pointer transition-colors duration-300"
+                    >
+                        <FiGift aria-hidden="true" className="mt-1 w-4 h-4" strokeWidth={2.5} />
+                        Redeem code
+                    </button>
+                    <button
+                        role="menuitem"
+                        onClick={() => {
+                            setMenu(false);
                             open();
                         }}
                         className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left text-lightblue hover:text-yellow cursor-pointer transition-colors duration-300"
@@ -275,6 +295,14 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                         setModal(false);
                     }}
                     onCerrar={cerrarModal}
+                />
+            )}
+
+            {canje && address && (
+                <RedeemModal
+                    token={session.token}
+                    signIn={session.signIn}
+                    onCerrar={() => setCanje(false)}
                 />
             )}
 

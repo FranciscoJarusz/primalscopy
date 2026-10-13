@@ -10,6 +10,7 @@ const { getAssetsStatus } = require('../lib/assetStore');
 const { startSeeding, getSeedProgress, ORIGIN_URL, LAST_TOKEN } = require('../lib/assetSeeder');
 const remote = require('../lib/remotePublisher');
 const nicknames = require('../lib/nicknameStore');
+const promo = require('../lib/promoStore');
 const {
     listTraits,
     uploadTrait,
@@ -103,6 +104,24 @@ router.delete('/nicknames/:address', (req, res) => {
         return res.status(404).json({ error: 'Esa wallet no tiene apodo.' });
     }
     res.json({ ok: true });
+});
+
+// Codigos promocionales: crearlos, verlos con sus canjes, desactivarlos y
+// archivarlos. No se borran, para que quede el registro de quien canjeo que.
+router.get('/promo', (req, res) => res.json({ codes: promo.listCodes(), rewards: promo.rewardTypes() }));
+router.post('/promo', (req, res) => {
+    const result = promo.createCode(req.body);
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.status(201).json(result.code);
+});
+// { active } o { archived }.
+router.patch('/promo/:code', (req, res) => {
+    const body = req.body || {};
+    const result = 'archived' in body
+        ? promo.setArchived(req.params.code, body.archived)
+        : promo.setActive(req.params.code, body.active);
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json(result.code);
 });
 
 router.use(adminErrorHandler);

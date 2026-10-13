@@ -70,6 +70,11 @@ function readHistory() {
 // hash que ya esta aca no se vuelve a aceptar, este usado o no: es lo que
 // impide cobrar dos rolls con la misma transferencia.
 //
+// Tambien guarda los rolls gratis de los codigos promocionales (ver
+// lib/promoStore.js), con `source: 'promo'` y una clave "promo:..." en vez de
+// un hash. Valen igual que un pago, pero no son plata: el que haga la cuenta
+// del treasury tiene que mirar solo los de `source` vacio.
+//
 // Todas las funciones de aca son sincronicas a proposito: leer, decidir y
 // escribir sin un await en el medio hace que dos pedidos a la vez no puedan
 // tomar el mismo pago.
@@ -107,12 +112,29 @@ function sameWallet(a, b) {
     return String(a).toLowerCase() === String(b).toLowerCase();
 }
 
+// Rolls gratis de un codigo promocional. Las claves arrancan con "promo:", que
+// nunca puede chocar con un hash (esos son 0x...). Devuelve las claves.
+function addPromoCredits(wallet, code, amount) {
+    const payments = readPayments();
+    const paidAt = new Date().toISOString();
+    const keys = [];
+    for (let i = 0; i < amount; i++) {
+        const key = `promo:${code}:${wallet.toLowerCase()}:${i}`;
+        if (payments[key]) continue;
+        payments[key] = { source: 'promo', code, wallet: wallet.toLowerCase(), status: 'available', paidAt };
+        keys.push(key);
+    }
+    writePayments(payments);
+    return keys;
+}
+
 // Solo cuentan los pagos de la red configurada: un pago de prueba en anvil
-// no puede valer como roll pagado cuando se cobra en ApeChain.
+// no puede valer como roll pagado cuando se cobra en ApeChain. Los rolls de un
+// codigo no son de ninguna red.
 function isAvailableFor(payment, wallet, chainId) {
     return payment.status === 'available'
         && sameWallet(payment.wallet, wallet)
-        && Number(payment.chainId) === Number(chainId);
+        && (payment.source === 'promo' || Number(payment.chainId) === Number(chainId));
 }
 
 function availablePayments(wallet, chainId) {
@@ -122,24 +144,29 @@ function availablePayments(wallet, chainId) {
 }
 
 // Toma el roll pagado mas viejo de la wallet y lo marca como usado por
-// `rollId`. Devuelve el pago, o null si la wallet no tiene ninguno.
+// `rollId`. Devuelve el pago con su clave en `id`, o null si la wallet no
+// tiene ninguno. Los gratis se gastan antes que los pagados, asi un roll que
+// costo plata es lo ultimo que se usa.
 function takePayment(wallet, chainId, rollId, tokenId) {
     const payments = readPayments();
-    const [oldest] = Object.values(payments)
-        .filter(p => isAvailableFor(p, wallet, chainId))
-        .sort((a, b) => a.paidAt.localeCompare(b.paidAt));
+    const [oldest] = Object.entries(payments)
+        .filter(([, p]) => isAvailableFor(p, wallet, chainId))
+        .sort(([, a], [, b]) =>
+            (a.source === 'promo' ? 0 : 1) - (b.source === 'promo' ? 0 : 1)
+            || a.paidAt.localeCompare(b.paidAt));
     if (!oldest) return null;
 
-    const key = oldest.txHash.toLowerCase();
-    payments[key] = { ...oldest, status: 'used', rollId, tokenId: String(tokenId), usedAt: new Date().toISOString() };
+    const [key, payment] = oldest;
+    payments[key] = { ...payment, status: 'used', rollId, tokenId: String(tokenId), usedAt: new Date().toISOString() };
     writePayments(payments);
-    return payments[key];
+    return { ...payments[key], id: key };
 }
 
-// Deshace takePayment si el roll fallo despues de tomar el pago.
-function returnPayment(txHash) {
+// Deshace takePayment si el roll fallo despues de tomar el pago. Recibe el
+// `id` que devolvio takePayment.
+function returnPayment(id) {
     const payments = readPayments();
-    const key = String(txHash).toLowerCase();
+    const key = String(id);
     if (!payments[key]) return;
     const { rollId, tokenId, usedAt, ...rest } = payments[key];
     payments[key] = { ...rest, status: 'available' };
@@ -195,6 +222,7 @@ module.exports = {
     readHistory,
     getPayment,
     addPayment,
+    addPromoCredits,
     availablePayments,
     takePayment,
     returnPayment,

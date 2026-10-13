@@ -3,4 +3,5 @@
 export const ADMIN_SECCIONES = [
     { id: 'traits', nombre: 'Traits', href: '/admin/traits' },
     { id: 'nicknames', nombre: 'Nicknames', href: '/admin/nicknames' },
+    { id: 'promo', nombre: 'Promo Codes', href: '/admin/promo' },
 ];

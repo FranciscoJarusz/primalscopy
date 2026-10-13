@@ -13,6 +13,7 @@ import {
     rollsPagados,
     transferir,
 } from './pago';
+import { EVENTO_CANJE } from '@/lib/promo';
 
 export type Accion = 'roll' | 'choose' | 'cancel';
 // En que parte del pago esta un roll: firmar en la wallet, esperar que la
@@ -77,8 +78,15 @@ export function useForge(tokenId: string, sessionToken: string | null) {
             const n = await rollsPagados(sessionToken).catch(() => 0);
             if (!cancelado) setPaidRolls(n);
         })();
+        // Un codigo canjeado desde el header suma rolls sin recargar.
+        const alCanjear = () =>
+            rollsPagados(sessionToken)
+                .then((n) => !cancelado && setPaidRolls(n))
+                .catch(() => {});
+        window.addEventListener(EVENTO_CANJE, alCanjear);
         return () => {
             cancelado = true;
+            window.removeEventListener(EVENTO_CANJE, alCanjear);
         };
     }, [cobra, sessionToken, address]);
 

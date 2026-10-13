@@ -251,9 +251,9 @@ async function roll(req, res) {
                 keep,
                 before: current,
                 options,
-                payment: payment
-                    ? { mode: 'ape', txHash: payment.txHash, valueWei: payment.valueWei }
-                    : { mode: 'test' },
+                payment: !payment ? { mode: 'test' }
+                    : payment.source === 'promo' ? { mode: 'promo', code: payment.code }
+                    : { mode: 'ape', txHash: payment.txHash, valueWei: payment.valueWei },
                 createdAt: new Date().toISOString()
             };
 
@@ -263,7 +263,7 @@ async function roll(req, res) {
 
             res.status(201).json(publicRoll(newRoll));
         } catch (error) {
-            if (payment) forge.returnPayment(payment.txHash);
+            if (payment) forge.returnPayment(payment.id);
             throw error;
         }
     } catch (error) {

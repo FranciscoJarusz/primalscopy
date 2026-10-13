@@ -23,6 +23,7 @@ import {
     urlDeRoll,
 } from './forge';
 import { rarezaDe } from './rareza';
+import { abrirCanje } from '@/lib/promo';
 
 export default function Roll() {
     const tokenId = useSearchParam('tokenId') ?? '';
@@ -284,8 +285,21 @@ export default function Roll() {
                                         paidRolls > 0 &&
                                         busy === null && (
                                             <p className="text-yellow text-sm">
-                                                You have a paid roll ready.
+                                                You have {paidRolls} roll
+                                                {paidRolls === 1 ? '' : 's'}{' '}
+                                                ready.
                                             </p>
+                                        )}
+                                    {puedeActuar &&
+                                        status.payment.required &&
+                                        paidRolls === 0 &&
+                                        busy === null && (
+                                            <button
+                                                onClick={abrirCanje}
+                                                className="self-start text-lightblue/70 hover:text-yellow text-sm underline underline-offset-4 cursor-pointer transition-colors duration-300"
+                                            >
+                                                Have a code?
+                                            </button>
                                         )}
                                     {!status.available && (
                                         <p className="text-lightblue/60 text-sm">
@@ -440,7 +454,7 @@ function textoBotonRoll(
     if (rolando) return 'Rolling...';
     if (!status.payment.required)
         return status.testMode ? 'Roll (free, test mode)' : 'Roll';
-    if (paidRolls > 0) return 'Roll (paid)';
+    if (paidRolls > 0) return 'Roll';
     return `Pay ${status.payment.price} APE & roll`;
 }
 
