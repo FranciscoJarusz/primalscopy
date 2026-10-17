@@ -27,3 +27,6 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 .astro/
+
+# Salida de los procesos de dev.ps1
+.logs/

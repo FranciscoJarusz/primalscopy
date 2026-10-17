@@ -1,5 +1,5 @@
 # Levanta todo el entorno local: anvil + contrato de raffles, backend y sitio Astro.
-#   .\dev.ps1          levanta todo (cada proceso en su propia ventana)
+#   .\dev.ps1          levanta todo
 #   .\dev.ps1 stop     cierra todo
 #   .\dev.ps1 share    backend + sitio detras de un link publico de Cloudflare,
 #                      sin raffles y sin poder publicar nada en produccion.
@@ -8,7 +8,11 @@
 #                      Ctrl+C corta el link.
 #   .\dev.ps1 rebuild  pasa lo que tenes en el 4321 al link (la copia del 4322)
 #   .\dev.ps1 tunnel   abre solo el link (link nuevo), con el resto ya levantado
-param([string]$accion = "start")
+#   .\dev.ps1 logs backend   la salida de un proceso (backend, web, share o anvil)
+#
+# No se abre ninguna ventana: cada proceso corre oculto y su salida queda en
+# .logs\<nombre>.log. Para cortarlos, .\dev.ps1 stop.
+param([string]$accion = "start", [string]$cual = "")
 
 $root    = $PSScriptRoot
 $raffles = "C:\Users\imfra\Downloads\primal-raffles"
@@ -21,6 +25,24 @@ function Cerrar($p) {
     ForEach-Object { taskkill /PID $_.OwningProcess /T /F | Out-Null }
 }
 function Esperar($p) { while (-not (Ocupado $p)) { Start-Sleep -Milliseconds 500 } }
+
+$logs = "$root\.logs"
+New-Item -ItemType Directory -Force $logs | Out-Null
+# Corre un comando en una powershell oculta, con toda su salida al log. Va
+# codificado (-EncodedCommand): pasado como texto, Start-Process rompe las
+# comillas y los espacios del comando.
+function Lanzar($nombre, $comando) {
+  $script = "$comando *> '$logs\$nombre.log'"
+  $codificado = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+  Start-Process powershell -WindowStyle Hidden -ArgumentList "-EncodedCommand", $codificado
+}
+
+if ($accion -eq "logs") {
+  $archivo = "$logs\$cual.log"
+  if (-not $cual -or -not (Test-Path $archivo)) { Write-Host "Uso: .\dev.ps1 logs <backend|web|share|anvil>"; return }
+  Get-Content $archivo -Tail 40 -Wait
+  return
+}
 
 if ($accion -eq "stop") {
   foreach ($p in $puertos) { Cerrar $p }
@@ -50,7 +72,7 @@ function Publicar {
   Pop-Location
   if (-not $ok) { Write-Host "El build fallo: corre 'npx astro build' en web/ para ver el error."; return $false }
   Cerrar 4322
-  Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:PORT='4322'; cd '$root\web'; node --env-file-if-exists=.env scripts/share-server.mjs"
+  Lanzar share "`$env:PORT='4322'; cd '$root\web'; node --env-file-if-exists=.env scripts/share-server.mjs"
   Esperar 4322
   return $true
 }
@@ -83,10 +105,10 @@ if ($accion -eq "share" -or $accion -eq "tunnel") {
   # al .env, y un espacio cuenta como vacio: guardar queda solo en esta maquina.
   $sinProd = "`$env:SFTP_HOST=' '; `$env:SFTP_USER=' '; `$env:SFTP_REMOTE_ROOT=' '; " +
              "`$env:OPENSEA_API_KEY=' '; `$env:PROD_ADMIN_TOKEN=' '; `$env:UNLOCKED_TOKENS=' '"
-  Start-Process powershell -ArgumentList "-NoExit", "-Command", "$sinProd; cd '$root\backend'; npm run dev"
+  Lanzar backend "$sinProd; cd '$root\backend'; npm run dev"
 
   # El dev para vos, como siempre.
-  Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\web'; npm run dev"
+  Lanzar web "cd '$root\web'; npm run dev"
 
   if (-not (Publicar)) { return }
 
@@ -104,7 +126,7 @@ if ($accion -eq "share" -or $accion -eq "tunnel") {
 
 # 1. Blockchain local + contrato de raffles (el despliegue da siempre las mismas direcciones)
 if (-not (Ocupado 8545)) {
-  Start-Process powershell -ArgumentList "-NoExit", "-Command", "& '$foundry\anvil.exe'"
+  Lanzar anvil "& '$foundry\anvil.exe'"
   Esperar 8545
   Push-Location $raffles
   & "$foundry\forge.exe" script script/DesplegarLocal.s.sol --tc DesplegarLocal --rpc-url http://localhost:8545 --broadcast | Out-Null
@@ -113,8 +135,8 @@ if (-not (Ocupado 8545)) {
 }
 
 # 2. Backend (3001) y 3. sitio Astro (4321)
-if (-not (Ocupado 3001)) { Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\backend'; npm run dev" }
-if (-not (Ocupado 4321)) { Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\web'; npm run dev" }
+if (-not (Ocupado 3001)) { Lanzar backend "cd '$root\backend'; npm run dev" }
+if (-not (Ocupado 4321)) { Lanzar web "cd '$root\web'; npm run dev" }
 
 Write-Host ""
 Write-Host "Sitio:    http://localhost:4321"
