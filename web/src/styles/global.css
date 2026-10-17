@@ -25,6 +25,26 @@
             transform: translateX(-50%);
         }
     }
+
+    /* Lo que aparece de golpe (paneles, carteles): entra en 300 ms, como
+       todas las transiciones del sitio. Usa `scale` y no `transform` para no
+       pisar los translate de Tailwind. */
+    --animate-aparece: aparece 300ms ease-out both;
+
+    @keyframes aparece {
+        from {
+            opacity: 0;
+            scale: 0.96;
+        }
+    }
+}
+
+/* Los <picture class="contents"> de la home dejan que la <img> sea un hijo
+   directo de su fila flex. Pero el <source> tambien queda como hijo de la
+   fila (los navegadores no lo esconden solos): un item de ancho 0 que suma un
+   gap y corria la imagen. Escondido sigue sirviendo para elegir la imagen. */
+picture > source {
+    display: none;
 }
 
 h1,
