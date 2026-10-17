@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GIF from 'gif.js/dist/gif.js';
 import { parseGIF, decompressFrames } from 'gifuct-js';
 import { goTo, replaceWith, useSearchParams } from '@/lib/navigation';
+import { nombreWallet, useApodos } from '@/lib/nicknames';
 import { miniaturaDeTrait } from '@/lib/miniaturas';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import {
@@ -102,6 +103,7 @@ function CustomizerContent() {
     // Sesion probada ante el backend (firma) y si esa wallet es dueña de este
     // token. De esto cuelga el boton de guardar.
     const walletSession = useWalletSession();
+    const apodos = useApodos();
     const { state: ownership, owner } = useNftOwnership(
         nftId || null,
         walletSession.token
@@ -930,7 +932,7 @@ function CustomizerContent() {
                         onChange={(e) => setInputNftId(e.target.value)}
                         onKeyPress={handleInputKeyPress}
                         placeholder="NFT ID"
-                        className="flex-1 min-w-0 bg-lightblue text-darkblue placeholder-darkblue/60 font-accent leading-tight rounded-md px-3 pt-1 pb-1.5 focus:outline-none transition-all duration-200"
+                        className="flex-1 min-w-0 bg-lightblue text-darkblue placeholder-darkblue/60 font-accent leading-tight rounded-md px-3 pt-1 pb-1.5 focus:outline-none transition-all duration-300"
                     />
                     <button
                         onClick={handleLoadNft}
@@ -1203,8 +1205,7 @@ function CustomizerContent() {
                                             </p>
                                             {owner && (
                                                 <p className="text-lightblue/50 text-xs font-mono">
-                                                    Owner: {owner.slice(0, 6)}
-                                                    ...{owner.slice(-4)}
+                                                    Owner: {nombreWallet(owner, apodos)}
                                                 </p>
                                             )}
                                         </>
@@ -1221,8 +1222,7 @@ function CustomizerContent() {
                                         </p>
                                     )}
                                     <p className="text-lightblue/40 text-xs font-mono">
-                                        {walletSession.address?.slice(0, 6)}...
-                                        {walletSession.address?.slice(-4)}
+                                        {nombreWallet(walletSession.address, apodos)}
                                     </p>
                                 </div>
                             )}
@@ -1290,7 +1290,7 @@ function CustomizerContent() {
                                                 }
                                             >
                                                 <div
-                                                    className={`w-full aspect-square rounded-[10px] overflow-hidden bg-white/10 transition-all duration-200 ${
+                                                    className={`w-full aspect-square rounded-[10px] overflow-hidden bg-white/10 transition-all duration-300 ${
                                                         elegido
                                                             ? 'ring-2 ring-yellow'
                                                             : 'group-hover:ring-2 group-hover:ring-lightblue group-focus-visible:ring-2 group-focus-visible:ring-lightblue'

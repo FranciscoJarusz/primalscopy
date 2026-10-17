@@ -13,6 +13,7 @@
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { scrollToTop } from '@/lib/lenis';
 import { goTo, useSearchParams } from '@/lib/navigation';
+import { nombreWallet, useApodos } from '@/lib/nicknames';
 
 interface RecentItem {
     id: string;
@@ -34,14 +35,6 @@ const BACKEND_BASE_URL =
 // De donde saca las entradas el `?demo=N` de dev (ver mas abajo).
 const DEMO_FEED_BASE_URL = 'https://primalscopy-production.up.railway.app';
 
-// 0x9828...e5d6, que es como aparece en el mockup del cliente y como se muestra
-// una wallet en todos lados.
-function shortWallet(wallet: string | null): string {
-    if (!wallet) return 'unknown';
-    if (wallet.length <= 12) return wallet;
-    return wallet.slice(0, 6) + '...' + wallet.slice(-4);
-}
-
 // El "hace cuanto" se calcula contra la hora del server y no contra la del
 // visitante: con el reloj corrido, algo recien hecho se veria como "in 3 hours".
 function timeAgo(createdAt: string, clockOffsetMs: number): string {
@@ -61,6 +54,7 @@ function timeAgo(createdAt: string, clockOffsetMs: number): string {
 }
 
 function RecentCustomizationsContent() {
+    const apodos = useApodos();
     const searchParams = useSearchParams();
 
     // Con que primal venia el usuario. El customizer lo manda en la URL; si se
@@ -282,7 +276,7 @@ function RecentCustomizationsContent() {
                                 Primal Cult #{item.tokenId}
                             </h3>
                             <p className="text-xs text-lightblue/80 leading-none break-all">
-                                Creator: {shortWallet(item.wallet)}
+                                Creator: {nombreWallet(item.wallet, apodos)}
                             </p>
                             <p className="text-xs text-lightblue/60 leading-none">
                                 {timeAgo(item.createdAt, clockOffsetMs)}
@@ -299,7 +293,7 @@ function RecentCustomizationsContent() {
                     <button
                         onClick={() => goToPage(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className="bg-lightblue text-darkblue rounded-md px-3 pb-1.5 cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-lightblue transition-colors duration-200"
+                        className="bg-lightblue text-darkblue rounded-md px-3 pb-1.5 cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-lightblue transition-all duration-300"
                     >
                         Previous
                     </button>
@@ -315,7 +309,7 @@ function RecentCustomizationsContent() {
                     <button
                         onClick={() => goToPage(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className="bg-lightblue text-darkblue rounded-md px-3 pb-1.5 cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-lightblue transition-colors duration-200"
+                        className="bg-lightblue text-darkblue rounded-md px-3 pb-1.5 cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-lightblue transition-all duration-300"
                     >
                         Next
                     </button>

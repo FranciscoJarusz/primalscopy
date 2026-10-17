@@ -10,12 +10,13 @@ export const shortAddress = (dir: string) =>
   (dir || "").slice(0, 6) + "..." + (dir || "").slice(-4);
 
 /// En local los ganadores son cuentas conocidas, asi que mostramos el nombre en
-/// vez de la direccion. Con wallets de verdad siempre cae en la direccion corta.
-export const nameOf = (dir: string) => {
+/// vez de la direccion. Con wallets de verdad: el apodo del sitio si tiene
+/// (ver lib/nicknames.ts), y si no la direccion corta.
+export const nameOf = (dir: string, apodos: Record<string, string> = {}) => {
   const c = ACCOUNTS.find(
     (c) => c.dir.toLowerCase() === (dir || "").toLowerCase(),
   );
-  return c ? c.nombre : shortAddress(dir);
+  return c ? c.nombre : (apodos[(dir || "").toLowerCase()] ?? shortAddress(dir));
 };
 
 export function countdown(deadline: bigint | number) {

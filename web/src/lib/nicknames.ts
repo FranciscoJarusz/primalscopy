@@ -1,5 +1,7 @@
 // Los apodos de las wallets: se leen sin sesion, y cambiar el propio pide la
-// sesion firmada (ver useWalletSession).
+// sesion firmada (ver useWalletSession). Donde el sitio muestra una wallet,
+// usa nombreWallet(): el apodo si tiene, y si no la direccion corta.
+import { useEffect, useState } from 'react';
 const BACKEND_URL =
     import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
 
@@ -21,6 +23,33 @@ export function leerNicknames(): Promise<Record<string, string>> {
             return {};
         });
     return pedido;
+}
+
+// "0x1234...abcd": como se muestra una wallet sin apodo.
+export const walletCorta = (address: string) =>
+    address.length <= 12 ? address : `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+// El apodo de la wallet si tiene, si no la direccion corta. Los apodos se
+// guardan con la direccion en minusculas.
+export function nombreWallet(address: string | null | undefined, apodos: Record<string, string>) {
+    if (!address) return 'unknown';
+    return apodos[address.toLowerCase()] ?? apodos[address] ?? walletCorta(address);
+}
+
+// Los apodos de todas las wallets, para pasarle a nombreWallet. Se cargan una
+// vez por pagina y se actualizan cuando alguien guarda el suyo.
+export function useApodos() {
+    const [apodos, setApodos] = useState<Record<string, string>>({});
+    useEffect(() => {
+        leerNicknames().then(setApodos);
+        const alGuardar = (e: Event) => {
+            const { address, nickname } = (e as CustomEvent<DetalleNickname>).detail;
+            setApodos((a) => ({ ...a, [address.toLowerCase()]: nickname }));
+        };
+        window.addEventListener(EVENTO_NICKNAME, alGuardar);
+        return () => window.removeEventListener(EVENTO_NICKNAME, alGuardar);
+    }, []);
+    return apodos;
 }
 
 export async function guardarNickname(token: string, nickname: string) {

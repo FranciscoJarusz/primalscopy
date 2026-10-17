@@ -1,5 +1,6 @@
 import PrimalImage from "@/components/shared/PrimalImage";
 import { ape, nameOf } from "@/lib/raffles/format";
+import { useApodos } from "@/lib/nicknames";
 import type { Item, Actions } from "@/lib/raffles/contrato";
 
 /// Los raffles ya sorteados: que salio, quien lo gano y cuanto pago el pozo.
@@ -14,6 +15,7 @@ export default function Results({
   ocupado: boolean;
   acciones: Actions;
 }) {
+  const apodos = useApodos();
   return (
     <section>
       <div className="flex items-baseline justify-between mb-2">
@@ -49,7 +51,7 @@ export default function Results({
                   Winner
                 </div>
                 <div className="font-semibold text-purple-300">
-                  {nameOf(r.ganador)}
+                  {nameOf(r.ganador, apodos)}
                 </div>
               </div>
 
@@ -66,7 +68,7 @@ export default function Results({
                 <button
                   disabled={ocupado}
                   onClick={() => acciones.retirarNFT(id)}
-                  className="rounded-xl bg-yellow-300 hover:bg-yellow-200 disabled:opacity-30 px-5 py-2 font-bold text-black transition-colors duration-200"
+                  className="rounded-xl bg-yellow-300 hover:bg-yellow-200 disabled:opacity-30 px-5 py-2 font-bold text-black transition-all duration-300"
                 >
                   Claim my NFT
                 </button>

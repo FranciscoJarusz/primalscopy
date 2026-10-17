@@ -1,4 +1,5 @@
 import React from "react";
+import { nombreWallet, useApodos } from "@/lib/nicknames";
 
 interface WelcomeNFTsProps {
   nftsFound: number;
@@ -11,6 +12,7 @@ export default function WelcomeNFTs({
   address,
   onDismiss,
 }: WelcomeNFTsProps) {
+  const apodos = useApodos();
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-gradient-to-br from-blue-900/90 to-purple-900/90 border border-white/20 rounded-3xl p-8 max-w-md mx-4 backdrop-blur-sm">
@@ -31,7 +33,7 @@ export default function WelcomeNFTs({
           <div className="bg-white/10 rounded-xl p-4 mb-6">
             <div className="text-sm text-white/60 mb-2">Wallet conectada:</div>
             <div className="font-mono text-blue-300">
-              {address.slice(0, 6)}...{address.slice(-4)}
+              {nombreWallet(address, apodos)}
             </div>
           </div>
 
@@ -42,7 +44,7 @@ export default function WelcomeNFTs({
 
           <button
             onClick={onDismiss}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-xl transition-all duration-200 transform hover:scale-105"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-xl transition-all duration-300 transform hover:scale-105"
           >
             ¡Empezar a Personalizar!
           </button>
