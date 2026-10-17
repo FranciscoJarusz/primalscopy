@@ -15,6 +15,8 @@ export const SECCIONES: Seccion[] = [
     { id: 'cultomizer', nombre: 'Cultomizer', href: '/cultomizer' },
     { id: 'forge', nombre: 'Forge', href: '/forge' },
     { id: 'raffles', nombre: 'Raffles', href: '/raffles', oculta: true },
+    // Oculta hasta que se abra el staking desde /admin/staking.
+    { id: 'staking', nombre: 'Staking', href: '/staking', oculta: true },
 ];
 
 export const COMMUNITY: Seccion[] = [
@@ -49,7 +51,7 @@ const clase = (id: string) =>
     <div class="flex items-center gap-6">
         <a
             href="/"
-            class="flex items-center gap-3 hover:scale-102 active:scale-97 transition-transform duration-300"
+            class="flex items-center gap-3 hover:scale-102 active:scale-97 transition-all duration-300"
         >
             <img
                 src="/brand/logo.svg"
@@ -90,7 +92,7 @@ const clase = (id: string) =>
                 <span
                     aria-hidden="true"
                     data-desplegable-flecha
-                    class="mt-1 flex transition-transform duration-300 motion-reduce:transition-none"
+                    class="mt-1 flex transition-all duration-300 motion-reduce:transition-none"
                 >
                     <FiChevronDown size={18} />
                 </span>
@@ -99,7 +101,7 @@ const clase = (id: string) =>
             <div
                 id="menu-community"
                 data-desplegable-panel
-                class="absolute left-1/2 top-full -translate-x-1/2 pt-6 invisible opacity-0 -translate-y-1 transition-all duration-200 ease-out motion-reduce:transition-none"
+                class="absolute left-1/2 top-full -translate-x-1/2 pt-6 invisible opacity-0 -translate-y-1 transition-all duration-300 ease-out motion-reduce:transition-none"
             >
                 <div class="min-w-56 bg-darkblue rounded-2xl shadow-lg shadow-darkblue/50 p-2 flex flex-col text-lg">
                     {COMMUNITY.map((s) => (
@@ -130,7 +132,7 @@ const clase = (id: string) =>
                             <span class="flex-1">{red.nombre}</span>
                             <span
                                 aria-hidden="true"
-                                class="flex mt-1 opacity-50 group-hover:opacity-100 transition-opacity duration-300"
+                                class="flex mt-1 opacity-50 group-hover:opacity-100 transition-all duration-300"
                             >
                                 <FiArrowUpRight size={16} />
                             </span>
@@ -155,7 +157,7 @@ const clase = (id: string) =>
             aria-controls="menu-secciones"
             aria-label="Abrir menu"
             data-menu-toggle
-            class="lg:hidden cursor-pointer rounded-lg text-lightblue hover:text-yellow transition-colors duration-300"
+            class="lg:hidden cursor-pointer rounded-lg text-lightblue hover:text-yellow transition-all duration-300"
         >
             <span class="relative block w-5 h-5" aria-hidden="true">
                 <svg

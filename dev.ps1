@@ -34,6 +34,8 @@ if ($accion -eq "stop") {
 function Publicar {
   Push-Location "$root\web"
   $env:PUBLIC_BACKEND_URL = '/backend/api'
+  # El link puede mostrar el mapa de staking lleno: /staking?demo=600.
+  $env:PUBLIC_STAKING_DEMO = '1'
   # Se mira el "Complete!" y no el codigo de salida: en Windows Node a veces
   # revienta al cerrarse (UV_HANDLE_CLOSING) despues de un build que salio bien.
   # Los codigos de color se sacan antes de buscar: en la terminal de VS Code
@@ -44,6 +46,7 @@ function Publicar {
   $ok = $limpia -match '\[build\]\s+Complete!'
   if (-not $ok) { Write-Host $salida }
   Remove-Item Env:PUBLIC_BACKEND_URL
+  Remove-Item Env:PUBLIC_STAKING_DEMO
   Pop-Location
   if (-not $ok) { Write-Host "El build fallo: corre 'npx astro build' en web/ para ver el error."; return $false }
   Cerrar 4322

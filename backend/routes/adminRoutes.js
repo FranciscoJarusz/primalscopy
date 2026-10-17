@@ -11,6 +11,9 @@ const { startSeeding, getSeedProgress, ORIGIN_URL, LAST_TOKEN } = require('../li
 const remote = require('../lib/remotePublisher');
 const nicknames = require('../lib/nicknameStore');
 const promo = require('../lib/promoStore');
+const staking = require('../lib/stakingStore');
+const { verifyStakes, refreshVaultNow } = require('../lib/stakingJob');
+const wheels = require('../lib/stakingWheels');
 const {
     listTraits,
     uploadTrait,
@@ -34,6 +37,24 @@ const upload = multer({
                 `Extensión no permitida: ${extension || '(ninguna)'}. Solo ${ALLOWED_EXTENSIONS.join(', ')}.`
             );
             // Lo marca como error del cliente para que el handler no lo trate como 500.
+            error.status = 400;
+            return cb(error);
+        }
+        cb(null, true);
+    }
+});
+
+// Los iconos de los premios del staking: se pasan a WebP de 256 px, asi que
+// cualquier imagen comun sirve.
+const ICON_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
+const uploadIcon = multer({
+    storage: multer.memoryStorage(),
+    // El mismo tope que los traits: el handler de errores avisa "25 MB".
+    limits: { fileSize: 25 * 1024 * 1024, files: 1 },
+    fileFilter: (req, file, cb) => {
+        const extension = path.extname(file.originalname).toLowerCase();
+        if (!ICON_EXTENSIONS.includes(extension)) {
+            const error = new Error(`Only ${ICON_EXTENSIONS.join(', ')} images.`);
             error.status = 400;
             return cb(error);
         }
@@ -122,6 +143,72 @@ router.patch('/promo/:code', (req, res) => {
         : promo.setActive(req.params.code, body.active);
     if (result.error) return res.status(result.status).json({ error: result.error });
     res.json(result.code);
+});
+
+// Staking: la tasa, los periodos y el catalogo se cambian desde aca para
+// probar sin deploys. Ver lib/stakingStore.js.
+router.get('/staking', (req, res) => res.json(staking.adminSummary()));
+router.patch('/staking/config', (req, res) => {
+    const result = staking.updateConfig(req.body);
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json(result.config);
+});
+// El icono de un premio: subirlo lo cambia al toque, sin esperar a guardar el
+// resto del formulario. Borrarlo vuelve al que viene con el sitio.
+router.post('/staking/icon/:id', uploadIcon.single('file'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Pick an image.' });
+    const result = await staking.setCatalogIcon(req.params.id, req.file.buffer);
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json(result.config);
+});
+router.delete('/staking/icon/:id', (req, res) => {
+    const result = staking.clearCatalogIcon(req.params.id);
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json(result.config);
+});
+// Las ruletas de la tienda: premios, imagenes, vault y entregas.
+router.get('/staking/wheels', (req, res) => res.json(wheels.adminWheels()));
+router.put('/staking/wheels/:item', (req, res) => {
+    const result = wheels.updateWheel(req.params.item, req.body || {});
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json(wheels.adminWheels());
+});
+router.post('/staking/wheels/:item/prizes/:prize/image', uploadIcon.single('file'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Pick an image.' });
+    const result = await wheels.setPrizeImage(req.params.item, req.params.prize, req.file.buffer);
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json(wheels.adminWheels());
+});
+router.patch('/staking/vault', async (req, res) => {
+    const result = wheels.setVault(req.body?.address);
+    if (result.error) return res.status(400).json({ error: result.error });
+    try {
+        await refreshVaultNow();
+    } catch (error) {
+        return res.status(503).json({ error: `Saved, but couldn't read the vault right now: ${error.message}` });
+    }
+    res.json(wheels.adminWheels());
+});
+router.post('/staking/vault/refresh', async (req, res) => {
+    try {
+        await refreshVaultNow();
+        res.json(wheels.adminWheels());
+    } catch (error) {
+        res.status(503).json({ error: `Couldn't read the vault right now: ${error.message}` });
+    }
+});
+router.patch('/staking/prizes/:id', (req, res) => {
+    const result = wheels.setWinStatus(req.params.id, req.body || {});
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json(wheels.adminWheels());
+});
+// Corre el chequeo de dueños y listados ya, sin esperar los 10 minutos.
+router.post('/staking/verify', async (req, res) => {
+    try {
+        res.json(await verifyStakes());
+    } catch (error) {
+        res.status(503).json({ error: `Couldn't check right now: ${error.message}` });
+    }
 });
 
 router.use(adminErrorHandler);

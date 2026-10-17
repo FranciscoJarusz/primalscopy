@@ -7,6 +7,10 @@ const authRoutes = require('./routes/authRoutes');
 const forgeRoutes = require('./routes/forgeRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const promoRoutes = require('./routes/promoRoutes');
+const stakingRoutes = require('./routes/stakingRoutes');
+const { startStakingJob } = require('./lib/stakingJob');
+const stakingStore = require('./lib/stakingStore');
+const primalThumbs = require('./lib/primalThumbs');
 const { paymentConfig } = require('./lib/forgePayments');
 const { formatEther } = require('viem');
 const { TRAITS_PATH, seedTraitsIfEmpty } = require('./lib/traitsStore');
@@ -121,6 +125,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/forge', forgeRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/promo', promoRoutes);
+app.use('/api/staking', stakingRoutes);
 
 // Iniciar servidor
 app.listen(PORT, () => {
@@ -129,6 +134,11 @@ app.listen(PORT, () => {
   // directo: los tests cargan este archivo y no tienen por que generarlas.
   if (require.main === module) {
     setTimeout(() => generarTodas().catch(error => console.error('[thumbs]', error)), 3000);
+    // Igual el chequeo del staking: los tests lo llaman a mano.
+    startStakingJob();
+    // Las miniaturas de los Primals que estan entrenando, para el mapa.
+    primalThumbs.habilitarPrecalentado();
+    primalThumbs.precalentar(Object.values(stakingStore.trainingByPeriod()).flat());
   }
   console.log(`[traits] Sirviendo traits desde ${TRAITS_PATH}`);
   if (!isWalletAuthEnabled()) {

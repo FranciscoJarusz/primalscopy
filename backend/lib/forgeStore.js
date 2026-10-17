@@ -72,8 +72,10 @@ function readHistory() {
 //
 // Tambien guarda los rolls gratis de los codigos promocionales (ver
 // lib/promoStore.js), con `source: 'promo'` y una clave "promo:..." en vez de
-// un hash. Valen igual que un pago, pero no son plata: el que haga la cuenta
-// del treasury tiene que mirar solo los de `source` vacio.
+// un hash, y los que se compran con FOG en el staking (lib/stakingStore.js),
+// con `source: 'fog'` y una clave "fog:...". Valen igual que un pago, pero no
+// son plata: el que haga la cuenta del treasury tiene que mirar solo los de
+// `source` vacio.
 //
 // Todas las funciones de aca son sincronicas a proposito: leer, decidir y
 // escribir sin un await en el medio hace que dos pedidos a la vez no puedan
@@ -128,13 +130,31 @@ function addPromoCredits(wallet, code, amount) {
     return keys;
 }
 
+// Un roll comprado con FOG. `redemptionId` es unico por canje, asi que
+// llamarla dos veces con el mismo no da dos rolls. Devuelve la clave.
+function addFogCredit(wallet, redemptionId) {
+    const payments = readPayments();
+    const key = `fog:${redemptionId}`;
+    if (!payments[key]) {
+        payments[key] = {
+            source: 'fog',
+            redemptionId,
+            wallet: wallet.toLowerCase(),
+            status: 'available',
+            paidAt: new Date().toISOString()
+        };
+        writePayments(payments);
+    }
+    return key;
+}
+
 // Solo cuentan los pagos de la red configurada: un pago de prueba en anvil
 // no puede valer como roll pagado cuando se cobra en ApeChain. Los rolls de un
-// codigo no son de ninguna red.
+// codigo o de FOG no son de ninguna red.
 function isAvailableFor(payment, wallet, chainId) {
     return payment.status === 'available'
         && sameWallet(payment.wallet, wallet)
-        && (payment.source === 'promo' || Number(payment.chainId) === Number(chainId));
+        && (Boolean(payment.source) || Number(payment.chainId) === Number(chainId));
 }
 
 function availablePayments(wallet, chainId) {
@@ -152,7 +172,7 @@ function takePayment(wallet, chainId, rollId, tokenId) {
     const [oldest] = Object.entries(payments)
         .filter(([, p]) => isAvailableFor(p, wallet, chainId))
         .sort(([, a], [, b]) =>
-            (a.source === 'promo' ? 0 : 1) - (b.source === 'promo' ? 0 : 1)
+            (a.source ? 0 : 1) - (b.source ? 0 : 1)
             || a.paidAt.localeCompare(b.paidAt));
     if (!oldest) return null;
 
@@ -223,6 +243,7 @@ module.exports = {
     getPayment,
     addPayment,
     addPromoCredits,
+    addFogCredit,
     availablePayments,
     takePayment,
     returnPayment,

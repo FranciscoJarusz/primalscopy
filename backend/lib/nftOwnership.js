@@ -91,4 +91,30 @@ async function getPrimalBalance(address) {
     return Number(balance);
 }
 
-module.exports = { checkOwnership, getTokenOwner, getPrimalBalance, CONTRACT_ADDRESS };
+// Los dueños de muchos tokens a la vez, con multicall: 200 por request en vez
+// de uno por token. Devuelve un Map tokenId -> direccion en minusculas (null si
+// el token no existe). Si el RPC falla, tira: quien llama no puede tomar una
+// caida como "ya no es el dueño".
+async function getTokenOwners(tokenIds) {
+    const owners = new Map();
+    const ids = [...new Set(tokenIds.map(String))];
+    for (let i = 0; i < ids.length; i += 200) {
+        const batch = ids.slice(i, i + 200);
+        const results = await publicClient.multicall({
+            contracts: batch.map(id => ({
+                address: CONTRACT_ADDRESS,
+                abi: OWNER_OF_ABI,
+                functionName: 'ownerOf',
+                args: [BigInt(id)]
+            })),
+            allowFailure: true
+        });
+        batch.forEach((id, j) => {
+            const r = results[j];
+            owners.set(id, r.status === 'success' ? r.result.toLowerCase() : null);
+        });
+    }
+    return owners;
+}
+
+module.exports = { checkOwnership, getTokenOwner, getTokenOwners, getPrimalBalance, CONTRACT_ADDRESS };

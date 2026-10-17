@@ -7,6 +7,10 @@ import {
     leerNicknames,
     type DetalleNickname,
 } from '@/lib/nicknames';
+import { ICONO_FOG_CHICO, leerRanking, nombreInsignia } from '@/lib/staking';
+
+// El FOG de cada wallet y sus insignias de staking (ver lib/staking.ts).
+type Fog = Record<string, { balance: number; badges: number[] }>;
 
 type Stats = {
     totalSupply: number;
@@ -130,7 +134,7 @@ function Resumen({
                 <button
                     type="button"
                     onClick={copiar}
-                    className="flex items-center justify-between gap-3 min-w-0 rounded-md bg-lightblue/5 border border-lightblue/10 px-3 py-2 text-left text-lightblue hover:border-yellow/60 transition-colors duration-300 cursor-pointer"
+                    className="flex items-center justify-between gap-3 min-w-0 rounded-md bg-lightblue/5 border border-lightblue/10 px-3 py-2 text-left text-lightblue hover:border-yellow/60 transition-all duration-300 cursor-pointer"
                 >
                     <span className="font-mono text-xs sm:text-sm truncate">
                         {NFT_CONTRACT_ADDRESS}
@@ -234,10 +238,13 @@ const MEDALLAS = [
 function TopHolders({
     stats,
     nicknames,
+    fog,
 }: {
     stats: Stats | null;
     nicknames: Record<string, string>;
+    fog: Fog;
 }) {
+    const hayFog = Object.keys(fog).length > 0;
     return (
         <section data-anim="reveal" className={`${card} flex flex-col gap-5`}>
             <div className="flex items-baseline justify-between gap-3">
@@ -259,13 +266,14 @@ function TopHolders({
                         ? stats.top.map((h, i) => {
                               const medalla = MEDALLAS[i];
                               const rol = rolDe(h.cantidad);
+                              const suyo = fog[h.address.toLowerCase()];
                               return (
                                   <li key={h.address}>
                                       <a
                                           href={`${APECHAIN.explorador}/address/${h.address}`}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className={`group flex items-center gap-3 sm:gap-4 rounded-xl border px-3 sm:px-4 py-2.5 transition-colors duration-300 hover:border-yellow/60 ${
+                                          className={`group flex items-center gap-3 sm:gap-4 rounded-xl border px-3 sm:px-4 py-2.5 transition-all duration-300 hover:border-yellow/60 ${
                                               medalla?.fondo ??
                                               'border-lightblue/10 bg-lightblue/5'
                                           }`}
@@ -283,7 +291,7 @@ function TopHolders({
                                           <span className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                                               {nicknames[h.address] ? (
                                                   <span className="flex flex-col min-w-0">
-                                                      <span className="font-accent text-lg text-lightblue leading-none pb-1 truncate group-hover:text-yellow transition-colors duration-300">
+                                                      <span className="font-accent text-lg text-lightblue leading-none pb-1 truncate group-hover:text-yellow transition-all duration-300">
                                                           {nicknames[h.address]}
                                                       </span>
                                                       <span className="font-mono text-xs text-lightblue/50">
@@ -291,15 +299,41 @@ function TopHolders({
                                                       </span>
                                                   </span>
                                               ) : (
-                                                  <span className="font-mono text-sm text-lightblue truncate group-hover:text-yellow transition-colors duration-300">
+                                                  <span className="font-mono text-sm text-lightblue truncate group-hover:text-yellow transition-all duration-300">
                                                       {corta(h.address)}
                                                   </span>
                                               )}
-                                              <Pastilla
-                                                  rol={rol}
-                                                  className="w-fit text-xs"
-                                              />
+                                              <span className="flex flex-wrap items-center gap-1">
+                                                  <Pastilla
+                                                      rol={rol}
+                                                      className="w-fit text-xs"
+                                                  />
+                                                  {suyo?.badges.map((b) => (
+                                                      <span
+                                                          key={b}
+                                                          title={`${b} days staking in a row`}
+                                                          className="font-accent uppercase text-xs rounded-md bg-yellow text-darkblue px-2 pb-1.5 leading-none"
+                                                      >
+                                                          {nombreInsignia(b)}
+                                                      </span>
+                                                  ))}
+                                              </span>
                                           </span>
+                                          {hayFog && (
+                                              <span className="flex flex-col items-end shrink-0 w-16 sm:w-24">
+                                                  <span className="text-[10px] sm:text-xs uppercase tracking-wide text-lightblue/60 whitespace-nowrap">
+                                                      Current FOG
+                                                  </span>
+                                                  <span className="inline-flex items-center gap-1 font-accent text-base sm:text-lg text-lightblue leading-none pb-1">
+                                                      {suyo && (
+                                                          <img src={ICONO_FOG_CHICO} alt="" className="size-4 mt-1" />
+                                                      )}
+                                                      {suyo
+                                                          ? numero(suyo.balance)
+                                                          : '-'}
+                                                  </span>
+                                              </span>
+                                          )}
                                           <span className="flex flex-col items-end shrink-0">
                                               <span className="font-accent text-xl text-yellow leading-none pb-1">
                                                   {numero(h.cantidad)}
@@ -333,6 +367,7 @@ export default function StatsApp() {
     const [quemado, setQuemado] = useState<number | null>(null);
     const [fallo, setFallo] = useState(false);
     const [nicknames, setNicknames] = useState<Record<string, string>>({});
+    const [fog, setFog] = useState<Fog>({});
 
     useEffect(() => {
         leerNicknames().then(setNicknames);
@@ -349,6 +384,11 @@ export default function StatsApp() {
             .then((r) => (r.ok ? r.json() : Promise.reject()))
             .then(setStats)
             .catch(() => setFallo(true));
+
+        // Si el backend no contesta, el ranking sale sin la columna de FOG.
+        leerRanking()
+            .then(setFog)
+            .catch(() => {});
 
         fetch('/api/stats/burned')
             .then((r) => r.json())
@@ -372,7 +412,7 @@ export default function StatsApp() {
                 }
             />
             <Distribucion stats={stats} />
-            <TopHolders stats={stats} nicknames={nicknames} />
+            <TopHolders stats={stats} nicknames={nicknames} fog={fog} />
         </div>
     );
 }

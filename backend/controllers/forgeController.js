@@ -253,6 +253,7 @@ async function roll(req, res) {
                 options,
                 payment: !payment ? { mode: 'test' }
                     : payment.source === 'promo' ? { mode: 'promo', code: payment.code }
+                    : payment.source === 'fog' ? { mode: 'fog', redemptionId: payment.redemptionId }
                     : { mode: 'ape', txHash: payment.txHash, valueWei: payment.valueWei },
                 createdAt: new Date().toISOString()
             };

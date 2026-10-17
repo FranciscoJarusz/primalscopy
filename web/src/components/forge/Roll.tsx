@@ -24,6 +24,7 @@ import {
 } from './forge';
 import { rarezaDe } from './rareza';
 import { abrirCanje } from '@/lib/promo';
+import PagarConFog from './PagarConFog';
 
 export default function Roll() {
     const tokenId = useSearchParam('tokenId') ?? '';
@@ -294,9 +295,17 @@ export default function Roll() {
                                         status.payment.required &&
                                         paidRolls === 0 &&
                                         busy === null && (
+                                            <PagarConFog
+                                                token={session.token}
+                                            />
+                                        )}
+                                    {puedeActuar &&
+                                        status.payment.required &&
+                                        paidRolls === 0 &&
+                                        busy === null && (
                                             <button
                                                 onClick={abrirCanje}
-                                                className="self-start text-lightblue/70 hover:text-yellow text-sm underline underline-offset-4 cursor-pointer transition-colors duration-300"
+                                                className="self-start text-lightblue/70 hover:text-yellow text-sm underline underline-offset-4 cursor-pointer transition-all duration-300"
                                             >
                                                 Have a code?
                                             </button>

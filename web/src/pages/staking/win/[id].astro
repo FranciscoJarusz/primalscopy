@@ -1,0 +1,61 @@
+---
+export const prerender = false;
+
+const BACKEND =
+    import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
+
+// Detras del tunel (o de un proxy) la pagina recibe la visita en http aunque
+// afuera sea https, y X no carga imagenes por http: salvo en localhost, el
+// origen publico va siempre con https.
+const local = ['localhost', '127.0.0.1', '[::1]'].includes(Astro.url.hostname);
+const origen = local ? Astro.url.origin : `https://${Astro.url.host}`;
+
+const backendAbsoluto = BACKEND.startsWith('/')
+    ? new URL(BACKEND, origen).href
+    : BACKEND;
+
+const { id = '' } = Astro.params;
+type Premio = { prize: { label: string }; itemLabel: string; name: string };
+let premio: Premio | null = null;
+if (/^[0-9a-f-]{8,64}$/.test(id)) {
+    premio = await fetch(`${backendAbsoluto}/staking/win/${id}`)
+        .then((r) => (r.ok ? (r.json() as Promise<Premio>) : null))
+        .catch(() => null);
+}
+if (!premio) return Astro.redirect('/staking');
+
+const titulo = `${premio.name} won ${premio.prize.label}`;
+const descripcion = `Opened a ${premio.itemLabel} in Primal Cult. Stake your Primals, earn FOG and open keys.`;
+const imagen = `${backendAbsoluto}/staking/win/${id}/card.png`;
+const destino = '/staking';
+---
+
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{titulo} - Primal Cult</title>
+        <meta name="robots" content="noindex" />
+        <meta name="description" content={descripcion} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Primal Cult" />
+        <meta property="og:title" content={titulo} />
+        <meta property="og:description" content={descripcion} />
+        <meta property="og:url" content={new URL(Astro.url.pathname, origen).href} />
+        <meta property="og:image" content={imagen} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={titulo} />
+        <meta name="twitter:description" content={descripcion} />
+        <meta name="twitter:image" content={imagen} />
+        <meta http-equiv="refresh" content={`0; url=${destino}`} />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    </head>
+    <body style="background:#090050;color:#dfe8ff;font-family:sans-serif;text-align:center;padding:40px">
+        <a href={destino} style="color:#fdf468">
+            Go to Primal Cult staking
+        </a>
+    </body>
+</html>
