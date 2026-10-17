@@ -1,9 +1,6 @@
-// Panel de administracion (isla de React).
-//
-// Panel de administración de traits. Habla directo con la API del backend
-// Express (/api/admin/*), autenticado con un token compartido que se guarda en
-// sessionStorage: se pierde al cerrar la pestaña, que es lo que queremos para
-// un secreto compartido.
+// Panel de traits del admin: subir, renombrar y borrar sin redeployar. Habla
+// directo con la API del backend (/api/admin/*) con el token que le pasa
+// AdminApp.
 import React, {
     useCallback,
     useEffect,
@@ -12,14 +9,7 @@ import React, {
     useState,
 } from 'react';
 import { miniaturaDeTrait } from '@/lib/miniaturas';
-
-const BACKEND_URL =
-    import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
-const BACKEND_BASE_URL =
-    import.meta.env.PUBLIC_BACKEND_BASE_URL ||
-    BACKEND_URL.replace(/\/api\/?$/, '');
-
-const TOKEN_STORAGE_KEY = 'primal_admin_token';
+import { BACKEND_URL, BACKEND_BASE_URL } from '@/lib/backend';
 
 interface Trait {
     file: string;
@@ -104,12 +94,7 @@ function formatBytes(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function AdminPage() {
-    const [token, setToken] = useState<string>('');
-    const [tokenInput, setTokenInput] = useState<string>('');
-    const [authError, setAuthError] = useState<string | null>(null);
-    const [checkingToken, setCheckingToken] = useState<boolean>(false);
-
+export default function TraitsAdmin({ token }: { token: string }) {
     const [data, setData] = useState<TraitsResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -160,32 +145,12 @@ export default function AdminPage() {
                 'error',
                 error instanceof Error
                     ? error.message
-                    : 'No se pudo cargar la lista de traits.'
+                    : "Couldn't load the trait list."
             );
             return null;
         } finally {
             setLoading(false);
         }
-    }, []);
-
-    // --- Sesión ------------------------------------------------------------
-
-    // Restaura el token de la pestaña y valida que siga siendo bueno.
-    useEffect(() => {
-        const stored = sessionStorage.getItem(TOKEN_STORAGE_KEY);
-        if (!stored) return;
-
-        (async () => {
-            const response = await fetch(`${BACKEND_URL}/admin/session`, {
-                headers: { Authorization: `Bearer ${stored}` },
-            }).catch(() => null);
-
-            if (response?.ok) {
-                setToken(stored);
-            } else {
-                sessionStorage.removeItem(TOKEN_STORAGE_KEY);
-            }
-        })();
     }, []);
 
     const loadStorageStatus = useCallback(async (activeToken: string) => {
@@ -225,19 +190,19 @@ export default function AdminPage() {
                 response.ok
                     ? {
                           kind: 'ok',
-                          text: body.message || 'Migración iniciada.',
+                          text: body.message || 'Migration started.',
                       }
                     : {
                           kind: 'error',
                           text:
-                              body.error || 'No se pudo iniciar la migración.',
+                              body.error || "Couldn't start the migration.",
                       }
             );
             loadAssetsStatus(token);
         } catch {
             setStatus({
                 kind: 'error',
-                text: 'No se pudo contactar al servidor.',
+                text: "Couldn't reach the server.",
             });
         }
     }, [token, loadAssetsStatus]);
@@ -269,43 +234,6 @@ export default function AdminPage() {
         loadTraits(token);
         loadStorageStatus(token);
     }, [token, loadTraits, loadStorageStatus]);
-
-    const handleLogin = async (event: React.FormEvent) => {
-        event.preventDefault();
-        const candidate = tokenInput.trim();
-        if (!candidate) return;
-
-        setCheckingToken(true);
-        setAuthError(null);
-        try {
-            const response = await fetch(`${BACKEND_URL}/admin/session`, {
-                headers: { Authorization: `Bearer ${candidate}` },
-            });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                throw new Error(body.error || 'Token inválido.');
-            }
-            sessionStorage.setItem(TOKEN_STORAGE_KEY, candidate);
-            setToken(candidate);
-            setTokenInput('');
-        } catch (error) {
-            setAuthError(
-                error instanceof Error
-                    ? error.message
-                    : 'No se pudo validar el token.'
-            );
-        } finally {
-            setCheckingToken(false);
-        }
-    };
-
-    const handleLogout = () => {
-        sessionStorage.removeItem(TOKEN_STORAGE_KEY);
-        setToken('');
-        setData(null);
-        setActiveCategory(null);
-        setActiveDirectory(null);
-    };
 
     // --- Selección ---------------------------------------------------------
 
@@ -375,7 +303,7 @@ export default function AdminPage() {
             // 409 = ya existe. Preguntamos una sola vez por archivo.
             if (response?.status === 409) {
                 const confirmed = window.confirm(
-                    `Ya existe "${file.name}" en ${activeCategory}/${activeDirectory}. ¿Reemplazarlo?`
+                    `"${file.name}" already exists in ${activeCategory}/${activeDirectory}. Replace it?`
                 );
                 if (!confirmed) continue;
 
@@ -405,7 +333,7 @@ export default function AdminPage() {
         if (failures.length === 0) {
             notify(
                 'ok',
-                `${uploaded} archivo(s) subido(s) a ${activeCategory}/${activeDirectory}.`
+                `${uploaded} file(s) uploaded to ${activeCategory}/${activeDirectory}.`
             );
         } else {
             notify(
@@ -419,7 +347,7 @@ export default function AdminPage() {
         if (!activeCategory || !activeDirectory) return;
 
         const newName = window.prompt(
-            'Nuevo nombre (sin extensión):',
+            'New name (without extension):',
             trait.name
         );
         if (!newName || newName.trim() === trait.name) return;
@@ -441,7 +369,7 @@ export default function AdminPage() {
             await loadTraits(token);
             notify('ok', `Renombrado a "${newName.trim()}".`);
         } else {
-            notify('error', body?.error || 'No se pudo renombrar.');
+            notify('error', body?.error || "Couldn't rename it.");
         }
         setBusy(false);
     };
@@ -451,8 +379,8 @@ export default function AdminPage() {
 
         const message =
             scope === 'all'
-                ? `Borrar "${trait.file}" de TODAS las carpetas de ${activeCategory}. Esto no se puede deshacer. ¿Seguro?`
-                : `Borrar "${trait.file}" de ${activeCategory}/${activeDirectory}. Esto no se puede deshacer. ¿Seguro?`;
+                ? `Delete "${trait.file}" from EVERY ${activeCategory} folder. This can't be undone. Are you sure?`
+                : `Delete "${trait.file}" from ${activeCategory}/${activeDirectory}. This can't be undone. Are you sure?`;
         if (!window.confirm(message)) return;
 
         setBusy(true);
@@ -472,7 +400,7 @@ export default function AdminPage() {
             await loadTraits(token);
             notify('ok', body?.message || 'Trait borrado.');
         } else {
-            notify('error', body?.error || 'No se pudo borrar.');
+            notify('error', body?.error || "Couldn't delete it.");
         }
         setBusy(false);
     };
@@ -483,52 +411,6 @@ export default function AdminPage() {
         if (event.dataTransfer.files?.length)
             uploadFiles(event.dataTransfer.files);
     };
-
-    // --- Pantalla de login -------------------------------------------------
-
-    if (!token) {
-        return (
-            <main className="flex flex-1 items-center justify-center py-10">
-                <form
-                    onSubmit={handleLogin}
-                    className="flex flex-col items-center gap-5 bg-darkblue p-8 sm:p-10 rounded-2xl sm:rounded-3xl shadow-lg shadow-darkblue/50 text-center max-w-md w-full"
-                >
-                    <img
-                        src="/brand/logo-icon.svg"
-                        alt="Primal Cult"
-                        className="w-14 h-auto"
-                    />
-                    <h1 className="font-accent uppercase text-yellow text-4xl sm:text-5xl">
-                        Traits Admin
-                    </h1>
-                    <p className="text-lightblue/80">
-                        Enter the admin token to continue
-                    </p>
-
-                    <input
-                        type="password"
-                        value={tokenInput}
-                        onChange={(event) => setTokenInput(event.target.value)}
-                        placeholder="ADMIN_TOKEN"
-                        autoFocus
-                        className="w-full bg-lightblue text-darkblue placeholder-darkblue/50 font-accent leading-tight rounded-md px-3 pb-1.5 text-center focus:outline-none transition-all duration-300"
-                    />
-
-                    {authError && (
-                        <p className="text-sm text-red-300">{authError}</p>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={checkingToken || !tokenInput.trim()}
-                        className="w-full bg-yellow text-darkblue font-accent uppercase rounded-md px-6 pb-1.5 cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    >
-                        {checkingToken ? 'Verifying...' : 'Enter'}
-                    </button>
-                </form>
-            </main>
-        );
-    }
 
     // --- Panel -------------------------------------------------------------
 
@@ -556,10 +438,10 @@ export default function AdminPage() {
                                 estado que se consulta de reojo, no una alerta. */}
                             {storage?.healthy && storage.survivedRestart && (
                                 <span
-                                    title={`El contenido sobrevivió a ${storage.marker?.boots} reinicios del servidor`}
+                                    title={`The content survived ${storage.marker?.boots} server restarts`}
                                     className="text-xs text-emerald-300/90 whitespace-nowrap"
                                 >
-                                    ✓ almacenamiento persistente
+                                    ✓ persistent storage
                                 </span>
                             )}
                         </div>
@@ -572,12 +454,6 @@ export default function AdminPage() {
                         >
                             {loading ? 'Loading...' : 'Refresh'}
                         </button>
-                        <button
-                            onClick={handleLogout}
-                            className="inset-ring-2 inset-ring-yellow text-yellow font-accent uppercase rounded-md px-3 pb-1.5 cursor-pointer hover:bg-yellow hover:text-darkblue active:scale-97 transition-all duration-300"
-                        >
-                            Log out
-                        </button>
                     </div>
                 </div>
 
@@ -586,13 +462,13 @@ export default function AdminPage() {
                 {storage && !storage.healthy && (
                     <div className="rounded-2xl border-2 border-red-500 bg-red-500/20 px-4 py-4 sm:px-6 sm:py-5">
                         <p className="text-lg font-bold text-red-200">
-                            ⚠️ No subas nada: los cambios se van a perder
+                            ⚠️ Don't upload anything: changes will be lost
                         </p>
                         <p className="text-red-200/90 mt-2">
-                            La carpeta de traits del servidor no es un volumen
-                            persistente. Todo lo que subas, renombres o borres
-                            va a desaparecer la próxima vez que el servidor se
-                            reinicie, sin ningún aviso.
+                            The server's traits folder isn't a persistent
+                            volume. Everything you upload, rename or delete will
+                            disappear the next time the server restarts, without
+                            any warning.
                         </p>
                         <p className="text-sm text-red-200/70 mt-3 font-mono break-all">
                             TRAITS_PATH = {storage.traitsPath}
@@ -628,17 +504,17 @@ export default function AdminPage() {
                 {assets && (!assets.readyForDns || assets.seeding.running) && (
                     <div className="rounded-2xl border border-amber-500/50 bg-amber-500/10 px-4 py-4 sm:px-6 sm:py-5">
                         <p className="text-lg font-bold text-amber-200">
-                            Migración de la colección
+                            Collection migration
                         </p>
                         <p className="text-sm text-amber-100/80 mt-1">
-                            Trae los {assets.expected} archivos desde{' '}
+                            Brings the {assets.expected} files from{' '}
                             <span className="font-mono">
                                 {assets.originUrl}
                             </span>{' '}
-                            a este servidor. Tiene que estar completa{' '}
-                            <strong>antes</strong> de apuntar el dominio acá: si
-                            no, la colección entera se ve rota en wallets y
-                            marketplaces.
+                            to this server. It has to be complete{' '}
+                            <strong>before</strong> pointing the domain here:
+                            otherwise the whole collection looks broken in
+                            wallets and marketplaces.
                         </p>
 
                         <div className="mt-4 flex flex-wrap gap-6 text-sm">
@@ -652,7 +528,7 @@ export default function AdminPage() {
                             </div>
                             <div>
                                 <span className="text-amber-100/60">
-                                    Imágenes:{' '}
+                                    Images:{' '}
                                 </span>
                                 <span className="font-mono text-amber-100">
                                     {assets.images} / {assets.expected}
@@ -661,7 +537,7 @@ export default function AdminPage() {
                             {assets.seeding.bytes > 0 && (
                                 <div>
                                     <span className="text-amber-100/60">
-                                        Descargado:{' '}
+                                        Downloaded:{' '}
                                     </span>
                                     <span className="font-mono text-amber-100">
                                         {formatBytes(assets.seeding.bytes)}
@@ -671,7 +547,7 @@ export default function AdminPage() {
                             {assets.seeding.errorCount > 0 && (
                                 <div>
                                     <span className="text-amber-100/60">
-                                        Errores:{' '}
+                                        Errors:{' '}
                                     </span>
                                     <span className="font-mono text-red-300">
                                         {assets.seeding.errorCount}
@@ -691,9 +567,9 @@ export default function AdminPage() {
                                     />
                                 </div>
                                 <p className="mt-2 text-sm text-amber-100/70">
-                                    {assets.seeding.done} de{' '}
-                                    {assets.seeding.total} tokens. Podés cerrar
-                                    esta página: sigue corriendo en el servidor.
+                                    {assets.seeding.done} of{' '}
+                                    {assets.seeding.total} tokens. You can close
+                                    this page: it keeps running on the server.
                                 </p>
                             </div>
                         ) : (
@@ -702,15 +578,15 @@ export default function AdminPage() {
                                 className="mt-4 rounded-lg bg-amber-500 px-5 py-2 font-semibold text-black transition-all duration-300 hover:bg-amber-400"
                             >
                                 {assets.metadata > 0 || assets.images > 0
-                                    ? 'Continuar migración'
-                                    : 'Empezar migración'}
+                                    ? 'Resume migration'
+                                    : 'Start migration'}
                             </button>
                         )}
 
                         {assets.seeding.sampleErrors.length > 0 && (
                             <details className="mt-3 text-xs text-red-300/80">
                                 <summary className="cursor-pointer">
-                                    Ver errores
+                                    Show errors
                                 </summary>
                                 <ul className="mt-2 space-y-1 font-mono">
                                     {assets.seeding.sampleErrors.map(
@@ -728,15 +604,15 @@ export default function AdminPage() {
                 {publisher && !publisher.ok && (
                     <div className="rounded-2xl border-2 border-red-500 bg-red-500/20 px-4 py-4 sm:px-6 sm:py-5">
                         <p className="text-lg font-bold text-red-200">
-                            Las customizaciones no se están publicando
+                            Customizations aren't being published
                         </p>
                         <p className="text-sm text-red-200 mt-1">
-                            Los holders pueden guardar, pero el cambio no se va
-                            a ver en ninguna wallet.
+                            Holders can save, but the change won't show up in
+                            any wallet.
                         </p>
                         {!publisher.configured ? (
                             <p className="text-sm text-red-200/80 mt-2 font-mono">
-                                Faltan variables en el servidor:{' '}
+                                Missing variables on the server:{' '}
                                 {publisher.missing?.join(', ')}
                             </p>
                         ) : (

@@ -1,7 +1,7 @@
 // Pantalla /forge/roll?tokenId=N: conservar traits, rollear y elegir. Misma
 // grafica que el customizer. La logica vive en useForge.ts.
 import { useEffect, useState } from 'react';
-import { goTo, replaceWith, useSearchParam } from '@/lib/navigation';
+import { replaceWith, useSearchParam } from '@/lib/navigation';
 import {
     useWalletSession,
     useNftOwnership,
@@ -14,7 +14,7 @@ import Odds from './Odds';
 import Opcion from './Opcion';
 import Confirmacion from './Confirmacion';
 import Forjado from './Forjado';
-import { card, tituloCard, botonClaro, botonAmarillo, input } from './estilos';
+import { card, tituloCard, botonAmarillo } from './estilos';
 import {
     BACKEND_BASE_URL,
     LAYER_ORDER,
@@ -41,7 +41,6 @@ export default function Roll() {
     );
     const forge = useForge(tokenId, session.token);
     const { status, keep, busy, aviso, paidRolls, fase } = forge;
-    const [otro, setOtro] = useState('');
     // Que se esta por confirmar: quedarse con una opcion, o descartar las dos.
     const [pregunta, setPregunta] = useState<
         { tipo: 'elegir'; index: number } | { tipo: 'descartar' } | null

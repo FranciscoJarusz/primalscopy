@@ -10,6 +10,8 @@ import {
     useWalletSession,
     useNftOwnership,
 } from '@/hooks/cultomizer/useWalletSession';
+import { BACKEND_URL, BACKEND_BASE_URL } from '@/lib/backend';
+import { LAYER_ORDER } from '@/lib/capas';
 
 // --- Interfaces para Tipado ---
 interface TraitVariant {
@@ -30,15 +32,6 @@ interface CustomizationOptions {
 // --- Constantes ---
 const THUMBNAIL_SIZE = 80;
 const GIF_EXPORT_SIZE = 2000;
-const LAYER_ORDER = [
-    'Background',
-    'Fur',
-    'Tunic',
-    'Face',
-    'Eyes',
-    'Hat',
-    'Effect',
-];
 const NONE_SELECTION = '__NONE__';
 // Variantes por pagina en "Choose a trait": dos filas de seis.
 const TRAITS_PER_PAGE = 12;
@@ -114,12 +107,6 @@ function CustomizerContent() {
         kind: 'ok' | 'error';
         text: string;
     } | null>(null);
-
-    const BACKEND_URL =
-        import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
-    const BACKEND_BASE_URL =
-        import.meta.env.PUBLIC_BACKEND_BASE_URL ||
-        BACKEND_URL.replace(/\/api\/?$/, '');
 
     // Pre-cargar el worker de gif.js al montar la página.
     // En iOS Safari, la primera vez que se usa el worker se descarga el script

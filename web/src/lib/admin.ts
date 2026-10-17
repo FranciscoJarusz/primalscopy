@@ -1,5 +1,6 @@
-// Las herramientas del panel de admin. Cada una es su propia pagina bajo
-// /admin; para sumar una, se agrega aca y se crea src/pages/admin/<id>.astro.
+// Las herramientas del panel de admin, en el orden de las pestañas. Para sumar
+// una: se agrega aca, se registra su panel en PANELES de AdminApp.tsx y se crea
+// src/pages/admin/<id>.astro (para que /admin/<id> abra directo en ella).
 export const ADMIN_SECCIONES = [
     { id: 'traits', nombre: 'Traits', href: '/admin/traits' },
     { id: 'nicknames', nombre: 'Nicknames', href: '/admin/nicknames' },

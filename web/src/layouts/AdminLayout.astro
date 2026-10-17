@@ -2,39 +2,18 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import Header from '@/components/shared/Header.astro';
 import Footer from '@/components/shared/Footer.astro';
-import { ADMIN_SECCIONES } from '@/lib/admin';
 
 interface Props {
     title?: string;
-    activo: string;
 }
 
-const { title = 'Admin - Primal Cult', activo } = Astro.props;
+// Las pestañas de las secciones las dibuja AdminApp, recien despues de entrar.
+const { title = 'Admin - Primal Cult' } = Astro.props;
 ---
 
 <BaseLayout title={title} noindex>
     <div class="min-h-dvh flex flex-col gap-6 sm:gap-10 px-4 py-3 sm:px-8 sm:py-6 lg:px-16 xl:px-30 lg:py-10">
         <Header activo="" />
-
-        {ADMIN_SECCIONES.length > 1 && (
-            <nav
-                class="flex flex-wrap gap-2 font-accent uppercase"
-                aria-label="Admin sections"
-            >
-                {ADMIN_SECCIONES.map((s) => (
-                    <a
-                        href={s.href}
-                        class={`rounded-md px-3 pb-1.5 leading-normal! transition-all duration-300 ${
-                            s.id === activo
-                                ? 'bg-yellow text-darkblue'
-                                : 'bg-darkblue text-lightblue hover:text-yellow'
-                        }`}
-                    >
-                        {s.nombre}
-                    </a>
-                ))}
-            </nav>
-        )}
 
         <div class="flex-1 flex flex-col">
             <slot />

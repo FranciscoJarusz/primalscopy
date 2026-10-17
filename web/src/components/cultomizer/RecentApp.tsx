@@ -10,10 +10,11 @@
 // Las miniaturas son JPEG del primer frame y no los GIF: diez GIF de 2000px en
 // una misma pantalla son decenas de MB y la grilla tardaria una eternidad en
 // aparecer.
-import React, { Suspense, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { scrollToTop } from '@/lib/lenis';
 import { goTo, useSearchParams } from '@/lib/navigation';
 import { nombreWallet, useApodos } from '@/lib/nicknames';
+import { BACKEND_URL, BACKEND_BASE_URL } from '@/lib/backend';
 
 interface RecentItem {
     id: string;
@@ -26,11 +27,6 @@ interface RecentItem {
 // De a 50 por pagina, que es lo que devuelve el backend por defecto. El
 // historial guarda hasta 1000, o sea 20 paginas.
 const PER_PAGE = 50;
-
-const BACKEND_URL =
-    import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
-const BACKEND_BASE_URL =
-    import.meta.env.PUBLIC_BACKEND_BASE_URL || BACKEND_URL.replace(/\/api\/?$/, '');
 
 // De donde saca las entradas el `?demo=N` de dev (ver mas abajo).
 const DEMO_FEED_BASE_URL = 'https://primalscopy-production.up.railway.app';

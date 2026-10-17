@@ -5,6 +5,7 @@ import { ROLES, rangoDe, rolDe, type Rol } from '@/lib/stats/roles';
 import {
     EVENTO_NICKNAME,
     leerNicknames,
+    walletCorta,
     type DetalleNickname,
 } from '@/lib/nicknames';
 import { ICONO_FOG_CHICO, leerRanking, nombreInsignia } from '@/lib/staking';
@@ -34,9 +35,6 @@ const numero = (n: number, decimales = 0) =>
 
 const porcentaje = (parte: number, total: number) =>
     total ? `${numero((parte / total) * 100, 1)}%` : '0%';
-
-const corta = (address: string) =>
-    `${address.slice(0, 6)}...${address.slice(-4)}`;
 
 const hace = (desde: number) => {
     const minutos = Math.floor((Date.now() - desde) / 60000);
@@ -105,7 +103,10 @@ function Resumen({
         <section data-anim="reveal" className={`${card} flex flex-col gap-6`}>
             <h2 className={titulo}>Collection overview</h2>
 
-            <div data-anim-stagger className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div
+                data-anim-stagger
+                className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+            >
                 {datos.map((d) => (
                     <div
                         key={d.label}
@@ -159,7 +160,9 @@ function Resumen({
                 </div>
 
                 {estado && (
-                    <p className="sm:ml-auto text-sm text-lightblue/70">{estado}</p>
+                    <p className="sm:ml-auto text-sm text-lightblue/70">
+                        {estado}
+                    </p>
                 )}
             </div>
         </section>
@@ -183,9 +186,14 @@ function Pastilla({ rol, className = '' }: { rol: Rol; className?: string }) {
 function Distribucion({ stats }: { stats: Stats | null }) {
     return (
         <section className="flex flex-col gap-4 sm:gap-6">
-            <h2 data-anim="reveal" className={titulo}>Holder distribution</h2>
+            <h2 data-anim="reveal" className={titulo}>
+                Holder distribution
+            </h2>
 
-            <div data-anim-stagger className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+            <div
+                data-anim-stagger
+                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4"
+            >
                 {ROLES.map((rol, i) => {
                     const holders =
                         stats?.distribucion.find((d) => d.slug === rol.slug)
@@ -295,12 +303,14 @@ function TopHolders({
                                                           {nicknames[h.address]}
                                                       </span>
                                                       <span className="font-mono text-xs text-lightblue/50">
-                                                          {corta(h.address)}
+                                                          {walletCorta(
+                                                              h.address
+                                                          )}
                                                       </span>
                                                   </span>
                                               ) : (
                                                   <span className="font-mono text-sm text-lightblue truncate group-hover:text-yellow transition-all duration-300">
-                                                      {corta(h.address)}
+                                                      {walletCorta(h.address)}
                                                   </span>
                                               )}
                                               <span className="flex flex-wrap items-center gap-1">
@@ -320,13 +330,19 @@ function TopHolders({
                                               </span>
                                           </span>
                                           {hayFog && (
-                                              <span className="flex flex-col items-end shrink-0 w-16 sm:w-24">
+                                              <span className="flex flex-col items-center shrink-0 w-20 sm:w-28">
                                                   <span className="text-[10px] sm:text-xs uppercase tracking-wide text-lightblue/60 whitespace-nowrap">
                                                       Current FOG
                                                   </span>
-                                                  <span className="inline-flex items-center gap-1 font-accent text-base sm:text-lg text-lightblue leading-none pb-1">
+                                                  <span className="inline-flex items-center gap-1 font-accent text-base sm:text-lg text-lightblue leading-none">
                                                       {suyo && (
-                                                          <img src={ICONO_FOG_CHICO} alt="" className="size-4 mt-1" />
+                                                          <img
+                                                              src={
+                                                                  ICONO_FOG_CHICO
+                                                              }
+                                                              alt=""
+                                                              className="size-4 mt-2"
+                                                          />
                                                       )}
                                                       {suyo
                                                           ? numero(suyo.balance)
@@ -372,7 +388,8 @@ export default function StatsApp() {
     useEffect(() => {
         leerNicknames().then(setNicknames);
         const alGuardar = (e: Event) => {
-            const { address, nickname } = (e as CustomEvent<DetalleNickname>).detail;
+            const { address, nickname } = (e as CustomEvent<DetalleNickname>)
+                .detail;
             setNicknames((n) => ({ ...n, [address]: nickname }));
         };
         window.addEventListener(EVENTO_NICKNAME, alGuardar);
@@ -398,9 +415,12 @@ export default function StatsApp() {
 
     return (
         <div className="flex flex-col gap-10 sm:gap-14">
-            <h1 data-anim="reveal" className="rounded-2xl sm:rounded-[30px] bg-yellow pt-1 pb-5 sm:pt-2 sm:pb-7 xl:pb-9 text-center font-accent text-5xl sm:text-6xl xl:text-7xl uppercase text-darkblue shadow-lg shadow-darkblue/50">
-                    Stats
-                </h1>
+            <h1
+                data-anim="reveal"
+                className="rounded-2xl sm:rounded-[30px] bg-yellow pt-1 pb-5 sm:pt-2 sm:pb-7 xl:pb-9 text-center font-accent text-5xl sm:text-6xl xl:text-7xl uppercase text-darkblue shadow-lg shadow-darkblue/50"
+            >
+                Stats
+            </h1>
 
             <Resumen
                 stats={stats}

@@ -1,22 +1,8 @@
 // Constantes y ayudas compartidas por las pantallas del Forge.
 import { NFT_CONTRACT_ADDRESS } from '@/lib/cultomizer/contracts';
+export { BACKEND_URL, BACKEND_BASE_URL } from '@/lib/backend';
 
-export const BACKEND_URL =
-    import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
-export const BACKEND_BASE_URL =
-    import.meta.env.PUBLIC_BACKEND_BASE_URL ||
-    BACKEND_URL.replace(/\/api\/?$/, '');
-
-// De atras hacia adelante, igual que el backend.
-export const LAYER_ORDER = [
-    'Background',
-    'Fur',
-    'Tunic',
-    'Face',
-    'Eyes',
-    'Hat',
-    'Effect',
-];
+export { LAYER_ORDER } from '@/lib/capas';
 
 export const porcentaje = (p: number) =>
     p >= 0.1 ? `${Math.round(p * 100)}%` : `${(p * 100).toFixed(1)}%`;

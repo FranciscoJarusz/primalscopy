@@ -223,10 +223,10 @@ export default function Staking() {
                             {config ? (
                                 <>
                                     <span className="sm:hidden">
-                                        {`${total} staking · ${porcentaje(total)} · ${corto(config.totals.earned)} FOG`}
+                                        {`${total} staking · ${porcentaje(total, config.collectionSize)} · ${corto(config.totals.earned)} FOG`}
                                     </span>
                                     <span className="hidden sm:inline">
-                                        {`${total} Primal${total === 1 ? '' : 's'} staking (${porcentaje(total)}) · ${fog(config.totals.earned)} FOG earned`}
+                                        {`${total} Primal${total === 1 ? '' : 's'} staking (${porcentaje(total, config.collectionSize)}) · ${fog(config.totals.earned)} FOG earned`}
                                     </span>
                                 </>
                             ) : (
@@ -503,8 +503,8 @@ const corto = (n: number) =>
         maximumSignificantDigits: 3,
     });
 
-const porcentaje = (n: number) =>
-    `${((n / TOTAL_PRIMALS) * 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}%`;
+const porcentaje = (n: number, total = TOTAL_PRIMALS) =>
+    `${((n / total) * 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}%`;
 
 // Los Primals que terminaron su periodo: se vuelven a mandar a la misma region,
 // todos juntos o de a uno.

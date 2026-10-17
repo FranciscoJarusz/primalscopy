@@ -15,9 +15,7 @@
 // que robe este token es customizar los NFTs de esa wallet, no mover fondos.
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useSignMessage } from "wagmi";
-
-const BACKEND_URL =
-  import.meta.env.PUBLIC_BACKEND_URL || "http://localhost:3001/api";
+import { BACKEND_URL } from "@/lib/backend";
 
 // Una clave por wallet: si el usuario cambia de cuenta en MetaMask no queremos
 // que arrastre la sesion de la anterior.
@@ -121,7 +119,7 @@ export function useWalletSession() {
       if (!nonceResponse.ok)
         throw new Error(
           (await nonceResponse.json()).error ||
-            "No se pudo iniciar la verificacion.",
+            "Couldn't start the signature check.",
         );
       const { nonce, message } = await nonceResponse.json();
 
@@ -137,7 +135,7 @@ export function useWalletSession() {
       if (!verifyResponse.ok)
         throw new Error(
           (await verifyResponse.json()).error ||
-            "No se pudo verificar la firma.",
+            "Couldn't verify the signature.",
         );
 
       const session = await verifyResponse.json();

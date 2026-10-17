@@ -2,8 +2,7 @@
 // sesion firmada (ver useWalletSession). Donde el sitio muestra una wallet,
 // usa nombreWallet(): el apodo si tiene, y si no la direccion corta.
 import { useEffect, useState } from 'react';
-const BACKEND_URL =
-    import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
+import { BACKEND_URL } from '@/lib/backend';
 
 export const NICKNAME_FORMATO = /^[A-Za-z0-9_]{3,20}$/;
 

@@ -20,9 +20,9 @@ import {
     leerNicknames,
     nicknameSalteado,
     saltearNickname,
+    walletCorta,
 } from '@/lib/nicknames';
 
-const shortAddress = (dir: string) => dir.slice(0, 6) + '...' + dir.slice(-4);
 
 // Cada pagina del sitio es una carga nueva: wagmi tarda unos cientos de ms en
 // reconectarse y el saldo se vuelve a pedir a la cadena. Mientras tanto se
@@ -206,8 +206,16 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                 disabled={!montado || isConnecting}
                 className={`${montado ? '' : 'invisible '}bg-lightblue text-darkblue uppercase text-base sm:text-lg font-accent px-3 sm:px-4 pt-0.5 pb-1.5 rounded-[10px] cursor-pointer hover:bg-yellow active:scale-97 transition-all duration-300`}
             >
-                {montado && isConnecting ? 'Connecting...' : 'Connect'}
-                <span className="hidden sm:inline"> Wallet</span>
+                {/* Los dos textos en la misma celda: el boton mide siempre lo
+                    del mas largo y no empuja al resto del header al cambiar. */}
+                <span className="grid">
+                    <span className={`col-start-1 row-start-1 ${montado && isConnecting ? 'invisible' : ''}`}>
+                        Connect<span className="hidden sm:inline"> Wallet</span>
+                    </span>
+                    <span className={`col-start-1 row-start-1 ${montado && isConnecting ? '' : 'invisible'}`}>
+                        Connecting...
+                    </span>
+                </span>
             </button>
         );
     }
@@ -220,7 +228,7 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                 aria-expanded={menu}
                 aria-haspopup="menu"
                 title={direccion}
-                aria-label={`Wallet ${shortAddress(direccion)}, ${valor} ${unidad}`}
+                aria-label={`Wallet ${walletCorta(direccion)}, ${valor} ${unidad}`}
                 className="group flex items-center gap-2 bg-darkblue rounded-full p-1 pr-3 cursor-pointer ring-yellow hover:ring-2 transition-all duration-300"
             >
                 <AvatarWallet direccion={direccion} size={32} redondo />

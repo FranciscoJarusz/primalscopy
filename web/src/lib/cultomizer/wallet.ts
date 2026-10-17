@@ -12,14 +12,15 @@ import { apeChain, mainnet, defineChain } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
 
 // El projectId decide, entre otras cosas, desde que dominios se permite parear
-// por WalletConnect. El valor de abajo es el que venia del Cultomizer y es de un
-// proyecto de un TERCERO: los dominios propios no estan en su lista permitida,
-// por eso el relay corta con "Unauthorized: origin not allowed" y las wallets de
-// celular no conectan (las extensiones de escritorio si, porque no usan relay).
+// por WalletConnect. Produccion usa un proyecto propio de cloud.reown.com, con
+// el id en PUBLIC_REOWN_PROJECT_ID (cargado en Vercel); los dominios permitidos
+// se configuran en ese proyecto.
 //
-// La solucion es crear un proyecto propio, gratis, en cloud.reown.com y poner su
-// id en PUBLIC_REOWN_PROJECT_ID. Ahi tambien se habilitan el login social y por
-// email, que hoy estan apagados por lo mismo.
+// El valor de abajo es solo el respaldo para local sin esa variable: es el que
+// venia del Cultomizer viejo, de un proyecto de un TERCERO al que no tenemos
+// acceso. Sus dominios permitidos no incluyen los nuestros, asi que con el las
+// wallets de celular no conectan ("Unauthorized: origin not allowed"); las
+// extensiones de escritorio si, porque no usan el relay.
 const projectId =
   import.meta.env.PUBLIC_REOWN_PROJECT_ID || "0f9ff0f0497c73187c253e88cf8680c9";
 

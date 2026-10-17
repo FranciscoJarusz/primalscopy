@@ -1,41 +1,18 @@
 // Panel de apodos: lista los que eligieron los holders y deja borrar los que
-// no corresponden. Usa el mismo token que el panel de traits, guardado en la
-// misma clave de sessionStorage: entrar en una pestaña sirve para las dos.
+// no corresponden.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiArrowUpRight, FiTrash2 } from 'react-icons/fi';
 import { APECHAIN } from '@/lib/cultomizer/contracts';
-
-const BACKEND_URL =
-    import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
-const TOKEN_STORAGE_KEY = 'primal_admin_token';
+import { BACKEND_URL } from '@/lib/backend';
 
 type Nickname = { address: string; nickname: string; updatedAt: string };
 
-export default function NicknamesAdmin() {
-    const [token, setToken] = useState('');
-    const [tokenInput, setTokenInput] = useState('');
-    const [authError, setAuthError] = useState<string | null>(null);
-    const [checking, setChecking] = useState(false);
+export default function NicknamesAdmin({ token }: { token: string }) {
 
     const [lista, setLista] = useState<Nickname[] | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [busqueda, setBusqueda] = useState('');
     const [borrando, setBorrando] = useState<string | null>(null);
-
-    const validar = async (candidato: string) => {
-        const respuesta = await fetch(`${BACKEND_URL}/admin/session`, {
-            headers: { Authorization: `Bearer ${candidato}` },
-        }).catch(() => null);
-        return respuesta?.ok ?? false;
-    };
-
-    useEffect(() => {
-        const guardado = sessionStorage.getItem(TOKEN_STORAGE_KEY);
-        if (!guardado) return;
-        validar(guardado).then((ok) =>
-            ok ? setToken(guardado) : sessionStorage.removeItem(TOKEN_STORAGE_KEY)
-        );
-    }, []);
 
     const cargar = useCallback(async () => {
         setError(null);
@@ -53,22 +30,6 @@ export default function NicknamesAdmin() {
     useEffect(() => {
         if (token) cargar();
     }, [token, cargar]);
-
-    const entrar = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const candidato = tokenInput.trim();
-        if (!candidato) return;
-        setChecking(true);
-        setAuthError(null);
-        if (await validar(candidato)) {
-            sessionStorage.setItem(TOKEN_STORAGE_KEY, candidato);
-            setToken(candidato);
-            setTokenInput('');
-        } else {
-            setAuthError('Invalid token.');
-        }
-        setChecking(false);
-    };
 
     const borrar = async (n: Nickname) => {
         if (!confirm(`Delete the nickname "${n.nickname}"? The wallet will be able to choose a new one.`)) return;
@@ -94,39 +55,6 @@ export default function NicknamesAdmin() {
             (n) => n.nickname.toLowerCase().includes(q) || n.address.includes(q)
         );
     }, [lista, busqueda]);
-
-    if (!token) {
-        return (
-            <main className="flex flex-1 items-center justify-center py-10">
-                <form
-                    onSubmit={entrar}
-                    className="flex flex-col items-center gap-5 bg-darkblue p-8 sm:p-10 rounded-2xl sm:rounded-3xl shadow-lg shadow-darkblue/50 text-center max-w-md w-full"
-                >
-                    <img src="/brand/logo-icon.svg" alt="Primal Cult" className="w-14 h-auto" />
-                    <h1 className="font-accent uppercase text-yellow text-4xl sm:text-5xl">
-                        Nicknames Admin
-                    </h1>
-                    <p className="text-lightblue/80">Enter the admin token to continue</p>
-                    <input
-                        type="password"
-                        value={tokenInput}
-                        onChange={(e) => setTokenInput(e.target.value)}
-                        placeholder="ADMIN_TOKEN"
-                        autoFocus
-                        className="w-full bg-lightblue text-darkblue placeholder-darkblue/50 font-accent leading-tight rounded-md px-3 pb-1.5 text-center focus:outline-none"
-                    />
-                    {authError && <p className="text-sm text-red-300">{authError}</p>}
-                    <button
-                        type="submit"
-                        disabled={checking || !tokenInput.trim()}
-                        className="w-full bg-yellow text-darkblue font-accent uppercase rounded-md px-6 pb-1.5 cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    >
-                        {checking ? 'Verifying...' : 'Enter'}
-                    </button>
-                </form>
-            </main>
-        );
-    }
 
     return (
         <main className="flex flex-col gap-5 sm:gap-8">

@@ -1,8 +1,7 @@
 ---
-export const prerender = false;
+import { BACKEND_URL as BACKEND } from '@/lib/backend';
 
-const BACKEND =
-    import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
+export const prerender = false;
 
 // Detras del tunel (o de un proxy) la pagina recibe la visita en http aunque
 // afuera sea https, y X no carga imagenes por http: salvo en localhost, el

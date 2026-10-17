@@ -1,7 +1,6 @@
 // Una de las dos opciones de un roll: vista previa por capas, que cambia y el
 // boton para quedarsela.
 import type { Probabilidades, RollOption, Traits } from './tipos';
-import { botonAmarillo } from './estilos';
 import { BACKEND_BASE_URL, LAYER_ORDER, porcentaje } from './forge';
 import { rarezaDe } from './rareza';
 import { miniaturaDeTrait } from '@/lib/miniaturas';

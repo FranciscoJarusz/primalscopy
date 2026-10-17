@@ -1,8 +1,10 @@
 ---
+// Todas las secciones del admin son la misma app (AdminApp): esta ruta existe
+// para que /admin/promo abra directo en su pestaña.
 import AdminLayout from "@/layouts/AdminLayout.astro";
-import PromoAdmin from "@/components/admin/PromoAdmin";
+import AdminApp from "@/components/admin/AdminApp";
 ---
 
-<AdminLayout title="Promo Codes - Admin - Primal Cult" activo="promo">
-  <PromoAdmin client:only="react" />
+<AdminLayout title="Promo Codes - Admin - Primal Cult">
+  <AdminApp client:only="react" />
 </AdminLayout>

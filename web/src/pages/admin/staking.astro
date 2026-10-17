@@ -1,8 +1,10 @@
 ---
+// Todas las secciones del admin son la misma app (AdminApp): esta ruta existe
+// para que /admin/staking abra directo en su pestaña.
 import AdminLayout from "@/layouts/AdminLayout.astro";
-import StakingAdmin from "@/components/admin/StakingAdmin";
+import AdminApp from "@/components/admin/AdminApp";
 ---
 
-<AdminLayout title="Staking - Admin - Primal Cult" activo="staking">
-  <StakingAdmin client:only="react" />
+<AdminLayout title="Staking - Admin - Primal Cult">
+  <AdminApp client:only="react" />
 </AdminLayout>

@@ -12,9 +12,7 @@ import {
     miniaturaPrimal,
     type PremioRuleta,
 } from '@/lib/staking';
-
-const BACKEND_URL =
-    import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
+import { BACKEND_URL } from '@/lib/backend';
 
 const RULETAS = [
     { id: 'lowkey', nombre: 'LOWKEY' },

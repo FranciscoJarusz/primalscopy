@@ -15,7 +15,6 @@ export const SECCIONES: Seccion[] = [
     { id: 'cultomizer', nombre: 'Cultomizer', href: '/cultomizer' },
     { id: 'forge', nombre: 'Forge', href: '/forge' },
     { id: 'raffles', nombre: 'Raffles', href: '/raffles', oculta: true },
-    // Oculta hasta que se abra el staking desde /admin/staking.
     { id: 'staking', nombre: 'Staking', href: '/staking', oculta: true },
 ];
 
@@ -143,7 +142,18 @@ const clase = (id: string) =>
         </div>
     </nav>
 
-    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+    <!--
+        La wallet se resuelve despues de cargar la pagina: primero no hay nada,
+        despues "Connect Wallet" o la wallet con sus Primals y "Log out", que es
+        mas ancha. Con el ancho de ese ultimo estado reservado desde el
+        principio, el menu del medio no se corre cuando cambia. Los 272px
+        (min-w-68) son lo que mide la wallet conectada con 1 digito de Primals
+        (260 con "1 Primal", 290 con "120 Primals"): mas reserva deja mas aire a
+        la derecha del menu que a la izquierda. Recien desde 1100px: mas angosto
+        no entran logo, menu y wallet conectada, y reservar apretaria el logo
+        tambien a quien no conecto nada.
+    -->
+    <div class="flex items-center justify-end gap-2 sm:gap-3 shrink-0 min-[1100px]:min-w-68">
         <slot name="derecha">
             <WalletIsland
                 client:load
@@ -215,7 +225,6 @@ const clase = (id: string) =>
                     </a>
                 ))}
 
-                {/* En mobile Community no se anida: es una seccion con titulo. */}
                 <p class="mt-1 border-t border-lightblue/15 px-3 pt-3 pb-1 text-sm text-lightblue/50">
                     Community
                 </p>

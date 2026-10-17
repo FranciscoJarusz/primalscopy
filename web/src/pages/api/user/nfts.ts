@@ -6,18 +6,17 @@ import {
     APECHAIN,
     normalizeIpfs,
 } from '@/lib/cultomizer/contracts';
+import { MARGEN_IDS, totalSupply } from '@/lib/cultomizer/supply';
 
 export const prerender = false;
 
 // Cuantos tokens entran en cada multicall. 200 va comodo en un request.
 const BATCH_SIZE = 200;
 
-// La coleccion tiene 2712 piezas; el margen cubre cualquier id fuera de rango.
-const LAST_TOKEN = 4000;
 
-// La metadata de un NFT no cambia, asi que alcanza con bajarla una vez por
-// proceso. La segunda visita de cualquier usuario ya la encuentra cacheada.
-const metadataCache = new Map<string, Record<string, unknown>>();
+// La metadata NO se guarda entre visitas: el Cultomizer y el Forge la
+// reescriben en la misma URL, y una copia vieja en una instancia de Vercel
+// mostraba el NFT de antes del cambio en el selector.
 
 function chunk<T>(items: T[], size: number): T[][] {
     const out: T[][] = [];
@@ -38,7 +37,9 @@ async function findTokensOwnedBy(
     expected: number
 ): Promise<bigint[]> {
     const found: bigint[] = [];
-    const allIds = Array.from({ length: LAST_TOKEN }, (_, i) => BigInt(i + 1));
+    // Hasta el supply de la cadena y un poco mas (ver lib/cultomizer/supply).
+    const ultimo = (await totalSupply()) + MARGEN_IDS;
+    const allIds = Array.from({ length: ultimo }, (_, i) => BigInt(i + 1));
 
     for (const batch of chunk(allIds, BATCH_SIZE)) {
         const results = await client.multicall({
@@ -100,14 +101,9 @@ async function fetchMetadata(
         [...uris.entries()].map(async ([tokenId, url]) => {
             if (!url) return;
 
-            const cached = metadataCache.get(url);
-            if (cached) {
-                out.set(tokenId, cached);
-                return;
-            }
-
             try {
                 const response = await fetch(url, {
+                    cache: 'no-store',
                     signal: AbortSignal.timeout(10_000),
                 });
                 if (!response.ok) return;
@@ -115,7 +111,6 @@ async function fetchMetadata(
                     string,
                     unknown
                 >;
-                metadataCache.set(url, metadata);
                 out.set(tokenId, metadata);
             } catch {
                 // Sin metadata el NFT igual se muestra, con su nombre por defecto.
@@ -135,7 +130,7 @@ async function fetchMetadata(
 export const GET: APIRoute = async ({ url }) => {
     const address = url.searchParams.get('address');
     if (!address) {
-        return json({ error: 'Address es requerido' }, 400);
+        return json({ error: 'Address is required' }, 400);
     }
 
     const owner = address as `0x${string}`;
@@ -197,6 +192,6 @@ export const GET: APIRoute = async ({ url }) => {
             timestamp: new Date().toISOString(),
         });
     } catch (error) {
-        return errorJson('No se pudieron obtener los NFTs', error);
+        return errorJson("Couldn't load the NFTs", error);
     }
 };

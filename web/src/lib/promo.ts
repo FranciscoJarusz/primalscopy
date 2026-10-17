@@ -1,8 +1,7 @@
 // Canje de codigos promocionales. Pide la sesion firmada (ver useWalletSession)
 // pero no un Primal.
 import type { Ganado } from '@/lib/staking';
-const BACKEND_URL =
-    import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
+import { BACKEND_URL } from '@/lib/backend';
 
 // Cualquier pagina puede abrir el canje (el Forge lo hace con "Have a code?"):
 // el boton de la wallet del header escucha este evento y muestra el modal.

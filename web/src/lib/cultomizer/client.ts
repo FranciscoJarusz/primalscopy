@@ -33,7 +33,7 @@ export const errorJson = (mensaje: string, error: unknown, status = 500) =>
   json(
     {
       error: mensaje,
-      details: error instanceof Error ? error.message : "Error desconocido",
+      details: error instanceof Error ? error.message : "Unknown error",
     },
     status,
   );

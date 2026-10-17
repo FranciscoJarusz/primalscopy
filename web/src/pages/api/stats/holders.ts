@@ -4,19 +4,14 @@ import { client, json } from '@/lib/cultomizer/client';
 import { NFT_CONTRACT_ADDRESS } from '@/lib/cultomizer/contracts';
 import { readEnvValue } from '@/lib/env';
 import { ROLES, rolDe } from '@/lib/stats/roles';
+import { MARGEN_IDS, totalSupply } from '@/lib/cultomizer/supply';
 
 export const prerender = false;
 
-const ABI = parseAbi([
-    'function totalSupply() view returns (uint256)',
-    'function ownerOf(uint256 tokenId) view returns (address)',
-]);
+const ABI = parseAbi(['function ownerOf(uint256 tokenId) view returns (address)']);
 
 const DURACION_CACHE = 10 * 60 * 1000;
 const TOP = 100;
-// Si se quema algun token, totalSupply baja pero los ids altos siguen
-// existiendo: se leen algunos de mas y los que no existen se ignoran.
-const MARGEN_IDS = 100;
 const SIN_DUENO = new Set([
     '0x0000000000000000000000000000000000000000',
     '0x000000000000000000000000000000000000dead',
@@ -56,17 +51,10 @@ async function leerVolumen(): Promise<Stats['volumen']> {
 }
 
 async function calcular(): Promise<Stats> {
-    const [supply, volumen] = await Promise.all([
-        client.readContract({
-            address: NFT_CONTRACT_ADDRESS,
-            abi: ABI,
-            functionName: 'totalSupply',
-        }),
-        leerVolumen(),
-    ]);
+    const [supply, volumen] = await Promise.all([totalSupply(), leerVolumen()]);
 
     const ids = Array.from(
-        { length: Number(supply) + MARGEN_IDS },
+        { length: supply + MARGEN_IDS },
         (_, i) => BigInt(i + 1)
     );
     const duenos = await client.multicall({
@@ -99,7 +87,7 @@ async function calcular(): Promise<Stats> {
         .map(([address, cantidad]) => ({ address, cantidad }));
 
     return {
-        totalSupply: Number(supply),
+        totalSupply: supply,
         holders: porWallet.size,
         distribucion: ROLES.map((r) => ({
             slug: r.slug,
@@ -136,6 +124,6 @@ export const GET: APIRoute = async () => {
         return cacheada(cache);
     } catch {
         if (cache) return json(cache);
-        return json({ error: 'No se pudieron leer los holders' }, 503);
+        return json({ error: "Couldn't read the holders" }, 503);
     }
 };

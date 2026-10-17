@@ -2,9 +2,7 @@
 // canjear piden la sesion firmada (useWalletSession); la tasa y el catalogo
 // son publicos.
 import { EVENTO_CANJE } from '@/lib/promo';
-
-const BACKEND_URL =
-    import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
+import { BACKEND_URL } from '@/lib/backend';
 
 export type Periodo = {
     days: number;
@@ -66,12 +64,15 @@ export type ConfigStaking = {
     quantityTiers: Escalon[];
     // Primals en staking ahora y FOG ganado en total, de todas las wallets.
     totals: { staking: number; earned: number };
+    // Cuantos Primals hay (totalSupply de la cadena, visto por el backend).
+    collectionSize?: number;
     // Los dias seguidos de cada insignia y los de gracia entre periodos.
     badges: number[];
     graceDays: number;
 };
 
-// La coleccion entera, para el porcentaje que esta en staking.
+// La coleccion entera, para el porcentaje que esta en staking, si el backend
+// todavia no manda collectionSize.
 export const TOTAL_PRIMALS = 2712;
 export type Entrenamiento = {
     tokenId: string;
