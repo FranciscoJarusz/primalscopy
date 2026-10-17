@@ -219,7 +219,7 @@ export default function SelectorPage({ demo }: { demo?: number }) {
                                 placeholder="Search by token ID or name..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full sm:max-w-2xl bg-lightblue text-darkblue placeholder-darkblue font-accent leading-tight rounded-md px-3 pt-1 pb-1.5 focus:outline-none transition-all duration-200"
+                                className="w-full sm:max-w-2xl bg-lightblue text-darkblue placeholder-darkblue font-accent leading-tight rounded-md px-3 pt-1 pb-1.5 focus:outline-none transition-all duration-300"
                             />
                             <div className="flex items-center justify-between gap-6 sm:ml-auto">
                                 {/* Sin la flecha nativa: su alto fijo cortaba el texto en
@@ -232,7 +232,7 @@ export default function SelectorPage({ demo }: { demo?: number }) {
                                             e.target.value as 'id' | 'name'
                                         )
                                     }
-                                    className="appearance-none bg-lightblue text-darkblue font-accent leading-tight rounded-md pl-3 pr-8 pt-1 pb-1.5 cursor-pointer focus:outline-none hover:bg-yellow transition-all duration-200"
+                                    className="appearance-none bg-lightblue text-darkblue font-accent leading-tight rounded-md pl-3 pr-8 pt-1 pb-1.5 cursor-pointer focus:outline-none hover:bg-yellow transition-all duration-300"
                                 >
                                     <option value="id">Sort by ID</option>
                                     <option value="name">Sort by Name</option>

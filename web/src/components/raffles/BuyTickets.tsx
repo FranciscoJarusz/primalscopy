@@ -36,7 +36,7 @@ export default function BuyTickets({
       <button
         disabled={ocupado || restantes === 0}
         onClick={() => onComprar(cantidad)}
-        className={`flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-30 cursor-pointer rounded-lg font-semibold transition-all duration-200 ${
+        className={`flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-30 cursor-pointer rounded-lg font-semibold transition-all duration-300 ${
           compacto ? "px-4 py-2" : "px-4 py-3"
         }`}
       >

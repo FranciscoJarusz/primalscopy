@@ -684,7 +684,7 @@ export default function AdminPage() {
                             <div className="mt-4">
                                 <div className="h-2 w-full overflow-hidden rounded-full bg-amber-500/20">
                                     <div
-                                        className="h-full bg-amber-400 transition-all duration-500"
+                                        className="h-full bg-amber-400 transition-all duration-300"
                                         style={{
                                             width: `${Math.round((assets.seeding.done / Math.max(1, assets.seeding.total)) * 100)}%`,
                                         }}
@@ -699,7 +699,7 @@ export default function AdminPage() {
                         ) : (
                             <button
                                 onClick={startAssetsSeed}
-                                className="mt-4 rounded-lg bg-amber-500 px-5 py-2 font-semibold text-black transition-colors hover:bg-amber-400"
+                                className="mt-4 rounded-lg bg-amber-500 px-5 py-2 font-semibold text-black transition-all duration-300 hover:bg-amber-400"
                             >
                                 {assets.metadata > 0 || assets.images > 0
                                     ? 'Continuar migración'
@@ -818,7 +818,7 @@ export default function AdminPage() {
                                                             directory.name
                                                         )
                                                     }
-                                                    className={`w-full text-left px-3 pt-0.5 pb-1.5 rounded-md font-accent uppercase flex items-center justify-between gap-2 cursor-pointer transition-all duration-200 ${
+                                                    className={`w-full text-left px-3 pt-0.5 pb-1.5 rounded-md font-accent uppercase flex items-center justify-between gap-2 cursor-pointer transition-all duration-300 ${
                                                         isActive
                                                             ? 'bg-yellow text-darkblue'
                                                             : 'bg-white/5 text-lightblue hover:bg-white/10 hover:text-yellow'
@@ -863,7 +863,7 @@ export default function AdminPage() {
                                 onDragLeave={() => setDragging(false)}
                                 onDrop={handleDrop}
                                 onClick={() => fileInputRef.current?.click()}
-                                className={`mb-6 rounded-2xl border-2 border-dashed px-4 py-6 sm:px-6 sm:py-7 text-center cursor-pointer transition-all duration-200 ${
+                                className={`mb-6 rounded-2xl border-2 border-dashed px-4 py-6 sm:px-6 sm:py-7 text-center cursor-pointer transition-all duration-300 ${
                                     dragging
                                         ? 'border-yellow bg-yellow/10'
                                         : 'border-lightblue/30 hover:border-yellow bg-white/5'
@@ -914,7 +914,7 @@ export default function AdminPage() {
                                     {currentDirectory.traits.map((trait) => (
                                         <div
                                             key={trait.file}
-                                            className="transition-all duration-200"
+                                            className="transition-all duration-300"
                                         >
                                             <div className="bg-white/10 rounded-[10px] p-2 mb-2">
                                                 <img
@@ -942,7 +942,7 @@ export default function AdminPage() {
                                                         handleRename(trait)
                                                     }
                                                     disabled={busy}
-                                                    className="text-xs bg-lightblue text-darkblue font-accent uppercase rounded-md px-2.5 pb-1 cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                                                    className="text-xs bg-lightblue text-darkblue font-accent uppercase rounded-md px-2.5 pb-1 cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300"
                                                 >
                                                     Rename
                                                 </button>
@@ -954,7 +954,7 @@ export default function AdminPage() {
                                                         )
                                                     }
                                                     disabled={busy}
-                                                    className="text-xs bg-red text-lightblue font-accent uppercase rounded-md px-2.5 pb-1 cursor-pointer hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                                                    className="text-xs bg-red text-lightblue font-accent uppercase rounded-md px-2.5 pb-1 cursor-pointer hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300"
                                                 >
                                                     Delete
                                                 </button>
@@ -968,7 +968,7 @@ export default function AdminPage() {
                                                         }
                                                         disabled={busy}
                                                         title={`Deletes this file from every ${activeCategory} folder`}
-                                                        className="text-xs inset-ring-1 inset-ring-red text-red-300 font-accent uppercase rounded-md px-2.5 pb-1 cursor-pointer hover:bg-red hover:text-lightblue disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                                                        className="text-xs inset-ring-1 inset-ring-red text-red-300 font-accent uppercase rounded-md px-2.5 pb-1 cursor-pointer hover:bg-red hover:text-lightblue disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300"
                                                     >
                                                         Delete everywhere
                                                     </button>

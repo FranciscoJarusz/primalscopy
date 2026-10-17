@@ -34,7 +34,7 @@ export default function NetworkSwitcher() {
           <button
             onClick={() => switchChain({ chainId: APECHAIN.id })}
             disabled={isPending}
-            className="bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 cursor-pointer px-3 py-1 rounded text-white text-xs mt-2 transition-all duration-200"
+            className="bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 cursor-pointer px-3 py-1 rounded text-white text-xs mt-2 transition-all duration-300"
           >
             {isPending ? "Cambiando..." : `Cambiar a ${APECHAIN.nombre}`}
           </button>

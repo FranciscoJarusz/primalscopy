@@ -178,7 +178,7 @@ export default function NicknamesAdmin() {
                                         href={`${APECHAIN.explorador}/address/${n.address}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center gap-1 w-fit font-mono text-xs text-lightblue/60 hover:text-yellow transition-colors duration-300 truncate"
+                                        className="flex items-center gap-1 w-fit font-mono text-xs text-lightblue/60 hover:text-yellow transition-all duration-300 truncate"
                                     >
                                         {n.address}
                                         <FiArrowUpRight className="shrink-0 w-3 h-3" />
@@ -196,7 +196,7 @@ export default function NicknamesAdmin() {
                                     disabled={borrando === n.address}
                                     aria-label={`Delete ${n.nickname}`}
                                     title="Delete nickname"
-                                    className="shrink-0 rounded-md p-2 text-lightblue hover:text-red-300 hover:bg-red-400/10 cursor-pointer transition-colors duration-300 disabled:opacity-40"
+                                    className="shrink-0 rounded-md p-2 text-lightblue hover:text-red-300 hover:bg-red-400/10 cursor-pointer transition-all duration-300 disabled:opacity-40"
                                 >
                                     <FiTrash2 className="w-4 h-4" />
                                 </button>

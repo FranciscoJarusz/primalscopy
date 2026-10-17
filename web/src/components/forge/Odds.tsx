@@ -17,8 +17,8 @@ export default function Odds({
 
     return (
         <details className="group">
-            <summary className="cursor-pointer list-none text-xs uppercase text-lightblue/70 hover:text-yellow transition-colors">
-                <span className="inline-block transition-transform group-open:rotate-90 mr-1">
+            <summary className="cursor-pointer list-none text-xs uppercase text-lightblue/70 hover:text-yellow transition-all duration-300">
+                <span className="inline-block transition-all duration-300 group-open:rotate-90 mr-1">
                     ▸
                 </span>
                 View roll odds

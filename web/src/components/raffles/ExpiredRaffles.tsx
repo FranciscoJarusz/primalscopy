@@ -36,7 +36,7 @@ export default function ExpiredRaffles({
               <button
                 disabled={ocupado}
                 onClick={() => acciones.reembolso(id)}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-30 px-4 py-2 rounded-lg font-semibold transition-all duration-200"
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-30 px-4 py-2 rounded-lg font-semibold transition-all duration-300"
               >
                 Get my APE back
               </button>

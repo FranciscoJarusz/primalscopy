@@ -224,7 +224,7 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                 className="group flex items-center gap-2 bg-darkblue rounded-full p-1 pr-3 cursor-pointer ring-yellow hover:ring-2 transition-all duration-300"
             >
                 <AvatarWallet direccion={direccion} size={32} redondo />
-                <span className="font-accent uppercase text-lightblue group-hover:text-yellow tabular-nums pb-1.5 transition-colors duration-300">
+                <span className="font-accent uppercase text-lightblue group-hover:text-yellow tabular-nums pb-1.5 transition-all duration-300">
                     {valor}
                     <span className="hidden sm:inline"> {unidad}</span>
                 </span>
@@ -252,7 +252,7 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                                 setMenu(false);
                                 setModal(true);
                             }}
-                            className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left text-lightblue hover:text-yellow cursor-pointer transition-colors duration-300"
+                            className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
                         >
                             <FiEdit2 aria-hidden="true" className="mt-1 w-4 h-4" strokeWidth={2.5} />
                             {nickname ? 'Edit nickname' : 'Set nickname'}
@@ -264,7 +264,7 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                             setMenu(false);
                             setCanje(true);
                         }}
-                        className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left text-lightblue hover:text-yellow cursor-pointer transition-colors duration-300"
+                        className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
                     >
                         <FiGift aria-hidden="true" className="mt-1 w-4 h-4" strokeWidth={2.5} />
                         Redeem code
@@ -275,7 +275,7 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                             setMenu(false);
                             open();
                         }}
-                        className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left text-lightblue hover:text-yellow cursor-pointer transition-colors duration-300"
+                        className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
                     >
                         <FiCreditCard aria-hidden="true" className="mt-1 w-4 h-4" strokeWidth={2.5} />
                         Wallet

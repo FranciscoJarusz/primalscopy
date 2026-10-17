@@ -10,4 +10,4 @@ export const botonClaro =
 export const botonAmarillo =
     'self-start shrink-0 bg-yellow text-darkblue font-accent uppercase leading-normal! rounded-md px-3 pb-1.5 cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300 sm:mt-3';
 export const input =
-    'bg-lightblue text-darkblue placeholder-darkblue/60 font-accent leading-tight rounded-md px-3 pt-1 pb-1.5 focus:outline-none transition-all duration-200';
+    'bg-lightblue text-darkblue placeholder-darkblue/60 font-accent leading-tight rounded-md px-3 pt-1 pb-1.5 focus:outline-none transition-all duration-300';

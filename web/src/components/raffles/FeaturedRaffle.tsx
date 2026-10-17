@@ -145,7 +145,7 @@ function BotonAmarillo({
     <button
       disabled={disabled}
       onClick={onClick}
-      className="w-full rounded-xl bg-yellow-300 hover:bg-yellow-200 disabled:opacity-30 px-5 py-3 font-bold text-black cursor-pointer transition-colors duration-200"
+      className="w-full rounded-xl bg-yellow-300 hover:bg-yellow-200 disabled:opacity-30 px-5 py-3 font-bold text-black cursor-pointer transition-all duration-300"
     >
       {children}
     </button>

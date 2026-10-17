@@ -51,7 +51,7 @@ export default function Forjado({
                     type="button"
                     onClick={onCerrar}
                     aria-label="Close"
-                    className="absolute top-3 right-4 text-lightblue/60 hover:text-yellow text-2xl leading-none cursor-pointer transition-colors"
+                    className="absolute top-3 right-4 text-lightblue/60 hover:text-yellow text-2xl leading-none cursor-pointer transition-all duration-300"
                 >
                     ×
                 </button>

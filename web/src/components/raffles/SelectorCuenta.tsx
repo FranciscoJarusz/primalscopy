@@ -29,7 +29,7 @@ export default function SelectorCuenta({
         <button
           disabled={ocupado}
           onClick={onRetirar}
-          className="rounded-lg bg-yellow-300 hover:bg-yellow-200 disabled:opacity-30 cursor-pointer px-3 sm:px-4 py-2 text-sm font-bold text-black transition-colors duration-200 whitespace-nowrap"
+          className="rounded-lg bg-yellow-300 hover:bg-yellow-200 disabled:opacity-30 cursor-pointer px-3 sm:px-4 py-2 text-sm font-bold text-black transition-all duration-300 whitespace-nowrap"
         >
           {/* En pantallas chicas no entra el monto: alcanza con el verbo. */}
           Claim<span className="hidden sm:inline"> {ape(claim)} APE</span>

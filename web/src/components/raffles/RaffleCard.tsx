@@ -71,7 +71,7 @@ export default function RaffleCard({
             <button
               disabled={ocupado}
               onClick={() => acciones.forzar(id)}
-              className="w-full rounded-xl bg-yellow-300 hover:bg-yellow-200 disabled:opacity-30 cursor-pointer px-4 py-2 font-bold text-black transition-colors duration-200"
+              className="w-full rounded-xl bg-yellow-300 hover:bg-yellow-200 disabled:opacity-30 cursor-pointer px-4 py-2 font-bold text-black transition-all duration-300"
             >
               Draw now
             </button>
@@ -81,7 +81,7 @@ export default function RaffleCard({
             <button
               disabled={ocupado}
               onClick={() => acciones.sortear(id)}
-              className="w-full rounded-xl bg-yellow-300 hover:bg-yellow-200 disabled:opacity-30 cursor-pointer px-4 py-2 font-bold text-black transition-colors duration-200"
+              className="w-full rounded-xl bg-yellow-300 hover:bg-yellow-200 disabled:opacity-30 cursor-pointer px-4 py-2 font-bold text-black transition-all duration-300"
             >
               ApeChain sends the number
             </button>
