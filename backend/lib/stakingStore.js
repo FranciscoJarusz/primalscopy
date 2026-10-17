@@ -90,12 +90,12 @@ const DEFAULT_CONFIG = {
         { min: 20, bonus: 20 }
     ],
     catalog: [
-        { id: 'lowkey', label: 'LOWKEY', description: 'NFT drop on ApeChain, floor 1-30 APE', price: 50000, enabled: true },
-        { id: 'highkey', label: 'HIGHKEY', description: 'NFT drop on ApeChain, floor 30-90 APE', price: 500000, enabled: true },
-        { id: 'fogkey', label: 'FOGKEY', description: 'NFT drop on ApeChain, floor 90-200 APE', price: 1000000, enabled: true },
-        { id: 'raffle-ticket', label: 'Raffle ticket', description: 'One entry to a Primal raffle', price: 5000, enabled: true },
-        { id: 'forge-roll', label: 'Reroll ticket', description: 'One roll in the Forge', price: 20000, enabled: true },
-        { id: 'summon-shard', label: 'Summon shard', description: 'Win a Primal from the vault', price: 500000, enabled: true },
+        { id: 'lowkey', label: 'LOW KEY', description: 'NFT drop on ApeChain, floor 1-30 APE', price: 50000, enabled: true },
+        { id: 'highkey', label: 'HIGH KEY', description: 'NFT drop on ApeChain, floor 30-90 APE', price: 500000, enabled: true },
+        { id: 'fogkey', label: 'FOG KEY', description: 'NFT drop on ApeChain, floor 90-200 APE', price: 1000000, enabled: true },
+        { id: 'raffle-ticket', label: 'RAFFLE TICKET', description: 'One entry to a Primal raffle', price: 5000, enabled: true },
+        { id: 'forge-roll', label: 'REROLL TICKET', description: 'One roll in the Forge', price: 20000, enabled: true },
+        { id: 'summon-shard', label: 'PRIMAL KEY', description: 'Win a Primal from the vault', price: 500000, enabled: true },
         // Los APE salen de la wallet del proyecto: arrancan sin stock y no se
         // venden hasta que el admin carga cuantos hay para dar.
         { id: 'ape-10', label: '10 APE', description: 'Sent to your wallet', price: 100000, enabled: true, stock: 0 },

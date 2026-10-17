@@ -14,11 +14,13 @@ import {
 } from '@/lib/staking';
 import { BACKEND_URL } from '@/lib/backend';
 
+// Las ruletas, en orden. El nombre que se muestra es el del catalogo (lo que
+// se edita en Rewards); estos son solo el respaldo si todavia no cargo.
 const RULETAS = [
-    { id: 'lowkey', nombre: 'LOWKEY' },
-    { id: 'highkey', nombre: 'HIGHKEY' },
-    { id: 'fogkey', nombre: 'FOGKEY' },
-    { id: 'summon-shard', nombre: 'Summon shard' },
+    { id: 'lowkey', nombre: 'Low key' },
+    { id: 'highkey', nombre: 'High key' },
+    { id: 'fogkey', nombre: 'Fog key' },
+    { id: 'summon-shard', nombre: 'Primal key' },
 ];
 const TIPOS = [
     { id: 'nft', nombre: 'NFT' },
@@ -100,7 +102,16 @@ const aBorrador = (prizes: Premio[]): Borrador =>
         stock: p.stock === null ? '' : String(p.stock),
     }));
 
-export default function StakingWheelsAdmin({ token }: { token: string }) {
+export default function StakingWheelsAdmin({
+    token,
+    nombres = {},
+}: {
+    token: string;
+    // El nombre de cada premio en el catalogo, por id.
+    nombres?: Record<string, string>;
+}) {
+    const nombreDe = (id: string) =>
+        nombres[id] ?? RULETAS.find((r) => r.id === id)?.nombre ?? id;
     const apodos = useApodos();
     const [datos, setDatos] = useState<Datos | null>(null);
     const [elegida, setElegida] = useState('lowkey');
@@ -237,8 +248,7 @@ export default function StakingWheelsAdmin({ token }: { token: string }) {
             <div className={panel}>
                 <h2 className={titulo}>Prize wheels</h2>
                 <p className="text-lightblue/70 text-sm -mt-2">
-                    Keys and the Summon shard open with a wheel right after they
-                    are bought. The prize is drawn on the server with each
+                    Every key opens a wheel right after it is bought. The prize is drawn on the server with each
                     prize&apos;s weight: chance = weight ÷ the sum of the weights
                     still in stock. Empty stock means unlimited. A wheel can only
                     be bought while it has a prize that is not FOG. FOG prizes are
@@ -260,7 +270,7 @@ export default function StakingWheelsAdmin({ token }: { token: string }) {
                                     : 'bg-blue text-lightblue hover:text-yellow'
                             }`}
                         >
-                            {r.nombre}
+                            {nombreDe(r.id)}
                         </button>
                     ))}
                 </div>
@@ -497,7 +507,7 @@ export default function StakingWheelsAdmin({ token }: { token: string }) {
                                     <div className="flex-1 min-w-48 leading-tight">
                                         <div className="text-white">
                                             {w.prize.label}
-                                            <span className="text-lightblue/60"> · {RULETAS.find((r) => r.id === w.item)?.nombre ?? 'Shop'}</span>
+                                            <span className="text-lightblue/60"> · {RULETAS.some((r) => r.id === w.item) ? nombreDe(w.item) : 'Shop'}</span>
                                         </div>
                                         <div className="text-lightblue/60 text-xs">
                                             {fecha(w.at)}

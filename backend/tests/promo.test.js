@@ -185,7 +185,7 @@ async function main() {
         body: JSON.stringify({ prizes: [{ label: 'Gob #1', kind: 'nft', weight: 1, stock: 5 }] }) });
     r = await canjear('KEYGRATIS', otroToken);
     d = await r.json();
-    check('con premios abre la ruleta gratis', r.ok && d.win?.prize.label === 'Gob #1' && d.item?.label === 'LOWKEY', JSON.stringify(d));
+    check('con premios abre la ruleta gratis', r.ok && d.win?.prize.label === 'Gob #1' && d.item?.label === 'LOW KEY', JSON.stringify(d));
     check('y el premio queda para entregar', (await yo(otroToken)).prizes.some(x => x.prize.label === 'Gob #1' && x.status === 'pending'));
     check('no cobra FOG', (await yo(otroToken)).balance === antes + 5000);
 

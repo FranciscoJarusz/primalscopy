@@ -629,8 +629,8 @@ export default function StakingAdmin({ token }: { token: string }) {
 
                     <h2 className={`${titulo} mt-4`}>Rewards</h2>
                     <p className="text-lightblue/70 text-sm -mt-2">
-                        The Reroll ticket is delivered automatically, the keys
-                        and the Summon shard open a prize wheel, and APE is
+                        The Reroll ticket is delivered automatically, every key
+                        opens a prize wheel, and APE is
                         sent by hand (it shows up under Deliveries). Stock is
                         how many are left to sell: empty is unlimited, 0 shows
                         &quot;Sold out&quot;. APE starts at 0 so it isn&apos;t
@@ -820,7 +820,14 @@ export default function StakingAdmin({ token }: { token: string }) {
                 </form>
             )}
 
-            {resumen && <StakingWheelsAdmin token={token} />}
+            {resumen && (
+                <StakingWheelsAdmin
+                    token={token}
+                    nombres={Object.fromEntries(
+                        resumen.config.catalog.map((i) => [i.id, i.label])
+                    )}
+                />
+            )}
 
             {resumen && (
                 <div className="grid gap-5 sm:gap-8 lg:grid-cols-2">

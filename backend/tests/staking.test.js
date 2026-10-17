@@ -455,7 +455,7 @@ async function main() {
     console.log('\nTarjeta para compartir');
     const ganadoId = (await yo(tH)).prizes.find(x => x.prize.tokenId === primal).id;
     d = await (await fetch(`${BASE}/api/staking/win/${ganadoId}`)).json();
-    check('los datos publicos del premio', d.prize?.tokenId === primal && d.itemLabel === 'Summon shard' && /^0x/.test(d.name), JSON.stringify(d));
+    check('los datos publicos del premio', d.prize?.tokenId === primal && d.itemLabel === 'PRIMAL KEY' && /^0x/.test(d.name), JSON.stringify(d));
     check('un id inventado no existe', (await fetch(`${BASE}/api/staking/win/no-existe`)).status === 404);
     r = await fetch(`${BASE}/api/staking/win/${(await yo(tH)).prizes.find(x => x.prize.kind === 'nft').id}/card.png`);
     const png = Buffer.from(await r.arrayBuffer());

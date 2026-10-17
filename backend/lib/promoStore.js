@@ -32,12 +32,7 @@ const MAX_USES = 100000;
 // rolls"; el FOG no: "5,000 FOG"). stakingStore se pide adentro de cada
 // `grant` para no cargarlo (ni a sus dependencias) al arrancar este modulo.
 const staking = () => require('./stakingStore');
-const WHEELS = [
-    ['lowkey', 'LOWKEY'],
-    ['highkey', 'HIGHKEY'],
-    ['fogkey', 'FOGKEY'],
-    ['summon-shard', 'Summon shard']
-];
+const WHEELS = ['lowkey', 'highkey', 'fogkey', 'summon-shard'];
 const REWARDS = {
     'forge-roll': {
         label: 'Forge roll',
@@ -53,8 +48,11 @@ const REWARDS = {
     },
     // Una apertura de la ruleta, como si la hubiera comprado: el premio sale
     // en el momento del canje y el modal muestra la animacion.
-    ...Object.fromEntries(WHEELS.map(([id, label]) => [id, {
-        label,
+    // El nombre es el del catalogo de la tienda, el mismo que ve el holder ahi.
+    ...Object.fromEntries(WHEELS.map(id => [id, {
+        get label() {
+            return staking().getConfig().catalog.find(i => i.id === id)?.label ?? id;
+        },
         max: 1,
         plural: false,
         grant: (wallet, amount, code) => staking().spinWheel(wallet, id, `promo:${code}`)
