@@ -19,6 +19,7 @@ import {
 import { APECHAIN } from '@/lib/cultomizer/contracts';
 import Mensaje, { type Aviso } from './Mensaje';
 import Ruleta from './Ruleta';
+import CompraEntregada from './CompraEntregada';
 
 // A donde se usa cada premio despues de canjearlo.
 const DESTINOS: Record<string, { texto: string; href: string }> = {
@@ -52,6 +53,8 @@ export default function Tienda({
     const [aviso, setAviso] = useState<(Aviso & { item?: string }) | null>(null);
     // La ruleta abierta: la key comprada y lo que toco.
     const [abierta, setAbierta] = useState<{ premio: Premio; ganado: Ganado } | null>(null);
+    // Un premio que se entrega a mano (APE): el popup que lo explica.
+    const [entregado, setEntregado] = useState<Premio | null>(null);
     // Los premios de la ruleta que se esta mirando ("Prizes").
     const [viendo, setViendo] = useState<{ id: string; ruleta: DatosRuleta | null } | null>(null);
 
@@ -62,12 +65,7 @@ export default function Tienda({
         try {
             const r = await canjear(token, premio.id);
             if (r.win) setAbierta({ premio, ganado: r.win });
-            else if (r.delivery)
-                setAviso({
-                    ok: true,
-                    texto: `${premio.label} redeemed! We'll send it to your wallet soon; follow it under Your prizes.`,
-                    item: premio.id,
-                });
+            else if (r.delivery) setEntregado(premio);
             else setAviso({ ok: true, texto: `${premio.label} redeemed.`, item: premio.id });
             alCanjear();
         } catch (err) {
@@ -191,7 +189,7 @@ export default function Tienda({
                                 )}
                             </div>
                             {viendo?.id === premio.id && (
-                                <ListaPremios ruleta={viendo.ruleta} />
+                                <ListaPremios ruleta={viendo.ruleta} catalogo={catalogo} />
                             )}
                         </div>
                     );
@@ -204,7 +202,7 @@ export default function Tienda({
                         Your prizes
                     </h3>
                     {ganados.map((g) => {
-                        const imagen = imagenPremio(g.prize);
+                        const imagen = imagenPremio(g.prize, catalogo);
                         const estado = ESTADOS[g.status];
                         return (
                             <div key={g.id} className="flex items-center gap-3 text-sm">
@@ -249,6 +247,10 @@ export default function Tienda({
                 </div>
             )}
 
+            {entregado && (
+                <CompraEntregada premio={entregado} onCerrar={() => setEntregado(null)} />
+            )}
+
             {abierta && (
                 <Ruleta
                     premio={abierta.premio}
@@ -261,12 +263,12 @@ export default function Tienda({
 }
 
 // Los premios de una ruleta con su probabilidad, para elegir con datos.
-function ListaPremios({ ruleta }: { ruleta: DatosRuleta | null }) {
+function ListaPremios({ ruleta, catalogo }: { ruleta: DatosRuleta | null; catalogo: Premio[] }) {
     if (!ruleta) return <div className="text-lightblue/60 text-xs">Loading prizes...</div>;
     return (
         <div className="grid grid-cols-3 gap-1.5">
             {ruleta.prizes.map((p) => {
-                const imagen = imagenPremio(p);
+                const imagen = imagenPremio(p, catalogo);
                 const color = colorRareza(p.chance);
                 return (
                     <div

@@ -243,14 +243,16 @@ export const leerRuleta = (item: string) => pedir<Ruleta>(`wheel/${item}`);
 
 // La imagen de un premio de ruleta: la subida en el admin, la miniatura del
 // Primal del vault, el orbe de FOG, o la pila de APE que corresponde a la
-// cantidad (los mismos iconos que los premios de APE de la tienda).
-export function imagenPremio(p: PremioRuleta) {
+// cantidad: el mismo icono que el premio de APE de la tienda (el subido en el
+// admin si se pasa el catalogo, si no el que viene con el sitio).
+export function imagenPremio(p: PremioRuleta, catalogo?: { id: string; icon?: string }[]) {
     if (p.image) return `${BACKEND_URL}/staking/prizes/${p.image}`;
     if (p.kind === 'primal' && p.tokenId) return miniaturaPrimal(p.tokenId, 192);
     if (p.kind === 'fog') return ICONO_FOG;
     if (p.kind === 'ape') {
         const n = p.amount ?? 0;
-        return `/images/staking/icons/${n >= 100 ? '100ape' : n >= 50 ? '50ape' : '10ape'}.webp`;
+        const id = n >= 100 ? 'ape-100' : n >= 50 ? 'ape-50' : 'ape-10';
+        return iconoPremio(catalogo?.find((i) => i.id === id) ?? { id });
     }
     return null;
 }

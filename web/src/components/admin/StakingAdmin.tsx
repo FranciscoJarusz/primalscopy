@@ -45,6 +45,7 @@ type Resumen = {
     redemptions: {
         id: string;
         wallet: string;
+        item: string;
         label: string;
         price: number;
         at: string;
@@ -897,7 +898,8 @@ export default function StakingAdmin({ token }: { token: string }) {
                                                 {quien(r.wallet)}
                                             </span>
                                             <span className="flex-1 text-right">
-                                                {r.label} · {fog(r.price)} FOG
+                                                {/* El nombre de hoy: si el premio se renombro, el viejo confunde. */}
+                                                {resumen.config.catalog.find((i) => i.id === r.item)?.label ?? r.label} · {fog(r.price)} FOG
                                             </span>
                                         </li>
                                     ))}
