@@ -1,5 +1,6 @@
 // Canje de codigos promocionales. Pide la sesion firmada (ver useWalletSession)
 // pero no un Primal.
+import type { Ganado } from '@/lib/staking';
 const BACKEND_URL =
     import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
 
@@ -15,6 +16,12 @@ export type Canje = {
     reward: string;
     label: string;
     amount: number;
+    // Si el nombre lleva "s" en plural ("2 Forge rolls"; el FOG no).
+    plural?: boolean;
+    // Una key o el Summon shard: lo que toco en la ruleta y la key, para
+    // mostrar la animacion (ver components/staking/Ruleta.tsx).
+    win?: Ganado;
+    item?: { id: string; label: string; icon?: string };
 };
 
 export function abrirCanje() {
@@ -38,7 +45,7 @@ export async function canjearCodigo(token: string, code: string): Promise<Canje>
     return datos as Canje;
 }
 
-// Como se lee el premio: "2 Forge rolls".
-export function textoPremio({ label, amount }: Pick<Canje, 'label' | 'amount'>) {
-    return `${amount} ${label}${amount === 1 ? '' : 's'}`;
+// Como se lee el premio: "2 Forge rolls", "5,000 FOG".
+export function textoPremio({ label, amount, plural = true }: Pick<Canje, 'label' | 'amount' | 'plural'>) {
+    return `${amount.toLocaleString('en-US')} ${label}${plural && amount !== 1 ? 's' : ''}`;
 }

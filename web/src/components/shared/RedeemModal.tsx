@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { canjearCodigo, textoPremio, type Canje } from '@/lib/promo';
 import { goTo } from '@/lib/navigation';
+import Ruleta from '@/components/staking/Ruleta';
 
 type Props = {
     token: string | null;
@@ -57,6 +58,19 @@ export default function RedeemModal({ token, signIn, onCerrar }: Props) {
         setEstado('listo');
     };
 
+    // Un codigo de una key o del Summon shard: la misma ruleta que al
+    // comprarla en la tienda, con "Code redeemed!" en vez de la compra.
+    if (canje?.win && canje.item) {
+        return (
+            <Ruleta
+                premio={canje.item}
+                ganado={canje.win}
+                onCerrar={onCerrar}
+                titulo="Code redeemed!"
+            />
+        );
+    }
+
     return createPortal(
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
@@ -86,6 +100,8 @@ export default function RedeemModal({ token, signIn, onCerrar }: Props) {
                                 (canje.amount === 1
                                     ? " It's saved to your wallet: use it on any Primal in the Forge."
                                     : " They're saved to your wallet: use them on any Primal in the Forge.")}
+                            {canje.reward === 'fog' &&
+                                " It's in your FOG balance: spend it in the staking shop."}
                         </p>
                         <div className="flex flex-col-reverse min-[420px]:flex-row min-[420px]:justify-end gap-3 mt-1">
                             <button
@@ -105,6 +121,16 @@ export default function RedeemModal({ token, signIn, onCerrar }: Props) {
                                         className="bg-yellow text-darkblue font-accent uppercase rounded-md px-4 pb-1.5 cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300"
                                     >
                                         Go to the Forge
+                                    </button>
+                                )}
+                            {canje.reward === 'fog' &&
+                                !window.location.pathname.startsWith('/staking') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => goTo('/staking')}
+                                        className="bg-yellow text-darkblue font-accent uppercase rounded-md px-4 pb-1.5 cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300"
+                                    >
+                                        Go to staking
                                     </button>
                                 )}
                         </div>

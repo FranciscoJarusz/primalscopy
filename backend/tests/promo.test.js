@@ -161,6 +161,34 @@ async function main() {
     await crear({ code: 'BUENO', reward: 'forge-roll', maxUses: 10 });
     check('bloqueado, ni uno bueno pasa', (await canjear('BUENO', adivinoToken)).status === 429);
 
+    console.log('\n--- Premios de la tienda de FOG ---');
+    const tipos = (await (await fetch(`${BASE}/api/admin/promo`, { headers: admin })).json()).rewards;
+    check('el panel ofrece FOG y las ruletas', ['fog', 'lowkey', 'highkey', 'fogkey', 'summon-shard'].every(id => tipos.some(t => t.id === id)));
+    check('cada uno con su tope', tipos.find(t => t.id === 'fog').max === 1000000 && tipos.find(t => t.id === 'lowkey').max === 1);
+    check('una key de a 2 se rechaza', (await crear({ reward: 'lowkey', amount: 2, maxUses: 5 })).status === 400);
+    check('FOG de mas se rechaza', (await crear({ reward: 'fog', amount: 2000000, maxUses: 5 })).status === 400);
+    const yo = async token => (await fetch(`${BASE}/api/staking/me`, { headers: { authorization: `Bearer ${token}` } })).json();
+    r = await crear({ code: 'FOG5K', reward: 'fog', amount: 5000, maxUses: 10 });
+    check('se crea un codigo de FOG', r.ok);
+    const antes = (await yo(otroToken)).balance;
+    d = await (await canjear('fog5k', otroToken)).json();
+    check('canjearlo suma el FOG a la wallet', d.reward === 'fog' && d.amount === 5000 && d.plural === false
+        && (await yo(otroToken)).balance === antes + 5000, JSON.stringify(d));
+
+    r = await crear({ code: 'KEYGRATIS', reward: 'lowkey', amount: 1, maxUses: 10 });
+    check('se crea un codigo de LOWKEY', r.ok);
+    r = await canjear('KEYGRATIS', otroToken);
+    d = await r.json();
+    check('sin premios en la ruleta no se canjea', r.status === 400 && /later/.test(d.error), JSON.stringify(d));
+    check('y el codigo no se gasto', (await codigos()).find(c => c.code === 'KEYGRATIS').uses === 0);
+    await fetch(`${BASE}/api/admin/staking/wheels/lowkey`, { method: 'PUT', headers: admin,
+        body: JSON.stringify({ prizes: [{ label: 'Gob #1', kind: 'nft', weight: 1, stock: 5 }] }) });
+    r = await canjear('KEYGRATIS', otroToken);
+    d = await r.json();
+    check('con premios abre la ruleta gratis', r.ok && d.win?.prize.label === 'Gob #1' && d.item?.label === 'LOWKEY', JSON.stringify(d));
+    check('y el premio queda para entregar', (await yo(otroToken)).prizes.some(x => x.prize.label === 'Gob #1' && x.status === 'pending'));
+    check('no cobra FOG', (await yo(otroToken)).balance === antes + 5000);
+
     console.log('\n--- En el Forge ---');
     const w = '0x00000000000000000000000000000000000000aa';
     forge.addPayment({ txHash: '0xabc', wallet: w, chainId: 33139, valueWei: '1' });

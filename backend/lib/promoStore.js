@@ -5,9 +5,11 @@
 // No hace falta tener un Primal: un roll gratis puede ser lo que convenza a
 // alguien de comprar uno.
 //
-// Un codigo da un premio de un tipo de REWARDS. Hoy el unico es un roll del
-// Forge; para sumar otro (un descuento, una customizacion gratis) se agrega
-// una entrada ahi con su `grant`, y el panel lo ofrece solo.
+// Un codigo da un premio de un tipo de REWARDS: rolls del Forge, FOG, o una
+// apertura de las ruletas de la tienda de FOG (las keys y el Summon shard, ver
+// lib/stakingWheels.js). Para sumar otro se agrega una entrada ahi con su
+// `grant`, y el panel lo ofrece solo. `grant` puede devolver { error } (una
+// ruleta sin premios): el codigo no se gasta y se puede reintentar.
 //
 // Todo vive en un JSON del volumen, con los canjes adentro de cada codigo: son
 // a lo sumo unos cientos. Las funciones que escriben son sincronicas a
@@ -24,14 +26,39 @@ const CODES_PATH = path.join(ASSETS_ROOT, 'promo', 'codes.json');
 const FORMATO = /^[A-Z0-9_-]{4,32}$/;
 // Sin 0/O ni 1/I/L: los codigos se copian a mano desde una imagen o un video.
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-const MAX_AMOUNT = 20;
 const MAX_USES = 100000;
 
+// `max`: cuanto puede dar un canje. `plural`: si el nombre lleva "s" ("2 Forge
+// rolls"; el FOG no: "5,000 FOG"). stakingStore se pide adentro de cada
+// `grant` para no cargarlo (ni a sus dependencias) al arrancar este modulo.
+const staking = () => require('./stakingStore');
+const WHEELS = [
+    ['lowkey', 'LOWKEY'],
+    ['highkey', 'HIGHKEY'],
+    ['fogkey', 'FOGKEY'],
+    ['summon-shard', 'Summon shard']
+];
 const REWARDS = {
     'forge-roll': {
         label: 'Forge roll',
+        max: 20,
+        plural: true,
         grant: (wallet, amount, code) => forge.addPromoCredits(wallet, code, amount)
-    }
+    },
+    fog: {
+        label: 'FOG',
+        max: 1000000,
+        plural: false,
+        grant: (wallet, amount, code) => staking().grantFog(wallet, amount, `promo:${code}`)
+    },
+    // Una apertura de la ruleta, como si la hubiera comprado: el premio sale
+    // en el momento del canje y el modal muestra la animacion.
+    ...Object.fromEntries(WHEELS.map(([id, label]) => [id, {
+        label,
+        max: 1,
+        plural: false,
+        grant: (wallet, amount, code) => staking().spinWheel(wallet, id, `promo:${code}`)
+    }]))
 };
 
 function read() {
@@ -98,8 +125,9 @@ function createCode({ code, reward, amount, maxUses, expiresAt, note } = {}) {
     }
 
     if (!REWARDS[reward]) return { error: 'Unknown reward.' };
-    const cantidad = intEntre(amount ?? 1, 1, MAX_AMOUNT);
-    if (cantidad === null) return { error: `The amount must be between 1 and ${MAX_AMOUNT}.` };
+    const { max } = REWARDS[reward];
+    const cantidad = intEntre(amount ?? 1, 1, max);
+    if (cantidad === null) return { error: max === 1 ? 'This reward gives 1 per redemption.' : `The amount must be between 1 and ${max.toLocaleString('en-US')}.` };
     const usos = intEntre(maxUses, 1, MAX_USES);
     if (usos === null) return { error: `The use limit must be between 1 and ${MAX_USES}.` };
 
@@ -176,15 +204,24 @@ function redeem(wallet, rawCode) {
     // reintentar. Al reves no hay riesgo: los creditos del Forge tienen una
     // clave por codigo y wallet, asi que dar el premio dos veces no suma nada.
     const reward = REWARDS[entry.reward];
-    reward.grant(key, entry.amount, entry.code);
+    const granted = reward.grant(key, entry.amount, entry.code);
+    if (granted?.error) return { error: `${granted.error} Try the code again later.`, reason: 'unavailable' };
     entry.redemptions.push({ wallet: key, at: new Date().toISOString() });
     write(codes);
 
-    return { code: entry.code, reward: entry.reward, label: reward.label, amount: entry.amount };
+    return {
+        code: entry.code,
+        reward: entry.reward,
+        label: reward.label,
+        amount: entry.amount,
+        plural: reward.plural,
+        // Una ruleta: lo que toco y la key, para la animacion.
+        ...(granted?.win ? { win: granted.win, item: granted.item } : {})
+    };
 }
 
 function rewardTypes() {
-    return Object.entries(REWARDS).map(([id, { label }]) => ({ id, label }));
+    return Object.entries(REWARDS).map(([id, { label, max, plural }]) => ({ id, label, max, plural }));
 }
 
 module.exports = { listCodes, createCode, setActive, setArchived, redeem, rewardTypes, CODES_PATH };

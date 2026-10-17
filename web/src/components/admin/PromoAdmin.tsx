@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FiArrowUpRight, FiCheck, FiChevronDown, FiCopy } from 'react-icons/fi';
 import { APECHAIN } from '@/lib/cultomizer/contracts';
+import { useApodos } from '@/lib/nicknames';
 
 const BACKEND_URL =
     import.meta.env.PUBLIC_BACKEND_URL || 'http://localhost:3001/api';
@@ -21,7 +22,9 @@ type Codigo = {
     createdAt: string;
     redemptions: { wallet: string; at: string }[];
 };
-type Premio = { id: string; label: string };
+// `max`: cuanto puede dar un canje (las keys, 1). `plural`: si el nombre lleva
+// "s" ("2 Forge rolls"; el FOG no).
+type Premio = { id: string; label: string; max: number; plural: boolean };
 
 const ESTADOS: Record<Estado, { texto: string; clase: string }> = {
     active: { texto: 'Active', clase: 'bg-green-400/15 text-green-300' },
@@ -61,6 +64,7 @@ const vacio = () => ({
 });
 
 export default function PromoAdmin() {
+    const apodos = useApodos();
     const [token, setToken] = useState('');
     const [tokenInput, setTokenInput] = useState('');
     const [authError, setAuthError] = useState<string | null>(null);
@@ -217,8 +221,10 @@ export default function PromoAdmin() {
     };
 
     const nombrePremio = (c: Pick<Codigo, 'reward' | 'amount'>) => {
-        const label = premios.find((p) => p.id === c.reward)?.label ?? c.reward;
-        return `${c.amount} ${label}${c.amount === 1 ? '' : 's'}`;
+        const premio = premios.find((p) => p.id === c.reward);
+        const label = premio?.label ?? c.reward;
+        const plural = (premio?.plural ?? true) && c.amount !== 1;
+        return `${c.amount.toLocaleString('en-US')} ${label}${plural ? 's' : ''}`;
     };
 
     if (!token) {
@@ -304,7 +310,15 @@ export default function PromoAdmin() {
                         <select
                             value={form.reward}
                             onChange={(e) =>
-                                setForm({ ...form, reward: e.target.value })
+                                setForm({
+                                    ...form,
+                                    reward: e.target.value,
+                                    // Las keys dan 1: no se puede elegir otra cantidad.
+                                    amount:
+                                        premios.find((p) => p.id === e.target.value)?.max === 1
+                                            ? '1'
+                                            : form.amount,
+                                })
                             }
                             className={campo}
                         >
@@ -316,11 +330,19 @@ export default function PromoAdmin() {
                         </select>
                     </label>
                     <label className={etiqueta}>
-                        Amount per redemption
+                        {/* Dice de que es la cantidad: "FOG per redemption",
+                            "Forge rolls per redemption", o 1 si es una key. */}
+                        {(() => {
+                            const premio = premios.find((p) => p.id === form.reward);
+                            if (!premio) return 'Amount per redemption';
+                            if (premio.max === 1) return `${premio.label} per redemption (always 1)`;
+                            return `${premio.label}${premio.plural ? 's' : ''} per redemption`;
+                        })()}
                         <input
                             type="number"
                             min={1}
-                            max={20}
+                            max={premios.find((p) => p.id === form.reward)?.max ?? 20}
+                            disabled={premios.find((p) => p.id === form.reward)?.max === 1}
                             value={form.amount}
                             onChange={(e) =>
                                 setForm({ ...form, amount: e.target.value })
@@ -409,7 +431,7 @@ export default function PromoAdmin() {
                             {(archivados > 0 || verArchivados) && (
                                 <button
                                     onClick={() => setVerArchivados((v) => !v)}
-                                    className="text-lightblue hover:text-yellow underline underline-offset-4 cursor-pointer transition-colors duration-300"
+                                    className="text-lightblue hover:text-yellow underline underline-offset-4 cursor-pointer transition-all duration-300"
                                 >
                                     {verArchivados
                                         ? 'Back to codes'
@@ -449,7 +471,7 @@ export default function PromoAdmin() {
                                                 onClick={() => copiar(c.code)}
                                                 aria-label={`Copy ${c.code}`}
                                                 title="Copy"
-                                                className="shrink-0 rounded-md p-1.5 text-lightblue/70 hover:text-yellow cursor-pointer transition-colors duration-300"
+                                                className="shrink-0 rounded-md p-1.5 text-lightblue/70 hover:text-yellow cursor-pointer transition-all duration-300"
                                             >
                                                 {copiado === c.code ? (
                                                     <FiCheck className="w-4 h-4" />
@@ -484,13 +506,13 @@ export default function PromoAdmin() {
                                             )
                                         }
                                         aria-expanded={abierto === c.code}
-                                        className="flex items-center gap-1.5 font-accent text-lightblue hover:text-yellow tabular-nums cursor-pointer transition-colors duration-300"
+                                        className="flex items-center gap-1.5 font-accent text-lightblue hover:text-yellow tabular-nums cursor-pointer transition-all duration-300"
                                     >
                                         <span className="pb-1">
                                             {c.uses} / {c.maxUses} used
                                         </span>
                                         <FiChevronDown
-                                            className={`w-4 h-4 transition-transform duration-300 ${
+                                            className={`w-4 h-4 transition-all duration-300 ${
                                                 abierto === c.code
                                                     ? 'rotate-180'
                                                     : ''
@@ -550,8 +572,13 @@ export default function PromoAdmin() {
                                                                 href={`${APECHAIN.explorador}/address/${r.wallet}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="flex items-center gap-1 min-w-0 font-mono text-lightblue/80 hover:text-yellow transition-colors duration-300"
+                                                                className="flex items-center gap-1 min-w-0 font-mono text-lightblue/80 hover:text-yellow transition-all duration-300"
                                                             >
+                                                                {apodos[r.wallet.toLowerCase()] && (
+                                                                    <span className="shrink-0 font-sans font-semibold text-yellow">
+                                                                        {apodos[r.wallet.toLowerCase()]}
+                                                                    </span>
+                                                                )}
                                                                 <span className="truncate">
                                                                     {r.wallet}
                                                                 </span>
