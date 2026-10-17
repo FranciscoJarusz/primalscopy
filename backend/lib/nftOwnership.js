@@ -31,6 +31,14 @@ const BALANCE_OF_ABI = [{
     type: 'function'
 }];
 
+const TOTAL_SUPPLY_ABI = [{
+    inputs: [],
+    name: 'totalSupply',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function'
+}];
+
 const publicClient = createPublicClient({
     chain: apeChain,
     transport: http()
@@ -117,4 +125,13 @@ async function getTokenOwners(tokenIds) {
     return owners;
 }
 
-module.exports = { checkOwnership, getTokenOwner, getTokenOwners, getPrimalBalance, CONTRACT_ADDRESS };
+// Cuantos tokens hay. Lo usa collectionSupply.js, que lo guarda unos minutos.
+async function readTotalSupply() {
+    return publicClient.readContract({
+        address: CONTRACT_ADDRESS,
+        abi: TOTAL_SUPPLY_ABI,
+        functionName: 'totalSupply'
+    });
+}
+
+module.exports = { checkOwnership, getTokenOwner, getTokenOwners, getPrimalBalance, readTotalSupply, CONTRACT_ADDRESS };

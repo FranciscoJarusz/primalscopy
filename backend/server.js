@@ -1,5 +1,7 @@
 // server.js
 const express = require('express');
+// Antes de armar las rutas: los errores de los handlers async van a next().
+require('./lib/asyncErrors');
 const cors = require('cors');
 const nftRoutes = require('./routes/nftRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -20,7 +22,6 @@ const { isWalletAuthEnabled } = require('./lib/walletAuth');
 const assets = require('./lib/assetStore');
 const feed = require('./lib/feedStore');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -41,15 +42,6 @@ app.use(cors({
 
 // Middleware para leer JSON
 app.use(express.json());
-
-// Crear carpeta si no existe
-const GENERATED_IMAGES_PATH = path.join(__dirname, 'generated_images');
-if (!fs.existsSync(GENERATED_IMAGES_PATH)) {
-  fs.mkdirSync(GENERATED_IMAGES_PATH);
-}
-
-// Servir imágenes generadas
-app.use('/generated_images', express.static(GENERATED_IMAGES_PATH));
 
 // Los traits salen de TRAITS_PATH (volumen persistente en producción), no de
 // la carpeta del repo. Va antes del /assets general para tener prioridad.
@@ -126,6 +118,22 @@ app.use('/api/forge', forgeRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/promo', promoRoutes);
 app.use('/api/staking', stakingRoutes);
+
+// Lo que se escapo de una ruta (ver lib/asyncErrors.js). Se contesta un 500 y
+// el server sigue: antes una excepcion en una ruta lo tiraba entero.
+app.use((err, req, res, next) => {
+  // Los errores de Express traen su status (un JSON mal formado es un 400).
+  const status = Number.isInteger(err?.status) && err.status >= 400 && err.status < 600 ? err.status : 500;
+  if (status === 500) console.error(`[ERROR] ${req.method} ${req.originalUrl} ->`, err);
+  if (res.headersSent) return res.end();
+  res.status(status).json({ error: status === 500 ? 'Something went wrong on the server. Try again.' : err.message });
+});
+
+// La red de seguridad para lo que corre fuera de una request (timers, tareas
+// en segundo plano): se registra en vez de terminar el proceso.
+process.on('unhandledRejection', error => {
+  console.error('[ERROR] Promesa rechazada sin atrapar ->', error);
+});
 
 // Iniciar servidor
 app.listen(PORT, () => {

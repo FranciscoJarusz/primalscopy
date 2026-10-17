@@ -8,6 +8,7 @@ const staking = require('./stakingStore');
 const { getTokenOwners } = require('./nftOwnership');
 const listings = require('./marketplaceListings');
 const wheels = require('./stakingWheels');
+const supply = require('./collectionSupply');
 
 const INTERVAL_MS = 10 * 60 * 1000;
 let running = null;
@@ -33,13 +34,12 @@ async function verify() {
 }
 
 // Los Primals del vault que se sortean en el Summon shard. Se leen los ids de
-// la coleccion (2712) con margen, como en /api/stats/holders: los que no
-// existen vuelven sin dueño y se ignoran.
-const IDS_A_LEER = 2712 + 100;
+// la coleccion con margen, como en /api/stats/holders: los que no existen
+// vuelven sin dueño y se ignoran.
 // Las cartas de la ruleta usan la miniatura de 192 px: se preparan aca para
 // que la cinta no arranque con huecos (solo se generan las que faltan).
 async function refreshVaultNow() {
-    const result = await wheels.refreshVault({ getTokenOwners, totalSupply: IDS_A_LEER });
+    const result = await wheels.refreshVault({ getTokenOwners, totalSupply: (await supply.totalSupply()) + supply.MARGEN_IDS });
     require('./primalThumbs').precalentar(result.tokenIds, 192);
     return result;
 }

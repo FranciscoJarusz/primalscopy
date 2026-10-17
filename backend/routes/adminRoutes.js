@@ -104,7 +104,7 @@ router.get('/assets', (req, res) => {
 router.post('/assets/seed', (req, res) => {
     const result = startSeeding();
     if (!result.started) return res.status(409).json({ error: result.reason });
-    res.status(202).json({ message: 'Migracion iniciada. Consultá GET /api/admin/assets para ver el avance.' });
+    res.status(202).json({ message: 'Migration started. Check GET /api/admin/assets for progress.' });
 });
 
 // Comprueba que el backend pueda escribir en el hosting de la coleccion, que
@@ -122,7 +122,7 @@ router.delete('/traits', deleteTrait);
 router.get('/nicknames', (req, res) => res.json(nicknames.listNicknames()));
 router.delete('/nicknames/:address', (req, res) => {
     if (!nicknames.deleteNickname(req.params.address)) {
-        return res.status(404).json({ error: 'Esa wallet no tiene apodo.' });
+        return res.status(404).json({ error: 'That wallet has no nickname.' });
     }
     res.json({ ok: true });
 });

@@ -15,6 +15,7 @@ const path = require('path');
 const { GIFEncoder } = require('gifenc');
 const {
     composeGif,
+    composeGifInWorker,
     loadLayer,
     renderLayerFrames,
     compositeOver,
@@ -70,7 +71,7 @@ function metodoAnterior(archivos, total) {
 
 const iguales = (a, b) => a.length === b.length && a.every((f, i) => Buffer.compare(Buffer.from(f), Buffer.from(b[i])) === 0);
 
-function main() {
+async function main() {
     const fondo = crearGif('fondo.gif', [{ color: 1, x: 0, y: 0, w: SIZE, h: SIZE }], 1);
     // 2 cuadros que se borran antes del siguiente (disposal 2).
     const dos = crearGif('dos.gif', [
@@ -109,9 +110,21 @@ function main() {
     }
     check('una capa de otro tamaño da un error claro', /se esperaba/.test(error?.message || ''));
 
+    console.log('\n--- En un hilo aparte ---');
+    let primero = null;
+    const directo = composeGif([fondo, dos, tres], { size: SIZE, onFirstFrame: (rgba) => { primero = Buffer.from(rgba); } });
+    const enWorker = await composeGifInWorker([fondo, dos, tres], { size: SIZE });
+    check('el worker da el mismo GIF byte a byte', Buffer.isBuffer(enWorker.gif) && enWorker.gif.equals(directo));
+    check('y el mismo primer cuadro', enWorker.firstFrame?.size === SIZE && enWorker.firstFrame.rgba.equals(primero));
+    const fallo = await composeGifInWorker([fondo], { size: SIZE + 1 }).then(() => null, e => e);
+    check('un error del worker llega al que llamo', /se esperaba/.test(fallo?.message || ''));
+
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });
     process.exit(fail ? 1 : 0);
 }
 
-main();
+main().catch(error => {
+    console.error(error);
+    process.exit(1);
+});

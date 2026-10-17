@@ -29,6 +29,10 @@ const T = tercero.address.toLowerCase();
 const H = holder.address.toLowerCase();
 const O = otro.address.toLowerCase();
 
+// En Windows, libvips deja abiertas las imagenes que leyo sharp y despues no
+// se puede borrar la carpeta temporal: sin su cache, las suelta al terminar.
+require('sharp').cache(false);
+
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'primal-staking-'));
 process.env.TRAITS_PATH = TMP;
 process.env.WALLET_JWT_SECRET = 'secreto-solo-para-tests';

@@ -31,7 +31,7 @@ const JWT_SECRET = (process.env.WALLET_JWT_SECRET || '').trim();
 
 // Va dentro del mensaje que firma el usuario para que vea a que sitio le esta
 // dando acceso, y para que una firma hecha para otro sitio no sirva aca.
-const APP_DOMAIN = (process.env.APP_DOMAIN || 'cultomizer.primalcult.xyz').trim();
+const APP_DOMAIN = (process.env.APP_DOMAIN || 'primalcult.xyz').trim();
 
 const NONCE_TTL_MS = 5 * 60 * 1000;        // 5 minutos para firmar
 const SESSION_TTL_SECONDS = 24 * 60 * 60;  // 24 horas de sesion
@@ -71,20 +71,20 @@ function purgeExpiredNonces() {
 
 function buildSignInMessage({ address, nonce, issuedAt }) {
     return [
-        `${APP_DOMAIN} quiere verificar que sos el dueño de esta wallet.`,
+        `${APP_DOMAIN} wants to verify that you own this wallet.`,
         '',
         `Wallet: ${address}`,
         `Nonce: ${nonce}`,
-        `Emitido: ${issuedAt}`,
+        `Issued at: ${issuedAt}`,
         '',
-        'Firmar este mensaje no autoriza ninguna transaccion ni movimiento de fondos.'
+        'Signing this message does not authorize any transaction or move any funds.'
     ].join('\n');
 }
 
 // Emite el nonce y el mensaje a firmar para una direccion.
 function createNonce(rawAddress) {
     if (!isAddress(rawAddress)) {
-        throw new Error('Direccion de wallet invalida.');
+        throw new Error('Invalid wallet address.');
     }
     purgeExpiredNonces();
 
@@ -109,10 +109,10 @@ function createNonce(rawAddress) {
 // intento usar no se puede reintentar, aunque la firma haya sido invalida.
 async function verifySignature({ nonce, signature }) {
     if (!isWalletAuthEnabled()) {
-        throw new Error('La autenticacion por wallet esta deshabilitada.');
+        throw new Error('Wallet sign-in is disabled on the server.');
     }
     if (typeof nonce !== 'string' || typeof signature !== 'string') {
-        throw new Error('Faltan el nonce o la firma.');
+        throw new Error('Missing nonce or signature.');
     }
 
     purgeExpiredNonces();
@@ -122,7 +122,7 @@ async function verifySignature({ nonce, signature }) {
     pendingNonces.delete(nonce);
 
     if (!entry) {
-        throw new Error('Nonce invalido o vencido. Pedi uno nuevo.');
+        throw new Error('This sign-in request expired. Please sign again.');
     }
 
     // verifyMessage de viem cubre wallets normales (EOA) y tambien contratos
@@ -134,7 +134,7 @@ async function verifySignature({ nonce, signature }) {
     });
 
     if (!valid) {
-        throw new Error('La firma no corresponde a esa wallet.');
+        throw new Error("The signature doesn't match that wallet.");
     }
 
     return {

@@ -18,7 +18,7 @@ const router = express.Router();
 router.post('/nonce', (req, res) => {
     if (!isWalletAuthEnabled()) {
         return res.status(503).json({
-            error: 'La autenticacion por wallet esta deshabilitada. Defini WALLET_JWT_SECRET en el servidor.'
+            error: 'Wallet sign-in is disabled. Set WALLET_JWT_SECRET on the server.'
         });
     }
     try {

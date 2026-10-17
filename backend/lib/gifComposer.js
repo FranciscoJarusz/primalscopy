@@ -14,6 +14,8 @@
 // que dependen de lo que quedo dibujado antes (eso es el "disposal").
 
 const fs = require('fs');
+const path = require('path');
+const { Worker } = require('worker_threads');
 const { parseGIF, decompressFrame, decompressFrames } = require('gifuct-js');
 const { GIFEncoder, quantize, applyPalette } = require('gifenc');
 
@@ -291,6 +293,39 @@ function buildPalette(frames) {
     return quantize(sample, 255, { format: 'rgb565' });
 }
 
+/**
+ * composeGif en un hilo aparte. Componer tarda 2-3 segundos de CPU; en el hilo
+ * principal frenaba todo el backend mientras tanto (el staking, el admin, el
+ * mapa, otras customizaciones). Cada llamada usa un worker nuevo que termina
+ * al devolver, asi la memoria del GIF se libera entera.
+ *
+ * Devuelve { gif: Buffer, firstFrame: { rgba: Buffer, size } | null }.
+ */
+function composeGifInWorker(layerPaths, options = {}) {
+    return new Promise((resolve, reject) => {
+        const worker = new Worker(path.join(__dirname, 'gifComposerWorker.js'), {
+            workerData: { layerPaths, options }
+        });
+        let listo = false;
+        // Del otro lado del hilo los Buffer llegan como Uint8Array pelados.
+        const comoBuffer = bytes => Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        worker.once('message', ({ gif, firstFrame }) => {
+            listo = true;
+            resolve({
+                gif: comoBuffer(gif),
+                firstFrame: firstFrame ? { rgba: comoBuffer(firstFrame.rgba), size: firstFrame.size } : null
+            });
+        });
+        worker.once('error', error => {
+            listo = true;
+            reject(error);
+        });
+        worker.once('exit', code => {
+            if (!listo) reject(new Error(`El armado del GIF termino sin resultado (codigo ${code}).`));
+        });
+    });
+}
+
 // Las piezas internas se exportan para poder medirlas por separado desde los
 // tests y los scripts de calibracion del encoder.
-module.exports = { composeGif, SIZE, loadLayer, renderLayerFrames, compositeOver, abrirCapa, componerCuadros };
+module.exports = { composeGif, composeGifInWorker, SIZE, loadLayer, renderLayerFrames, compositeOver, abrirCapa, componerCuadros };

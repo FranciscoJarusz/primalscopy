@@ -4,9 +4,9 @@
 // un Primal listado no puede entrenar (regla del dueño): el que lo pone a la
 // venta sale del entrenamiento.
 //
-// Solo OpenSea. Magic Eden tambien opera en ApeChain, pero en octubre de 2026
-// su API publica para la red respondia 503 ("no healthy upstream") en todos
-// los endpoints que se probaron; cuando ande se suma otra fuente aca.
+// Solo OpenSea. Magic Eden dejo de soportar ApeChain (en octubre de 2026 su
+// API para la red ya respondia 503, y despues Trout confirmo que ahora es solo
+// Solana): no hay otra fuente que sumar.
 //
 // Se pide la coleccion entera y no token por token: son un par de paginas
 // (117 listados de 51 tokens al probarlo), contra un pedido por Primal en
@@ -38,6 +38,10 @@ async function fetchPage(next) {
     }
 }
 
+// La ultima lectura buena, para no pedirle la coleccion entera a OpenSea en
+// cada stake (ver maxAgeMs).
+let ultima = null;
+
 /**
  * Un Map tokenId -> Set de wallets (en minusculas) que lo tienen listado.
  * Va con quien lo lista porque OpenSea puede seguir mostrando el listado de un
@@ -45,8 +49,13 @@ async function fetchPage(next) {
  *
  * Tira si OpenSea no contesta: el llamador no puede tomar "no pude
  * preguntar" como "no esta listado".
+ *
+ * Con `maxAgeMs` devuelve la ultima lectura si tiene menos de esa edad. El
+ * chequeo periodico pide siempre una nueva (y deja la suya para los demas).
  */
-async function getListings() {
+async function getListings({ maxAgeMs = 0 } = {}) {
+    if (ultima && Date.now() - ultima.at < maxAgeMs) return ultima.listed;
+    const at = Date.now();
     const listed = new Map();
     let next = '';
     for (let page = 0; page < MAX_PAGES; page++) {
@@ -62,6 +71,7 @@ async function getListings() {
         next = data.next;
         if (!next) break;
     }
+    ultima = { at, listed };
     return listed;
 }
 

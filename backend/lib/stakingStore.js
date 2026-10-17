@@ -40,6 +40,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { ASSETS_ROOT, writeAtomic } = require('./assetStore');
+const { readJson, writeJson, appendJsonLine, readJsonLines, intEntre } = require('./jsonFiles');
 
 const STAKING_DIR = path.join(ASSETS_ROOT, 'staking');
 const CONFIG_PATH = path.join(STAKING_DIR, 'config.json');
@@ -94,7 +95,7 @@ const DEFAULT_CONFIG = {
         { id: 'fogkey', label: 'FOGKEY', description: 'NFT drop on ApeChain, floor 90-200 APE', price: 1000000, enabled: true },
         { id: 'raffle-ticket', label: 'Raffle ticket', description: 'One entry to a Primal raffle', price: 5000, enabled: true },
         { id: 'forge-roll', label: 'Reroll ticket', description: 'One roll in the Forge', price: 20000, enabled: true },
-        { id: 'summon-shard', label: 'Summon shard', description: 'Summon a new Primal', price: 500000, enabled: true },
+        { id: 'summon-shard', label: 'Summon shard', description: 'Win a Primal from the vault', price: 500000, enabled: true },
         // Los APE salen de la wallet del proyecto: arrancan sin stock y no se
         // venden hasta que el admin carga cuantos hay para dar.
         { id: 'ape-10', label: '10 APE', description: 'Sent to your wallet', price: 100000, enabled: true, stock: 0 },
@@ -143,36 +144,96 @@ function statusOf(item) {
     return grant.configured?.() ? 'sold-out' : 'soon';
 }
 
-function readJson(file, fallback) {
+// --- Lecturas en memoria ----------------------------------------------------
+//
+// El historial y la cuenta de Primals en staking por wallet se usan en casi
+// todos los pedidos (/config, /me, el ranking). Con miles de entrenamientos,
+// leerlos y recalcularlos tardaba 20-40 ms por pedido, con el server frenado
+// mientras tanto. Quedan en memoria hasta que cambia algun archivo: cada
+// escritura de este modulo suma a `generacion`, y la firma del archivo
+// (fecha y tamaño) cubre lo que se escriba por afuera (los tests, a mano).
+let generacion = 0;
+
+function firma(file) {
     try {
-        return JSON.parse(fs.readFileSync(file, 'utf8'));
+        const st = fs.statSync(file);
+        return `${st.mtimeMs}:${st.size}`;
     } catch {
-        return fallback;
+        return '-';
     }
 }
 
-function writeJson(file, data) {
-    fs.mkdirSync(STAKING_DIR, { recursive: true });
-    writeAtomic(file, JSON.stringify(data, null, 2));
+function claveDe(...files) {
+    return `${generacion}|${files.map(firma).join('|')}`;
+}
+
+function guardar(file, data) {
+    writeJson(file, data);
+    generacion++;
 }
 
 function appendHistory(entry) {
-    fs.mkdirSync(STAKING_DIR, { recursive: true });
-    fs.appendFileSync(HISTORY_PATH, `${JSON.stringify({ at: new Date().toISOString(), ...entry })}\n`);
+    appendJsonLine(HISTORY_PATH, entry);
+    generacion++;
 }
 
+// Nadie modifica el arreglo que devuelve: se comparte entre pedidos.
+let historial = { clave: null, datos: [] };
 function readHistory() {
-    try {
-        return fs.readFileSync(HISTORY_PATH, 'utf8')
-            .split('\n')
-            .filter(Boolean)
-            .map(line => JSON.parse(line));
-    } catch {
-        return [];
-    }
+    const clave = claveDe(HISTORY_PATH);
+    if (clave !== historial.clave) historial = { clave, datos: readJsonLines(HISTORY_PATH, 'staking') };
+    return historial.datos;
 }
+
+// stakingCounter() de los archivos como estan ahora.
+let contadorMemo = { clave: null, cuenta: null };
+function contador() {
+    const clave = claveDe(HISTORY_PATH, ACTIVE_PATH);
+    if (clave !== contadorMemo.clave) contadorMemo = { clave, cuenta: stakingCounter(readHistory(), activosLectura()) };
+    return contadorMemo.cuenta;
+}
+
+// Los entrenamientos en curso, para leer sin modificar: el objeto se comparte
+// entre pedidos. Lo que escribe (poner a entrenar, el chequeo, el unstake) usa
+// readActive(), que da una copia propia.
+let activosMemo = { clave: null, datos: {} };
+function activosLectura() {
+    const clave = claveDe(ACTIVE_PATH);
+    if (clave !== activosMemo.clave) activosMemo = { clave, datos: readActive() };
+    return activosMemo.datos;
+}
+
+// Lo que depende ademas de la hora (que periodos ya terminaron, las rachas)
+// se recalcula como mucho cada TTL_PUBLICO_MS aunque no cambie nada.
+const TTL_PUBLICO_MS = 30 * 1000;
+function conTtl() {
+    let memo = { clave: null, hasta: 0, valor: null };
+    return (clave, calcular) => {
+        const ahora = Date.now();
+        if (clave !== memo.clave || ahora >= memo.hasta) memo = { clave, hasta: ahora + TTL_PUBLICO_MS, valor: calcular() };
+        return memo.valor;
+    };
+}
+const rankingMemo = conTtl();
+const totalesMemo = conTtl();
+const mapaMemo = conTtl();
 
 // --- Configuracion ---------------------------------------------------------
+
+// Descripciones que tenian los premios por defecto y quedaron mal. Guardar la
+// config desde el admin guarda el catalogo entero, con estas incluidas: si la
+// guardada es una de estas, se usa la de DEFAULT_CONFIG. Una que alguien
+// escribio a mano no se toca.
+const DESCRIPCIONES_VIEJAS = {
+    // No acuña nada: sortea Primals que ya tiene el vault (Trout, 2026-10-16).
+    'summon-shard': ['Summon a new Primal']
+};
+
+function sinTextosViejos(item) {
+    if (!item || !DESCRIPCIONES_VIEJAS[item.id]?.includes(item.description)) return item;
+    const { description, ...resto } = item;
+    return resto;
+}
 
 // Lo guardado encima de los valores por defecto. Un premio nuevo en
 // DEFAULT_CONFIG aparece aunque el archivo sea de antes. Los borrados desde el
@@ -192,17 +253,12 @@ function getConfig() {
         quantityTiers: saved.quantityTiers ?? DEFAULT_CONFIG.quantityTiers,
         catalog: DEFAULT_CONFIG.catalog
             .filter(item => !removed.includes(item.id))
-            .map(item => ({ ...item, ...savedItems.get(item.id) }))
+            .map(item => ({ ...item, ...sinTextosViejos(savedItems.get(item.id)) }))
             // sort es estable: los que no estan en `order` quedan en su orden de siempre.
             .sort((a, b) => posicion(a.id) - posicion(b.id)),
         removed,
         order
     };
-}
-
-function intEntre(value, min, max) {
-    const n = Number(value);
-    return Number.isInteger(n) && n >= min && n <= max ? n : null;
 }
 
 // Devuelve { config } o { error }. Se valida todo antes de escribir nada.
@@ -300,7 +356,7 @@ function updateConfig(changes = {}) {
         config.order = config.order.filter(x => x !== id);
     }
 
-    writeJson(CONFIG_PATH, config);
+    guardar(CONFIG_PATH, config);
     appendHistory({ event: 'config', config });
     return { config };
 }
@@ -340,7 +396,7 @@ async function setCatalogIcon(id, buffer) {
     writeAtomic(path.join(ICONS_DIR, file), webp);
     const anterior = item.icon;
     item.icon = file;
-    writeJson(CONFIG_PATH, config);
+    guardar(CONFIG_PATH, config);
     borrarIcono(anterior);
     appendHistory({ event: 'icon', id, icon: file });
     return { config };
@@ -353,7 +409,7 @@ function clearCatalogIcon(id) {
     if (!item) return { error: `Unknown reward: ${id}.`, status: 404 };
     const anterior = item.icon;
     delete item.icon;
-    writeJson(CONFIG_PATH, config);
+    guardar(CONFIG_PATH, config);
     borrarIcono(anterior);
     appendHistory({ event: 'icon', id, icon: null });
     return { config };
@@ -374,7 +430,7 @@ function publicConfig() {
     // Cuantos Primals estan entrenando en cada periodo: el mapa de /staking lo
     // muestra en cada zona.
     const now = Date.now();
-    const active = readActive();
+    const active = activosLectura();
     const training = {};
     for (const stake of Object.values(active)) {
         if (!isFinished(stake, now)) training[stake.days] = (training[stake.days] ?? 0) + 1;
@@ -395,6 +451,8 @@ function publicConfig() {
                 return { ...item, status, redeemable: status === 'available', wheel: wheels.WHEEL_ITEMS.includes(item.id) };
             }),
         totals: globalTotals(active, now),
+        // Para el % de la coleccion en staking (ver collectionSupply.js).
+        collectionSize: require('./collectionSupply').conocido(),
         badges: BADGES,
         graceDays: GRACE_MS / DAY_MS
     };
@@ -404,13 +462,16 @@ function publicConfig() {
 // ultimo: el mapa de /staking los dibuja dispersos en su region, y con ese
 // orden uno que recien entra no mueve de lugar a los que ya estaban.
 function trainingByPeriod() {
-    const now = Date.now();
-    const periods = {};
-    const activos = Object.entries(readActive())
-        .filter(([, stake]) => !isFinished(stake, now))
-        .sort(([, a], [, b]) => Date.parse(a.startAt) - Date.parse(b.startAt));
-    for (const [tokenId, stake] of activos) (periods[stake.days] ??= []).push(tokenId);
-    return periods;
+    return mapaMemo(claveDe(ACTIVE_PATH), () => {
+        const now = Date.now();
+        const periods = {};
+        const activos = Object.entries(activosLectura())
+            .filter(([, stake]) => !isFinished(stake, now))
+            // Las fechas son ISO: ordenarlas como texto es ordenarlas en el tiempo.
+            .sort(([, a], [, b]) => (a.startAt < b.startAt ? -1 : a.startAt > b.startAt ? 1 : 0));
+        for (const [tokenId, stake] of activos) (periods[stake.days] ??= []).push(tokenId);
+        return periods;
+    });
 }
 
 // --- Entrenamientos --------------------------------------------------------
@@ -442,7 +503,7 @@ function tierBonus(tiers = [], count) {
 // que estuvieron) y de los activos (hasta el final de su periodo: si se vendio
 // uno, el chequeo lo cierra en minutos y pasa al historial con su fecha).
 // Devuelve cuenta(wallet, t).
-function stakingCounter(history = readHistory(), active = readActive()) {
+function stakingCounter(history = readHistory(), active = activosLectura()) {
     const porWallet = {};
     const add = (wallet, start, end) => {
         if (!(end > start)) return;
@@ -486,7 +547,7 @@ function stakingCounter(history = readHistory(), active = readActive()) {
 function creditedFog(stake, cuenta) {
     const days = creditedDays(stake);
     if (!stake.tiers?.length) return days * stake.perDay;
-    cuenta ??= stakingCounter();
+    cuenta ??= contador();
     const start = Date.parse(stake.startAt);
     const base = baseRateOf(stake);
     let total = 0;
@@ -503,7 +564,7 @@ function baseRateOf(stake) {
     return stake.baseRate ?? Math.floor(stake.perDay * 100 / (100 + stake.bonus));
 }
 
-function balanceOf(wallet, active = readActive(), wallets = readWallets(), cuenta = stakingCounter(readHistory(), active)) {
+function balanceOf(wallet, active = activosLectura(), wallets = readWallets(), cuenta = contador()) {
     const key = wallet.toLowerCase();
     const totals = wallets[key] || { earned: 0, spent: 0 };
     const running = Object.values(active)
@@ -518,7 +579,7 @@ function balanceOf(wallet, active = readActive(), wallets = readWallets(), cuent
 // de la region ni el de cantidad). Devuelve lo que se acredito. Muta `active`
 // y `wallets`; quien llama escribe. `cuenta` es el de stakingCounter, armado
 // antes de empezar a cerrar.
-function finish(active, wallets, tokenId, reason, now = Date.now(), cuenta = stakingCounter(readHistory(), active)) {
+function finish(active, wallets, tokenId, reason, now = Date.now(), cuenta = contador()) {
     const stake = active[tokenId];
     const full = creditedFog(stake, cuenta);
     const earned = LOSES_BONUS.has(reason) && !isFinished(stake, now)
@@ -554,7 +615,7 @@ function startStakes(wallet, tokenIds, days, { ownedIds, listedIds = new Set() }
     const now = Date.now();
     const active = readActive();
     const wallets = readWallets();
-    const cuenta = stakingCounter(readHistory(), active);
+    const cuenta = contador();
     const started = [];
     const rejected = [];
 
@@ -591,8 +652,8 @@ function startStakes(wallet, tokenIds, days, { ownedIds, listedIds = new Set() }
         appendHistory({ event: 'start', ...stake });
     }
 
-    writeJson(ACTIVE_PATH, active);
-    writeJson(WALLETS_PATH, wallets);
+    guardar(ACTIVE_PATH, active);
+    guardar(WALLETS_PATH, wallets);
     return { started, rejected };
 }
 
@@ -611,7 +672,7 @@ function applyVerification({ owners, listings, checkedAt }) {
     const wallets = readWallets();
     const ended = { completed: 0, transferred: 0, listed: 0 };
     const at = new Date(checkedAt).toISOString();
-    const cuenta = stakingCounter(readHistory(), active);
+    const cuenta = contador();
 
     for (const [tokenId, stake] of Object.entries(active)) {
         // Empezo despues de que arranco el chequeo: lo leido no le aplica.
@@ -638,8 +699,8 @@ function applyVerification({ owners, listings, checkedAt }) {
         }
     }
 
-    writeJson(ACTIVE_PATH, active);
-    writeJson(WALLETS_PATH, wallets);
+    guardar(ACTIVE_PATH, active);
+    guardar(WALLETS_PATH, wallets);
     return ended;
 }
 
@@ -657,7 +718,7 @@ function unstake(wallet, tokenIds, { ownedIds }) {
     const now = Date.now();
     const active = readActive();
     const wallets = readWallets();
-    const cuenta = stakingCounter(readHistory(), active);
+    const cuenta = contador();
     const unstaked = [];
     const rejected = [];
 
@@ -670,8 +731,8 @@ function unstake(wallet, tokenIds, { ownedIds }) {
         unstaked.push({ tokenId, ...finish(active, wallets, tokenId, 'unstaked', now, cuenta) });
     }
 
-    writeJson(ACTIVE_PATH, active);
-    writeJson(WALLETS_PATH, wallets);
+    guardar(ACTIVE_PATH, active);
+    guardar(WALLETS_PATH, wallets);
     return { unstaked, rejected };
 }
 
@@ -680,7 +741,7 @@ function unstake(wallet, tokenIds, { ownedIds }) {
 // Los tramos en que cada wallet tuvo al menos un Primal en staking, con los
 // huecos de hasta GRACE_MS unidos. Sale del historial y de los activos: no
 // hay estado propio que se pueda desincronizar.
-function streaksByWallet(history = readHistory(), active = readActive(), now = Date.now()) {
+function streaksByWallet(history = readHistory(), active = activosLectura(), now = Date.now()) {
     const intervals = {};
     const add = (wallet, start, end) => {
         if (end > start) (intervals[wallet] ??= []).push([start, end]);
@@ -754,9 +815,9 @@ function publicStake(stake, now = Date.now(), cuenta) {
 function walletSummary(wallet) {
     const key = wallet.toLowerCase();
     const now = Date.now();
-    const active = readActive();
+    const active = activosLectura();
     const history = readHistory();
-    const cuenta = stakingCounter(history, active);
+    const cuenta = contador();
     const totals = balanceOf(key, active, readWallets(), cuenta);
     const stakes = Object.values(active)
         .filter(s => s.wallet === key)
@@ -792,30 +853,42 @@ function walletSummary(wallet) {
 // Lo publico de cada wallet para el ranking de /stats: el saldo de FOG y las
 // insignias ganadas. Solo las wallets que alguna vez stakearon.
 function leaderboard() {
-    const now = Date.now();
-    const active = readActive();
-    const wallets = readWallets();
-    const history = readHistory();
-    const streaks = streaksByWallet(history, active, now);
-    const cuenta = stakingCounter(history, active);
-    const all = new Set([...Object.keys(wallets), ...Object.values(active).map(s => s.wallet)]);
-    const result = {};
-    for (const w of all) {
-        result[w] = { balance: balanceOf(w, active, wallets, cuenta).balance, badges: badgesOf(streaks[w], now).earned };
-    }
-    return result;
+    return rankingMemo(claveDe(ACTIVE_PATH, WALLETS_PATH, HISTORY_PATH), () => {
+        const now = Date.now();
+        const active = activosLectura();
+        const wallets = readWallets();
+        const streaks = streaksByWallet(readHistory(), active, now);
+        const cuenta = contador();
+        // Lo que va sumando cada wallet con sus entrenamientos en curso.
+        const enCurso = {};
+        for (const stake of Object.values(active)) {
+            enCurso[stake.wallet] = (enCurso[stake.wallet] ?? 0) + creditedFog(stake, cuenta);
+        }
+        const all = new Set([...Object.keys(wallets), ...Object.keys(enCurso)]);
+        const result = {};
+        for (const w of all) {
+            const totals = wallets[w] || { earned: 0, spent: 0 };
+            result[w] = {
+                balance: totals.earned + (enCurso[w] ?? 0) - totals.spent,
+                badges: badgesOf(streaks[w], now).earned
+            };
+        }
+        return result;
+    });
 }
 
 // Los numeros globales de /staking: Primals en staking ahora y FOG ganado en
 // total, contando lo que van sumando los entrenamientos en curso.
 function globalTotals(active, now) {
-    const enCurso = Object.values(active);
-    const cuenta = stakingCounter(readHistory(), active);
-    return {
-        staking: enCurso.filter(s => !isFinished(s, now)).length,
-        earned: Object.values(readWallets()).reduce((n, w) => n + w.earned, 0)
-            + enCurso.reduce((n, s) => n + creditedFog(s, cuenta), 0)
-    };
+    return totalesMemo(claveDe(ACTIVE_PATH, WALLETS_PATH, HISTORY_PATH), () => {
+        const enCurso = Object.values(active);
+        const cuenta = contador();
+        return {
+            staking: enCurso.filter(s => !isFinished(s, now)).length,
+            earned: Object.values(readWallets()).reduce((n, w) => n + w.earned, 0)
+                + enCurso.reduce((n, s) => n + creditedFog(s, cuenta), 0)
+        };
+    });
 }
 
 // --- Canjes ----------------------------------------------------------------
@@ -832,7 +905,7 @@ function redeem(wallet, itemId) {
         return { error: `${item.label} can't be redeemed yet.`, reason: 'not-redeemable', status: 409 };
     }
 
-    const active = readActive();
+    const active = activosLectura();
     const wallets = readWallets();
     const { balance } = balanceOf(key, active, wallets);
     if (balance < item.price) {
@@ -853,14 +926,14 @@ function redeem(wallet, itemId) {
     // Uno menos en stock (si tiene limite).
     if (Number.isInteger(item.stock)) {
         item.stock -= 1;
-        writeJson(CONFIG_PATH, config);
+        guardar(CONFIG_PATH, config);
     }
     // Una ruleta que dio FOG: se acredita junto con el cobro de la key.
     const fog = granted?.fog ?? 0;
 
     const totals = wallets[key] || { earned: 0, spent: 0 };
     wallets[key] = { ...totals, earned: totals.earned + fog, spent: totals.spent + item.price };
-    writeJson(WALLETS_PATH, wallets);
+    guardar(WALLETS_PATH, wallets);
     appendHistory({ event: 'redeem', ...redemption, ...(granted?.win ? { prize: granted.win.prize, fog } : {}) });
 
     return { redemption, balance: balance - item.price + fog,
@@ -877,7 +950,7 @@ function grantFog(wallet, amount, reason) {
     const wallets = readWallets();
     const totals = wallets[key] || { earned: 0, spent: 0 };
     wallets[key] = { ...totals, earned: totals.earned + amount };
-    writeJson(WALLETS_PATH, wallets);
+    guardar(WALLETS_PATH, wallets);
     appendHistory({ event: 'grant', wallet: key, fog: amount, reason });
     return { fog: amount };
 }
@@ -898,10 +971,10 @@ function spinWheel(wallet, itemId, reason) {
 // --- Admin -----------------------------------------------------------------
 
 function adminSummary() {
-    const active = readActive();
+    const active = activosLectura();
     const wallets = readWallets();
     const history = readHistory();
-    const cuenta = stakingCounter(history, active);
+    const cuenta = contador();
     const stakers = new Set(Object.values(active).map(s => s.wallet));
     const all = new Set([...stakers, ...Object.keys(wallets)]);
     const balances = [...all].map(w => ({ wallet: w, ...balanceOf(w, active, wallets, cuenta),

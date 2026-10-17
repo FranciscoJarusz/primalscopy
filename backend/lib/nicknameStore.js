@@ -8,9 +8,9 @@
 // Los apodos son unicos sin importar mayusculas: si no, cualquiera podria
 // ponerse el nombre de un holder conocido y hacerse pasar por el.
 
-const fs = require('fs');
 const path = require('path');
-const { ASSETS_ROOT, writeAtomic } = require('./assetStore');
+const { ASSETS_ROOT } = require('./assetStore');
+const { readJson, writeJson } = require('./jsonFiles');
 
 const NICKNAMES_PATH = path.join(ASSETS_ROOT, 'profiles', 'nicknames.json');
 const FORMATO = /^[A-Za-z0-9_]{3,20}$/;
@@ -18,18 +18,12 @@ const FORMATO = /^[A-Za-z0-9_]{3,20}$/;
 let cache = null;
 
 function load() {
-    if (cache) return cache;
-    try {
-        cache = JSON.parse(fs.readFileSync(NICKNAMES_PATH, 'utf8'));
-    } catch {
-        cache = {};
-    }
+    cache ??= readJson(NICKNAMES_PATH, {});
     return cache;
 }
 
 function save() {
-    fs.mkdirSync(path.dirname(NICKNAMES_PATH), { recursive: true });
-    writeAtomic(NICKNAMES_PATH, JSON.stringify(cache, null, 2));
+    writeJson(NICKNAMES_PATH, cache);
 }
 
 function validate(nickname) {

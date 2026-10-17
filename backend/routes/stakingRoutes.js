@@ -35,6 +35,10 @@ function premioPublico(id) {
 
 const router = express.Router();
 const MAX_TOKENS = 500;
+// Que tan vieja puede ser la lista de OpenSea al poner a entrenar. Pedirla
+// entera en cada stake eran varias paginas por click; con un minuto, alguien
+// que lista y stakea enseguida igual sale en el proximo chequeo (10 min).
+const LISTADOS_MAX_EDAD_MS = 60 * 1000;
 
 router.get('/config', (req, res) => {
     res.set('Cache-Control', 'no-cache');
@@ -138,7 +142,7 @@ router.post('/stake', requireWallet, async (req, res) => {
     }
     if (listings.isConfigured()) {
         try {
-            listed = await listings.getListings();
+            listed = await listings.getListings({ maxAgeMs: LISTADOS_MAX_EDAD_MS });
         } catch {
             return res.status(503).json({ error: "Couldn't check marketplace listings right now. Try again in a few seconds.", reason: 'listings-unavailable' });
         }

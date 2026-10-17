@@ -1,8 +1,7 @@
-// controllers/nftcontroller.js - VERSIÓN FINAL Y LIMPIA
+// controllers/nftController.js
 
 const path = require('path');
 const fs = require('fs');
-const sharp = require('sharp');
 
 const { currentMetadata } = require('../lib/metadataSync');
 const {
@@ -10,10 +9,6 @@ const {
     GLOBAL_DIR,
     IMAGE_EXTENSION_REGEX
 } = require('../lib/traitsStore');
-
-const GENERATED_IMAGES_PATH = path.join(__dirname, '../generated_images');
-const NFT_WIDTH = 2000;
-const NFT_HEIGHT = 2000;
 
 const CATEGORY_CONFIG = [
     { fsName: 'BACKGROUND', apiName: 'Background' },
@@ -213,66 +208,21 @@ async function getCustomizationOptions(req, res) {
     }
 }
 
-// Las URLs que manda el front son del tipo /assets/traits/HAT/BOHO/BOHO.gif.
-// Con el volumen persistente esa ruta ya no vive dentro del repo, así que hay
-// que reescribir el prefijo antes de tocar el disco.
+// Las URLs de las capas son del tipo /assets/traits/HAT/BOHO/BOHO.gif. Con el
+// volumen persistente esa ruta ya no vive dentro del repo, así que hay que
+// reescribir el prefijo antes de tocar el disco. Cualquier otra URL da null:
+// las capas salen siempre de los traits, nunca de otra carpeta del server.
 function resolveLayerPath(imageUrl) {
-    const normalizedUrl = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
+    const normalizedUrl = String(imageUrl || '').replace(/^\//, '');
     const traitsPrefix = 'assets/traits/';
+    if (!normalizedUrl.startsWith(traitsPrefix)) return null;
 
-    if (normalizedUrl.startsWith(traitsPrefix)) {
-        const relative = normalizedUrl.substring(traitsPrefix.length);
-        const resolved = path.resolve(TRAITS_PATH, relative);
-        // Defensa contra ../ en la URL entrante.
-        if (!resolved.startsWith(path.resolve(TRAITS_PATH))) return null;
-        return resolved;
-    }
-
-    return path.join(__dirname, '..', normalizedUrl);
-}
-
-async function generateAndSaveNftImage(req, res) {
-    const { nftId, selectedVariants } = req.body;
-    if (!nftId || !selectedVariants) {
-        return res.status(400).json({ error: 'Faltan parámetros requeridos.' });
-    }
-
-    const layerOrder = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Effect'];
-    const layers = [];
-    
-    for (const traitType of layerOrder) {
-        const imageUrl = selectedVariants[traitType];
-        if (imageUrl && imageUrl !== '__NONE__') {
-            // Convierte la URL relativa (ej: /assets/...) en una ruta de archivo local
-            const imagePath = resolveLayerPath(imageUrl);
-            if (imagePath && fs.existsSync(imagePath)) {
-                layers.push({ input: imagePath });
-            } else {
-                console.warn(`[WARN] Archivo no encontrado para la capa ${traitType}: ${imagePath}`);
-            }
-        }
-    }
-
-    if (layers.length === 0) {
-        return res.status(500).json({ error: 'No se encontraron capas para generar la imagen.' });
-    }
-
-    if (!fs.existsSync(GENERATED_IMAGES_PATH)) {
-        fs.mkdirSync(GENERATED_IMAGES_PATH, { recursive: true });
-    }
-
-    const fileName = `custom_${nftId}_${Date.now()}.png`;
-    const outputPath = path.join(GENERATED_IMAGES_PATH, fileName);
-
-    try {
-        await sharp({ create: { width: NFT_WIDTH, height: NFT_HEIGHT, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
-            .composite(layers)
-            .png()
-            .toFile(outputPath);
-        res.json({ imageUrl: `/generated_images/${fileName}` });
-    } catch (err) {
-        res.status(500).json({ error: 'Falló la generación de la imagen.', detail: err.message });
-    }
+    const root = path.resolve(TRAITS_PATH);
+    const resolved = path.resolve(root, normalizedUrl.substring(traitsPrefix.length));
+    // Defensa contra ../ en la URL. Con el separador, para que /data/traits-otro
+    // no pase por estar "adentro" de /data/traits.
+    if (!resolved.startsWith(root + path.sep)) return null;
+    return resolved;
 }
 
 // Si un valor de trait tiene arte para dibujarse. El Forge no puede sortear un
@@ -288,7 +238,6 @@ module.exports = {
     hasArtFor,
     resolveLayerPath,
     getCustomizationOptions,
-    generateAndSaveNftImage,
     // Reutilizados por el panel de admin para no duplicar la config de categorías.
     CATEGORY_CONFIG,
     normalizeKey,

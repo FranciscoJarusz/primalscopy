@@ -17,9 +17,9 @@
 // medio hace que dos canjes a la vez no puedan pasarse del limite de usos.
 
 const crypto = require('crypto');
-const fs = require('fs');
 const path = require('path');
-const { ASSETS_ROOT, writeAtomic } = require('./assetStore');
+const { ASSETS_ROOT } = require('./assetStore');
+const { readJson, writeJson, intEntre } = require('./jsonFiles');
 const forge = require('./forgeStore');
 
 const CODES_PATH = path.join(ASSETS_ROOT, 'promo', 'codes.json');
@@ -62,16 +62,11 @@ const REWARDS = {
 };
 
 function read() {
-    try {
-        return JSON.parse(fs.readFileSync(CODES_PATH, 'utf8'));
-    } catch {
-        return {};
-    }
+    return readJson(CODES_PATH, {});
 }
 
 function write(codes) {
-    fs.mkdirSync(path.dirname(CODES_PATH), { recursive: true });
-    writeAtomic(CODES_PATH, JSON.stringify(codes, null, 2));
+    writeJson(CODES_PATH, codes);
 }
 
 function normalize(code) {
@@ -104,11 +99,6 @@ function listCodes() {
     return Object.values(read())
         .map(summary)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-}
-
-function intEntre(value, min, max) {
-    const n = Number(value);
-    return Number.isInteger(n) && n >= min && n <= max ? n : null;
 }
 
 // Devuelve { code } o { error }.

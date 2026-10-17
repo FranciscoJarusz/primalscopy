@@ -22,6 +22,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { ASSETS_ROOT, writeAtomic } = require('./assetStore');
+const { readJson, writeJson, intEntre } = require('./jsonFiles');
 
 const DIR = path.join(ASSETS_ROOT, 'staking');
 const WHEELS_PATH = path.join(DIR, 'wheels.json');
@@ -38,19 +39,6 @@ const ADDRESS_REGEX = /^0x[0-9a-fA-F]{40}$/;
 
 // El consuelo: lo que toca cuando no toca nada mejor.
 const CONSUELO = { id: 'fog-1000', label: '1,000 FOG', kind: 'fog', amount: 1000, weight: 60, stock: null, image: null };
-
-function readJson(file, fallback) {
-    try {
-        return JSON.parse(fs.readFileSync(file, 'utf8'));
-    } catch {
-        return fallback;
-    }
-}
-
-function writeJson(file, data) {
-    fs.mkdirSync(DIR, { recursive: true });
-    writeAtomic(file, JSON.stringify(data, null, 2));
-}
 
 function readWheels() {
     const saved = readJson(WHEELS_PATH, {});
@@ -235,11 +223,6 @@ async function refreshVault({ getTokenOwners, totalSupply }) {
 }
 
 // --- Admin ---------------------------------------------------------------------
-
-function intEntre(value, min, max) {
-    const n = Number(value);
-    return Number.isInteger(n) && n >= min && n <= max ? n : null;
-}
 
 function adminWheels() {
     const data = readWheels();

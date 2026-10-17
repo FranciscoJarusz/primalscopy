@@ -8,6 +8,7 @@
 // Es deliberado: prefiero que el panel no funcione a que quede abierto.
 
 const crypto = require('crypto');
+const { bearerToken } = require('./bearerToken');
 
 // El .trim() no es cosmético: pegar el token en el dashboard de Railway suele
 // arrastrar un salto de línea o un espacio final, y eso daba un 401 imposible
@@ -32,24 +33,16 @@ function tokensMatch(received) {
     return crypto.timingSafeEqual(a, b);
 }
 
-function extractToken(req) {
-    const header = req.get('authorization') || '';
-    if (header.toLowerCase().startsWith('bearer ')) {
-        return header.slice(7).trim();
-    }
-    return '';
-}
-
 function adminAuth(req, res, next) {
     if (!isAdminEnabled()) {
         return res.status(503).json({
-            error: 'El panel de admin está deshabilitado. Definí ADMIN_TOKEN en el servidor.'
+            error: 'The admin panel is disabled. Set ADMIN_TOKEN on the server.'
         });
     }
 
-    const token = extractToken(req);
+    const token = bearerToken(req);
     if (!token || !tokensMatch(token)) {
-        return res.status(401).json({ error: 'Token de admin inválido.' });
+        return res.status(401).json({ error: 'Invalid admin token.' });
     }
 
     next();

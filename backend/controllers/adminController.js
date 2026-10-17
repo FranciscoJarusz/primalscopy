@@ -24,17 +24,17 @@ class AdminError extends Error {
 
 function assertValidCategory(category) {
     if (!VALID_CATEGORIES.includes(category)) {
-        throw new AdminError(400, `Categoría inválida: "${category}". Válidas: ${VALID_CATEGORIES.join(', ')}`);
+        throw new AdminError(400, `Invalid category: "${category}". Valid ones: ${VALID_CATEGORIES.join(', ')}`);
     }
     return category;
 }
 
 function assertSafeSegment(value, label) {
     if (!value || typeof value !== 'string') {
-        throw new AdminError(400, `Falta el parámetro "${label}".`);
+        throw new AdminError(400, `Missing "${label}".`);
     }
     if (value === '.' || value === '..' || !SAFE_NAME_REGEX.test(value)) {
-        throw new AdminError(400, `"${label}" inválido: solo letras, números, punto, guion y guion bajo.`);
+        throw new AdminError(400, `Invalid "${label}": only letters, numbers, dot, dash and underscore.`);
     }
     return value;
 }
@@ -42,7 +42,7 @@ function assertSafeSegment(value, label) {
 function assertImageFileName(fileName) {
     assertSafeSegment(fileName, 'file');
     if (!IMAGE_EXTENSION_REGEX.test(fileName)) {
-        throw new AdminError(400, 'El archivo debe ser .png, .gif, .bmp o .webp.');
+        throw new AdminError(400, 'The file must be .png, .gif, .bmp or .webp.');
     }
     return fileName;
 }
@@ -53,7 +53,7 @@ function resolveInsideTraits(...segments) {
     const resolved = path.resolve(TRAITS_PATH, ...segments);
     const root = path.resolve(TRAITS_PATH);
     if (resolved !== root && !resolved.startsWith(root + path.sep)) {
-        throw new AdminError(400, 'Ruta fuera del directorio de traits.');
+        throw new AdminError(400, 'That path is outside the traits folder.');
     }
     return resolved;
 }
@@ -117,7 +117,7 @@ function listTraits(req, res, next) {
 function uploadTrait(req, res, next) {
     try {
         if (!req.file) {
-            throw new AdminError(400, 'No llegó ningún archivo (campo "file").');
+            throw new AdminError(400, 'No file received (field "file").');
         }
 
         const category = assertValidCategory(req.body.category);
@@ -136,7 +136,7 @@ function uploadTrait(req, res, next) {
 
         const overwrite = req.body.overwrite === 'true' || req.body.overwrite === true;
         if (fs.existsSync(filePath) && !overwrite) {
-            throw new AdminError(409, `Ya existe "${fileName}" en ${category}/${directory}.`);
+            throw new AdminError(409, `"${fileName}" already exists in ${category}/${directory}.`);
         }
 
         fs.mkdirSync(dirPath, { recursive: true });
@@ -144,7 +144,7 @@ function uploadTrait(req, res, next) {
         generarAhora(`${category}/${directory}/${fileName}`);
 
         res.status(201).json({
-            message: 'Trait subido.',
+            message: 'Trait uploaded.',
             trait: {
                 file: fileName,
                 name: fileName.replace(IMAGE_EXTENSION_REGEX, ''),
@@ -166,7 +166,7 @@ function renameTrait(req, res, next) {
         const file = assertImageFileName(req.body.file);
 
         const newBaseName = String(req.body.newName || '').trim();
-        if (!newBaseName) throw new AdminError(400, 'Falta "newName".');
+        if (!newBaseName) throw new AdminError(400, 'Missing "newName".');
 
         const extension = path.extname(file);
         const newFile = assertImageFileName(`${newBaseName}${extension}`);
@@ -175,17 +175,17 @@ function renameTrait(req, res, next) {
         const nextPath = resolveInsideTraits(category, directory, newFile);
 
         if (!fs.existsSync(currentPath)) {
-            throw new AdminError(404, `No existe ${category}/${directory}/${file}.`);
+            throw new AdminError(404, `${category}/${directory}/${file} doesn't exist.`);
         }
         if (currentPath !== nextPath && fs.existsSync(nextPath)) {
-            throw new AdminError(409, `Ya existe "${newFile}" en ${category}/${directory}.`);
+            throw new AdminError(409, `"${newFile}" already exists in ${category}/${directory}.`);
         }
 
         fs.renameSync(currentPath, nextPath);
         generarAhora(`${category}/${directory}/${newFile}`);
 
         res.json({
-            message: 'Trait renombrado.',
+            message: 'Trait renamed.',
             trait: {
                 file: newFile,
                 name: newFile.replace(IMAGE_EXTENSION_REGEX, ''),
@@ -223,21 +223,21 @@ function deleteTrait(req, res, next) {
             }
 
             if (deleted.length === 0) {
-                throw new AdminError(404, `No se encontró "${file}" en ninguna carpeta de ${category}.`);
+                throw new AdminError(404, `"${file}" wasn't found in any ${category} folder.`);
             }
 
-            return res.json({ message: `Borrado de ${deleted.length} carpeta(s).`, deleted });
+            return res.json({ message: `Deleted from ${deleted.length} folder(s).`, deleted });
         }
 
         const directory = assertSafeSegment(req.body.directory, 'directory');
         const target = resolveInsideTraits(category, directory, file);
 
         if (!fs.existsSync(target)) {
-            throw new AdminError(404, `No existe ${category}/${directory}/${file}.`);
+            throw new AdminError(404, `${category}/${directory}/${file} doesn't exist.`);
         }
 
         fs.unlinkSync(target);
-        res.json({ message: 'Trait borrado.', deleted: [`${directory}/${file}`] });
+        res.json({ message: 'Trait deleted.', deleted: [`${directory}/${file}`] });
     } catch (error) {
         next(error);
     }
@@ -251,7 +251,7 @@ function adminErrorHandler(err, req, res, next) {
         return res.status(err.status).json({ error: err.message });
     }
     if (err && err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(413).json({ error: 'El archivo supera el límite de 25 MB.' });
+        return res.status(413).json({ error: 'The file is over the 25 MB limit.' });
     }
     // Errores marcados por multer (extensión rechazada, etc.).
     if (err && Number.isInteger(err.status) && err.status >= 400 && err.status < 500) {
@@ -259,7 +259,7 @@ function adminErrorHandler(err, req, res, next) {
     }
 
     console.error('[ERROR] admin ->', err);
-    res.status(500).json({ error: 'Error interno del servidor.' });
+    res.status(500).json({ error: 'Something went wrong on the server. Try again.' });
 }
 
 module.exports = {

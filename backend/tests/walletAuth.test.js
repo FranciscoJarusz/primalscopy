@@ -71,7 +71,7 @@ async function main() {
         const { nonce, message } = await r.json();
         check('emite nonce y mensaje', r.status === 200 && Boolean(nonce) && Boolean(message));
         check('el mensaje nombra la wallet', message.includes(alice.address));
-        check('el mensaje aclara que no mueve fondos', /no autoriza ninguna transaccion/i.test(message));
+        check('el mensaje aclara que no mueve fondos', /does not authorize any transaction/i.test(message));
 
         const signature = await alice.signMessage({ message });
         r = await post(`${BASE}/api/auth/verify`, { nonce, signature });

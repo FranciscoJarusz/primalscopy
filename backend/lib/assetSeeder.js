@@ -141,7 +141,7 @@ async function runSeeding() {
 }
 
 function startSeeding() {
-    if (state.running) return { started: false, reason: 'Ya hay una migracion en curso.' };
+    if (state.running) return { started: false, reason: 'A migration is already running.' };
 
     assets.ensureDirs();
     Object.assign(state, {

@@ -16,6 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { ASSETS_ROOT, writeAtomic } = require('./assetStore');
+const { readJson, writeJson, appendJsonLine, readJsonLines } = require('./jsonFiles');
 
 const FORGE_DIR = path.join(ASSETS_ROOT, 'forge');
 const PENDING_DIR = path.join(FORGE_DIR, 'pending');
@@ -50,19 +51,11 @@ function clearPending(tokenId) {
 }
 
 function appendHistory(entry) {
-    fs.mkdirSync(FORGE_DIR, { recursive: true });
-    fs.appendFileSync(HISTORY_PATH, `${JSON.stringify({ at: new Date().toISOString(), ...entry })}\n`);
+    appendJsonLine(HISTORY_PATH, entry);
 }
 
 function readHistory() {
-    try {
-        return fs.readFileSync(HISTORY_PATH, 'utf8')
-            .split('\n')
-            .filter(Boolean)
-            .map(line => JSON.parse(line));
-    } catch {
-        return [];
-    }
+    return readJsonLines(HISTORY_PATH, 'forge');
 }
 
 // Pagos verificados, por hash: { wallet, valueWei, blockNumber, status,
@@ -83,16 +76,11 @@ function readHistory() {
 const PAYMENTS_PATH = path.join(FORGE_DIR, 'payments.json');
 
 function readPayments() {
-    try {
-        return JSON.parse(fs.readFileSync(PAYMENTS_PATH, 'utf8'));
-    } catch {
-        return {};
-    }
+    return readJson(PAYMENTS_PATH, {});
 }
 
 function writePayments(payments) {
-    fs.mkdirSync(FORGE_DIR, { recursive: true });
-    writeAtomic(PAYMENTS_PATH, JSON.stringify(payments, null, 2));
+    writeJson(PAYMENTS_PATH, payments);
 }
 
 function getPayment(txHash) {

@@ -135,7 +135,7 @@ async function verifyAccess() {
                 return {
                     ok: false, configured: true, canRead: true, canWrite: false,
                     host: HOST, remoteRoot: REMOTE_ROOT,
-                    error: `Conecta y lee, pero no puede escribir: ${error.message}`
+                    error: `Connects and reads, but can't write: ${error.message}`
                 };
             }
 

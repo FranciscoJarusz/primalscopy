@@ -31,7 +31,7 @@ async function fetchOrigin(tokenId) {
         headers: { 'Cache-Control': 'no-cache' }
     });
     if (!data || typeof data !== 'object') {
-        throw Object.assign(new Error('La metadata original no es un JSON valido.'), { status: 502 });
+        throw Object.assign(new Error("The collection's metadata server sent back invalid data."), { status: 502 });
     }
     return data;
 }
@@ -80,7 +80,7 @@ async function currentMetadata(tokenId) {
     } catch (error) {
         if (local) return local;
         throw Object.assign(
-            new Error(`No se pudo leer la metadata del NFT #${tokenId}: ${error.message}`),
+            new Error(`Couldn't read the metadata of Primal #${tokenId}. Try again in a few seconds.`),
             { status: error.status || 502 }
         );
     }

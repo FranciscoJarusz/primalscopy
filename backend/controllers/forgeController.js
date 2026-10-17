@@ -60,7 +60,7 @@ function httpError(status, message, code) {
 function sendError(res, error, where) {
     const status = error.status || 500;
     if (status === 500) console.error(`[ERROR] ${where} ->`, error);
-    res.status(status).json({ error: error.message || 'Error en el Forge.', ...(error.code ? { code: error.code } : {}) });
+    res.status(status).json({ error: status === 500 ? 'Something went wrong in the Forge. Try again.' : error.message, ...(error.code ? { code: error.code } : {}) });
 }
 
 // El Forge esta abierto si se cobra, o si es una prueba local.
@@ -194,7 +194,7 @@ async function roll(req, res) {
         const rarity = getRarity();
 
         if (rarity.isOneOfOne(nftId)) {
-            throw httpError(422, 'Esta pieza es unica (1/1) y no se puede modificar en el Forge.');
+            throw httpError(422, "This piece is a 1/1 and can't be changed in the Forge.");
         }
 
         // Un roll pendiente se resuelve antes de pagar otro. Se devuelve el
@@ -202,14 +202,14 @@ async function roll(req, res) {
         const pending = forge.readPending(nftId);
         if (pending) {
             return res.status(409).json({
-                error: 'Este NFT ya tiene un roll sin resolver: elegi una opcion o cancelalo.',
+                error: 'This Primal already has an unresolved roll: pick an option or discard it.',
                 pending: publicRoll(pending)
             });
         }
 
         const config = paymentConfig();
         if (!isAvailable(config)) {
-            throw httpError(503, 'El Forge todavia no esta abierto.', 'closed');
+            throw httpError(503, "The Forge isn't open yet.", 'closed');
         }
 
         // El pago se toma antes de cualquier await: si la misma wallet rollea
@@ -219,7 +219,7 @@ async function roll(req, res) {
         let payment = null;
         if (config) {
             payment = forge.takePayment(req.walletAddress, config.chainId, rollId, nftId);
-            if (!payment) throw httpError(402, 'Primero hay que pagar el roll.', 'payment-required');
+            if (!payment) throw httpError(402, 'Pay for the roll first.', 'payment-required');
         }
 
         try {
@@ -292,9 +292,9 @@ function precalentarMiniaturas(options) {
 // roll distinto del que la persona estaba mirando.
 function requirePending(nftId, rollId) {
     const pending = forge.readPending(nftId);
-    if (!pending) throw httpError(404, 'Este NFT no tiene un roll pendiente.');
+    if (!pending) throw httpError(404, 'This Primal has no pending roll.');
     if (!rollId || rollId !== pending.rollId) {
-        throw httpError(409, 'Ese roll ya no es el pendiente. Recarga la pagina.');
+        throw httpError(409, 'That roll is no longer the pending one. Reload the page.');
     }
     return pending;
 }
@@ -317,7 +317,7 @@ async function resolveLayers(nftId, metadata, option) {
         if (!layer) continue;
         const filePath = resolveLayerPath(layer.imageUrl);
         if (!filePath || !fs.existsSync(filePath)) {
-            throw httpError(409, `El arte de ${category} (${layer.name}) no esta en el servidor.`);
+            throw httpError(409, `The art for ${category} (${layer.name}) isn't on the server.`);
         }
         paths.push(filePath);
         applied[category] = { name: layer.name, imageUrl: layer.imageUrl, sha256: fingerprint(filePath) };
@@ -338,7 +338,7 @@ async function choose(req, res) {
         const pending = requirePending(nftId, req.body?.rollId);
         const index = req.body?.option;
         if (!Number.isInteger(index) || !pending.options[index]) {
-            throw httpError(400, '"option" tiene que ser 0 o 1.');
+            throw httpError(400, '"option" must be 0 or 1.');
         }
         const option = pending.options[index];
 
@@ -432,13 +432,13 @@ function myPayments(req, res) {
 async function registerPayment(req, res) {
     try {
         const config = paymentConfig();
-        if (!config) throw httpError(503, 'El cobro del Forge no esta configurado.', 'not-configured');
+        if (!config) throw httpError(503, "Forge payments aren't set up.", 'not-configured');
 
         const txHash = String(req.body?.txHash || '');
         const existing = forge.getPayment(txHash);
         if (existing) {
             if (existing.wallet.toLowerCase() !== req.walletAddress.toLowerCase()) {
-                throw httpError(403, 'Ese pago lo hizo otra wallet.', 'wrong-sender');
+                throw httpError(403, 'That payment was made by another wallet.', 'wrong-sender');
             }
         } else {
             const payment = await verifyPayment(txHash, req.walletAddress, config);

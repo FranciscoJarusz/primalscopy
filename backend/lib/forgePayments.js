@@ -92,9 +92,9 @@ const TX_HASH_REGEX = /^0x[0-9a-fA-F]{64}$/;
 //                  Es el unico reintentable: el front vuelve a preguntar.
 //   failed, wrong-chain, wrong-recipient, wrong-sender, underpaid, too-old
 async function verifyPayment(txHash, wallet, config = paymentConfig()) {
-    if (!config) throw httpError(503, 'El cobro del Forge no esta configurado.', 'not-configured');
+    if (!config) throw httpError(503, "Forge payments aren't set up.", 'not-configured');
     if (!TX_HASH_REGEX.test(String(txHash || ''))) {
-        throw httpError(400, '"txHash" no es un hash de transaccion valido.', 'invalid-hash');
+        throw httpError(400, '"txHash" is not a valid transaction hash.', 'invalid-hash');
     }
 
     const client = clientFor(config);
@@ -106,34 +106,34 @@ async function verifyPayment(txHash, wallet, config = paymentConfig()) {
     } catch (error) {
         // viem tira "not found" mientras la transaccion sigue en el mempool.
         if (/not be found|not found/i.test(error.message || '')) {
-            throw httpError(409, 'El pago todavia no se confirmo. Espera unos segundos.', 'not-confirmed');
+            throw httpError(409, "The payment isn't confirmed yet. Wait a few seconds.", 'not-confirmed');
         }
-        throw httpError(503, 'No se pudo consultar ApeChain. Proba de nuevo en un rato.', 'rpc-error');
+        throw httpError(503, "Couldn't reach ApeChain. Try again in a moment.", 'rpc-error');
     }
 
     if (receipt.status !== 'success') {
-        throw httpError(422, 'Esa transaccion fallo en la cadena: no se cobro nada.', 'failed');
+        throw httpError(422, 'That transaction failed on chain: nothing was charged.', 'failed');
     }
     if (tx.chainId !== undefined && Number(tx.chainId) !== config.chainId) {
-        throw httpError(422, 'Ese pago es de otra red.', 'wrong-chain');
+        throw httpError(422, 'That payment is on another network.', 'wrong-chain');
     }
     if (!tx.to || tx.to.toLowerCase() !== config.treasury.toLowerCase()) {
-        throw httpError(422, 'Esa transaccion no es un pago al treasury del Forge.', 'wrong-recipient');
+        throw httpError(422, "That transaction isn't a payment to the Forge treasury.", 'wrong-recipient');
     }
     if (tx.from.toLowerCase() !== String(wallet).toLowerCase()) {
-        throw httpError(403, 'Ese pago lo hizo otra wallet.', 'wrong-sender');
+        throw httpError(403, 'That payment was made by another wallet.', 'wrong-sender');
     }
     if (tx.value < config.priceWei) {
-        throw httpError(422, `El pago es menor al precio de un roll (${formatEther(config.priceWei)} APE).`, 'underpaid');
+        throw httpError(422, `The payment is less than the price of a roll (${formatEther(config.priceWei)} APE).`, 'underpaid');
     }
     if (receipt.blockNumber < config.fromBlock) {
-        throw httpError(422, 'Ese pago es anterior a la apertura del Forge.', 'too-old');
+        throw httpError(422, 'That payment is from before the Forge opened.', 'too-old');
     }
 
     const latest = await client.getBlockNumber();
     const confirmations = latest - receipt.blockNumber + 1n;
     if (confirmations < BigInt(config.confirmations)) {
-        throw httpError(409, 'El pago todavia no se confirmo. Espera unos segundos.', 'not-confirmed');
+        throw httpError(409, "The payment isn't confirmed yet. Wait a few seconds.", 'not-confirmed');
     }
 
     return {

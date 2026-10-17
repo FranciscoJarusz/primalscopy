@@ -3,7 +3,7 @@
 CRUD de traits (subir, renombrar, borrar) sin tocar el repo ni redeployar.
 
 - **API**: `backend/` → `/api/admin/*`
-- **Panel**: `wallet-web3/` → `/admin`
+- **Panel**: `web/` → `/admin/traits`
 
 ---
 
@@ -45,14 +45,16 @@ traits versionados de `backend/assets/traits/` y lo informa en los logs:
 De ahí en adelante el volumen manda. Los archivos del repo quedan solo como
 semilla y backup: editarlos ya no cambia nada en producción.
 
-## 3. Variables del frontend (wallet-web3)
+## 3. Variables del frontend (web)
 
-Las mismas que ya usa el customizer, no hay que agregar ninguna:
+La misma que ya usa el customizer, no hay que agregar ninguna:
 
 | Variable | Ejemplo |
 |---|---|
-| `NEXT_PUBLIC_BACKEND_URL` | `https://tu-backend.up.railway.app/api` |
-| `NEXT_PUBLIC_BACKEND_BASE_URL` | `https://tu-backend.up.railway.app` |
+| `PUBLIC_BACKEND_URL` | `https://tu-backend.up.railway.app/api` |
+
+La URL de los archivos (sin `/api`) se saca de esa. `PUBLIC_BACKEND_BASE_URL`
+solo hace falta si alguna vez se sirven desde otro lado.
 
 ---
 
@@ -118,7 +120,8 @@ TRAITS_PATH=./.local-traits ADMIN_TOKEN=dev-token npm run dev
 ```
 
 Se siembra `./.local-traits` con una copia de los assets y se puede romper todo
-sin tocar el repo. El panel queda en `http://localhost:3000/admin`.
+sin tocar el repo. Con el sitio levantado (`.\dev.ps1` en la raíz), el panel
+queda en `http://localhost:4321/admin/traits`.
 
 ---
 

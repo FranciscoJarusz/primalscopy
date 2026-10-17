@@ -12,25 +12,18 @@
 
 const { readSessionToken, isWalletAuthEnabled } = require('../lib/walletAuth');
 const { checkOwnership } = require('../lib/nftOwnership');
-
-function extractToken(req) {
-    const header = req.get('authorization') || '';
-    if (header.toLowerCase().startsWith('bearer ')) {
-        return header.slice(7).trim();
-    }
-    return '';
-}
+const { bearerToken } = require('./bearerToken');
 
 function requireWallet(req, res, next) {
     if (!isWalletAuthEnabled()) {
         return res.status(503).json({
-            error: 'La autenticacion por wallet esta deshabilitada. Defini WALLET_JWT_SECRET en el servidor.'
+            error: 'Wallet sign-in is disabled. Set WALLET_JWT_SECRET on the server.'
         });
     }
 
-    const address = readSessionToken(extractToken(req));
+    const address = readSessionToken(bearerToken(req));
     if (!address) {
-        return res.status(401).json({ error: 'Sesion invalida o vencida. Volve a firmar con tu wallet.' });
+        return res.status(401).json({ error: 'Your session expired. Sign again with your wallet.' });
     }
 
     // La direccion probada. Todo lo que siga usa esto y nunca algo que venga
@@ -44,7 +37,7 @@ async function requireTokenOwner(req, res, next) {
     if (!address) {
         // Error de programacion: alguien monto esta guarda sin requireWallet
         // adelante. Corta con 500 en vez de dejar pasar la request.
-        return res.status(500).json({ error: 'requireTokenOwner necesita requireWallet antes.' });
+        return res.status(500).json({ error: 'requireTokenOwner needs requireWallet first.' });
     }
 
     const { nftId } = req.params;
@@ -54,16 +47,16 @@ async function requireTokenOwner(req, res, next) {
         case 'owner':
             return next();
         case 'not-owner':
-            return res.status(403).json({ error: `Esa wallet no es dueña del NFT #${nftId}.` });
+            return res.status(403).json({ error: `That wallet doesn't own Primal #${nftId}.` });
         case 'token-not-found':
-            return res.status(404).json({ error: `El NFT #${nftId} no existe.` });
+            return res.status(404).json({ error: `Primal #${nftId} doesn't exist.` });
         case 'invalid-token-id':
-            return res.status(400).json({ error: 'ID de NFT invalido.' });
+            return res.status(400).json({ error: 'Invalid Primal id.' });
         default:
             // No pudimos leer la blockchain. No es culpa del usuario y no hay
             // que tratarlo como "no sos el dueño": eso convertiria una caida
             // del RPC en un permiso denegado.
-            return res.status(503).json({ error: 'No se pudo verificar la propiedad ahora. Reintenta en unos segundos.' });
+            return res.status(503).json({ error: "Couldn't check ownership right now. Try again in a few seconds." });
     }
 }
 

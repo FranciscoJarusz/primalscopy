@@ -47,7 +47,7 @@ function listRecentCustomizations(req, res) {
         });
     } catch (error) {
         console.error('[ERROR] listRecentCustomizations ->', error);
-        res.status(500).json({ error: 'No se pudo leer el feed de customizaciones.' });
+        res.status(500).json({ error: "Couldn't load the recent customizations." });
     }
 }
 

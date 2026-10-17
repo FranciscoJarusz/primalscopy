@@ -8,7 +8,7 @@
 // contenido: que las variantes elegidas sean de las que este token puede usar.
 
 const { buildCustomizationOptions, resolveLayerPath } = require('./nftController');
-const { composeGif } = require('../lib/gifComposer');
+const { composeGifInWorker } = require('../lib/gifComposer');
 const assets = require('../lib/assetStore');
 const { currentMetadata } = require('../lib/metadataSync');
 const remote = require('../lib/remotePublisher');
@@ -44,7 +44,7 @@ const FEED_THUMB_SIZE = 512;
  */
 function resolveSelections(options, selections) {
     if (!selections || typeof selections !== 'object') {
-        throw Object.assign(new Error('Falta "selections".'), { status: 400 });
+        throw Object.assign(new Error('Missing "selections".'), { status: 400 });
     }
 
     const layers = [];
@@ -57,7 +57,7 @@ function resolveSelections(options, selections) {
         const chosen = selections[category];
         if (!chosen) {
             throw Object.assign(
-                new Error(`Falta elegir una variante para ${category}.`),
+                new Error(`Pick a variant for ${category}.`),
                 { status: 400 }
             );
         }
@@ -65,7 +65,7 @@ function resolveSelections(options, selections) {
         const variant = option.variants.find(v => v.imageUrl === chosen);
         if (!variant) {
             throw Object.assign(
-                new Error(`La variante elegida para ${category} no esta disponible para este NFT.`),
+                new Error(`The ${category} variant you picked isn't available for this Primal.`),
                 { status: 400 }
             );
         }
@@ -73,7 +73,7 @@ function resolveSelections(options, selections) {
         const filePath = resolveLayerPath(variant.imageUrl);
         if (!filePath || !fs.existsSync(filePath)) {
             throw Object.assign(
-                new Error(`El archivo del trait ${variant.name} no esta en el servidor.`),
+                new Error(`The file for ${variant.name} isn't on the server.`),
                 { status: 409 }
             );
         }
@@ -90,7 +90,7 @@ function resolveSelections(options, selections) {
     }
 
     if (layers.length === 0) {
-        throw Object.assign(new Error('No hay capas para componer.'), { status: 400 });
+        throw Object.assign(new Error('There are no layers to compose.'), { status: 400 });
     }
 
     return { layers, applied };
@@ -108,11 +108,11 @@ async function loadOrSeedMetadata(tokenId) {
 // imagen de la otra. Tira con el status listo para responder.
 function tomarTurno(nftId) {
     if (enProceso.has(nftId)) {
-        throw Object.assign(new Error('Ya se esta guardando un cambio de este NFT.'), { status: 409 });
+        throw Object.assign(new Error('A change to this Primal is already being saved.'), { status: 409 });
     }
     if (enProceso.size >= MAX_SIMULTANEOS) {
         throw Object.assign(
-            new Error('El servidor esta generando otras imagenes. Reintenta en unos segundos.'),
+            new Error('The server is busy with other images. Try again in a few seconds.'),
             { status: 503 }
         );
     }
@@ -141,17 +141,15 @@ async function publicarNft(nftId, { layers, applied, metadata, wallet, remoto = 
     const publicado = remoto && remote.isConfigured();
     if (publicado && forge.isSandbox(nftId)) {
         throw Object.assign(new Error(
-            `El NFT #${nftId} tiene cambios de prueba del Forge en este server y no se puede publicar. `
-            + 'Restauralo con: node scripts/forge-reset-sandbox.js'
+            `Primal #${nftId} has Forge test changes on this server and can't be published. `
+            + 'Restore it with: node scripts/forge-reset-sandbox.js'
         ), { status: 409 });
     }
 
-    // El primer frame se aprovecha de la pasada que ya hace composeGif, en
-    // vez de decodificar y componer las siete capas una segunda vez.
-    let primerFrame = null;
-    const gif = composeGif(layers, {
-        onFirstFrame: (rgba, size) => { primerFrame = { rgba, size }; }
-    });
+    // En un hilo aparte, para no frenar al resto del backend mientras se arma.
+    // El primer frame se aprovecha de la misma pasada, en vez de decodificar y
+    // componer las siete capas una segunda vez.
+    const { gif, firstFrame: primerFrame } = await composeGifInWorker(layers);
 
     const version = Date.now();
     const updated = { ...metadata, image: assets.publicImageUrl(nftId, version) };
@@ -164,8 +162,9 @@ async function publicarNft(nftId, { layers, applied, metadata, wallet, remoto = 
         try {
             await remote.publishNft(nftId, { gif, metadata: updated });
         } catch (error) {
+            console.error(`[publish] #${nftId} ->`, error);
             throw Object.assign(
-                new Error(`No se pudo publicar en el hosting de la coleccion: ${error.message}`),
+                new Error("Couldn't publish to the collection's hosting. Try again in a few minutes."),
                 { status: 502 }
             );
         }
@@ -231,7 +230,7 @@ async function saveCustomization(req, res) {
     } catch (error) {
         const status = error.status || 500;
         if (status === 500) console.error('[ERROR] saveCustomization ->', error);
-        res.status(status).json({ error: error.message || 'No se pudo guardar la customizacion.' });
+        res.status(status).json({ error: status === 500 ? "Couldn't save the customization. Try again." : error.message });
     } finally {
         soltarTurno(nftId);
     }
@@ -275,7 +274,7 @@ async function getCustomization(req, res) {
         // Express 4 no atrapa los rechazos de un handler async: sin esto, un
         // fallo aca dejaria la request colgada hasta el timeout del cliente.
         console.error('[ERROR] getCustomization ->', error);
-        res.status(500).json({ error: 'No se pudo leer la customizacion.' });
+        res.status(500).json({ error: "Couldn't read the customization." });
     }
 }
 
