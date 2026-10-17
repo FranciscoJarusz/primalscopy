@@ -7,12 +7,7 @@ node_modules/
 .env*.local
 
 # Salidas de build
-.next/
-out/
 dist/
-
-# Imagenes generadas en runtime por el backend
-backend/generated_images/
 
 # Traits de desarrollo local (el volumen persistente simulado)
 backend/.local-traits/
@@ -20,10 +15,6 @@ backend/.local-traits/
 # Assets publicados de los NFTs. En produccion viven en el volumen de Railway;
 # esta ruta solo se usa si alguien corre el backend sin TRAITS_PATH.
 backend/assets/traits/_generated/
-
-# Base de datos local de Prisma
-*.db
-*.db-journal
 
 # Config local de Claude Code (tiene rutas absolutas de esta maquina)
 .claude/

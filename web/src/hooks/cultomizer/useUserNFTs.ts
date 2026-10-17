@@ -11,16 +11,6 @@ export interface Nft {
   metadata?: Record<string, unknown>;
 }
 
-export interface NftCheck {
-  ok: boolean;
-  tokenId: string;
-  address?: string;
-  owner?: string;
-  balance?: number;
-  isOwner?: boolean;
-  error?: string;
-}
-
 /// Los NFTs de la coleccion que tiene la wallet conectada.
 ///
 /// El balance se lee directo de la cadena con wagmi; la list de tokens sale de
@@ -75,7 +65,7 @@ export function useUserNFTs() {
     if (lastWallet === address && nfts.length > 0) return;
 
     if (balanceError) {
-      setError(`Error al verificar balance: ${balanceError.message}`);
+      setError(`Couldn't read your balance: ${balanceError.message}`);
       setCargando(false);
       return;
     }
@@ -97,7 +87,7 @@ export function useUserNFTs() {
       try {
         const response = await fetch(`/api/user/nfts?address=${address}`);
         if (!response.ok)
-          throw new Error(`El servidor respondio ${response.status}`);
+          throw new Error(`The server answered ${response.status}`);
 
         const data = await response.json();
         if (cancelled) return;
@@ -118,7 +108,7 @@ export function useUserNFTs() {
       } catch (e) {
         if (!cancelled) {
           setError(
-            e instanceof Error ? e.message : "No se pudieron cargar los NFTs",
+            e instanceof Error ? e.message : "Couldn't load your Primals",
           );
         }
       } finally {
@@ -147,44 +137,12 @@ export function useUserNFTs() {
     setError(null);
   }, []);
 
-  /// Comprueba contra la cadena si esta wallet es duena de un token puntual.
-  const checkSpecificNFT = useCallback(
-    async (tokenId: string): Promise<NftCheck> => {
-      try {
-        const response = await fetch(
-          `/api/check-nft-ownership?tokenId=${tokenId}&address=${address}`,
-        );
-        const result = await response.json();
-
-        if (!response.ok) {
-          return {
-            ok: false,
-            tokenId,
-            address,
-            error: result?.error || "No se pudo verificar el NFT",
-          };
-        }
-
-        return { ok: true, ...result };
-      } catch {
-        return {
-          ok: false,
-          tokenId,
-          address,
-          error: "Error de red al verificar el NFT",
-        };
-      }
-    },
-    [address],
-  );
-
   return {
     nfts,
     isLoading: loading || balanceLoading,
     error,
     balance,
     refreshNfts,
-    checkSpecificNFT,
     isConnected,
   };
 }

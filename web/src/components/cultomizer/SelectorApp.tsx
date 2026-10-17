@@ -2,35 +2,20 @@
 import { useEffect, useState, useMemo } from 'react';
 import { goTo } from '@/lib/navigation';
 import { FiChevronDown } from 'react-icons/fi';
-import { useAccount, useDisconnect } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { useUserNFTs } from '@/hooks/cultomizer/useUserNFTs';
-import { useAutoNFTDetection } from '@/hooks/cultomizer/useAutoNFTDetection';
-import WelcomeNFTs from '@/components/cultomizer/WelcomeNFTs';
 import NetworkSwitcher from '@/components/cultomizer/NetworkSwitcher';
 import { rememberPrimal } from '@/lib/cultomizer/avatarPrimal';
-
-interface NftVerificationResult {
-    ok: boolean;
-    tokenId: string;
-    address?: string;
-    owner?: string;
-    balance?: number;
-    isOwner?: boolean;
-    error?: string;
-}
 
 /// `demo` rellena la grilla con NFTs inventados para ver el layout sin wallet.
 /// Solo llega en dev, via `?demo=N` (ver SelectorGate).
 export default function SelectorPage({ demo }: { demo?: number }) {
-    const { disconnect } = useDisconnect();
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState<'id' | 'name'>('id');
-    const [verificationResult, setVerificationResult] =
-        useState<NftVerificationResult | null>(null);
 
     const { address, status } = useAccount();
     const reales = useUserNFTs();
-    const { balance, refreshNfts, checkSpecificNFT } = reales;
+    const { balance, refreshNfts } = reales;
     const demoNfts = useMemo(
         () =>
             demo
@@ -49,8 +34,6 @@ export default function SelectorPage({ demo }: { demo?: number }) {
     const nfts = demoNfts ?? reales.nfts;
     const isLoading = demoNfts ? false : reales.isLoading;
     const error = demoNfts ? null : reales.error;
-    const { isFirstConnection, detectionComplete } = useAutoNFTDetection();
-    const [showWelcome, setShowWelcome] = useState(false);
 
     // La redireccion cuando no hay wallet vive en SelectorGate, que es quien
     // monta este componente: aca ya se asume conectada.
@@ -100,36 +83,9 @@ export default function SelectorPage({ demo }: { demo?: number }) {
         goTo(`/cultomizer/edit?tokenId=${tokenId}`);
     };
 
-    const handleDisconnect = () => {
-        disconnect();
-        goTo('/cultomizer');
-    };
-
     const handleRefresh = () => {
-        setVerificationResult(null);
         refreshNfts();
     };
-
-    // Mostrar bienvenida cuando se detecten NFTs por primera vez
-    // DESHABILITADO: Modal de bienvenida eliminado
-    // useEffect(() => {
-    //   if (detectionComplete && nfts.length > 0 && !showWelcome) {
-    //     setShowWelcome(true);
-    //   }
-    // }, [detectionComplete, nfts.length, showWelcome]);
-
-    // Función para verificar NFT específico manualmente
-    const handleCheckNFT = async (tokenId: string) => {
-        if (address) {
-            console.log(`🔍 Verificando NFT #${tokenId} manualmente...`);
-            const result = await checkSpecificNFT(tokenId);
-            if (result) {
-                setVerificationResult(result);
-            }
-        }
-    };
-
-    const nftToVerify = nfts[0]?.tokenId || '56';
 
     if (status === 'connecting' || status === 'reconnecting') {
         return (
@@ -146,15 +102,6 @@ export default function SelectorPage({ demo }: { demo?: number }) {
 
     return (
         <main className="w-full text-white">
-            {/* Modal de bienvenida - DESHABILITADO */}
-            {/* {showWelcome && address && (
-        <WelcomeNFTs
-          nftsFound={nfts.length}
-          address={address}
-          onDismiss={() => setShowWelcome(false)}
-        />
-      )} */}
-
             {/* Network Switcher */}
             <NetworkSwitcher />
 
@@ -171,43 +118,6 @@ export default function SelectorPage({ demo }: { demo?: number }) {
                         </p>
                     </div>
 
-                    {verificationResult && (
-                        <div
-                            className={`rounded-2xl border p-4 sm:p-5 max-w-xl ${verificationResult.ok ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-red-500/10 border-red-500/40'}`}
-                        >
-                            <div
-                                className={`font-semibold text-base sm:text-lg mb-2 ${verificationResult.ok ? 'text-emerald-300' : 'text-red-300'}`}
-                            >
-                                {verificationResult.ok
-                                    ? `NFT #${verificationResult.tokenId} verificado`
-                                    : `No se pudo verificar el NFT #${verificationResult.tokenId}`}
-                            </div>
-                            {verificationResult.ok ? (
-                                <div className="space-y-1 text-sm sm:text-base text-white/85">
-                                    <div>Owner: {verificationResult.owner}</div>
-                                    <div>
-                                        Your wallet:{' '}
-                                        {verificationResult.address}
-                                    </div>
-                                    <div>
-                                        Are you the owner?:{' '}
-                                        {verificationResult.isOwner
-                                            ? 'YES'
-                                            : 'NO'}
-                                    </div>
-                                    <div>
-                                        Total balance:{' '}
-                                        {verificationResult.balance} NFTs
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-sm sm:text-base text-red-200">
-                                    {verificationResult.error ||
-                                        'Error desconocido al verificar el NFT.'}
-                                </div>
-                            )}
-                        </div>
-                    )}
                 </div>
 
                 {/* Controles de búsqueda y filtros */}
