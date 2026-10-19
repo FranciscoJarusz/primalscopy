@@ -8,7 +8,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { createRarity, getRarity, ROLL_ODDS, TICKETS } = require('../lib/traitRarity');
+const { createRarity, getRarity, ROLL_ODDS, MAX_ODDS, TICKETS } = require('../lib/traitRarity');
 
 let pass = 0;
 let fail = 0;
@@ -49,9 +49,9 @@ console.log('\n--- Exclusiones ---');
 
 console.log('\n--- Odds de los raros (las que fijo el dueño) ---');
 {
-    // 100 NFTs: Comun 60 y Mas 30 se reparten el resto; Rare 6 (6%),
-    // VeryRare 3 (3%) y Super 1 (1%) tienen odds fija.
-    const rarity = createRarity({ categories: { Hat: { Comun: 60, Mas: 30, Rare: 6, VeryRare: 3, Super: 1 } } });
+    // 100 NFTs: cinco comunes de 18 se reparten el resto (ninguno llega al
+    // tope); Rare 6 (6%), VeryRare 3 (3%) y Super 1 (1%) tienen odds fija.
+    const rarity = createRarity({ categories: { Hat: { Comun: 18, Mas: 18, C3: 18, C4: 18, C5: 18, Rare: 6, VeryRare: 3, Super: 1 } } });
     const odds = rarity.rollOdds('Hat');
     const cerca = (a, b) => Math.abs(a - b) < 1e-12;
     // Cada uno en el medio de su franja de coleccion -> el medio de su rango.
@@ -60,14 +60,14 @@ console.log('\n--- Odds de los raros (las que fijo el dueño) ---');
     check('Super Rare 1% -> 0,3%', cerca(odds.Super, 0.003), `(${odds.Super})`);
     const resto = 1 - 0.02 - 0.0075 - 0.003;
     check('los comunes se reparten el resto segun sus NFTs',
-        cerca(odds.Comun, resto * 60 / 90) && cerca(odds.Mas, resto * 30 / 90), JSON.stringify(odds));
+        cerca(odds.Comun, resto / 5) && cerca(odds.Mas, resto / 5), JSON.stringify(odds));
     check('suman 100%', cerca(Object.values(odds).reduce((a, b) => a + b, 0), 1));
 
     const sinActual = rarity.rollOdds('Hat', { exclude: ['Comun'] });
     check('excluir un comun no cambia las odds de los raros', cerca(sinActual.Rare, 0.02));
-    check('...y el otro comun se queda con el resto', cerca(sinActual.Mas, resto));
+    check('...y los otros comunes se reparten el resto', cerca(sinActual.Mas, resto / 4));
 
-    const soloRaros = rarity.rollOdds('Hat', { exclude: ['Comun', 'Mas'] });
+    const soloRaros = rarity.rollOdds('Hat', { exclude: ['Comun', 'Mas', 'C3', 'C4', 'C5'] });
     check('sin comunes, los raros se reparten el 100%',
         cerca(Object.values(soloRaros).reduce((a, b) => a + b, 0), 1) && soloRaros.Rare > soloRaros.Super);
 
@@ -75,12 +75,44 @@ console.log('\n--- Odds de los raros (las que fijo el dueño) ---');
     const fuera = [];
     for (const category of real.categories.filter(c => c !== 'Effect')) {
         const share = real.probabilities(category);
-        for (const [valor, p] of Object.entries(real.rollOdds(category))) {
+        const odds = real.rollOdds(category);
+        if (Object.values(odds).some(p => p >= MAX_ODDS - 1e-12)) continue;
+        for (const [valor, p] of Object.entries(odds)) {
             const band = ROLL_ODDS.find(b => share[valor] >= b.desde && share[valor] < b.hasta);
             if (band && (p < band.min || p > band.max)) fuera.push(`${category}/${valor} ${p}`);
         }
     }
-    check('con la coleccion real, cada raro queda dentro de su rango', fuera.length === 0, fuera.join(', '));
+    check('sin tope, cada raro de la coleccion real queda dentro de su rango', fuera.length === 0, fuera.join(', '));
+}
+
+console.log('\n--- Tope por trait ---');
+{
+    // Un solo comun (80%) se llevaria ~94%: queda en el tope y lo que sobra va
+    // a los Rare. El Super Rare no cambia.
+    const rarity = createRarity({ categories: { Eyes: { Comun: 81, R1: 6, R2: 6, R3: 6, Super: 1 } } });
+    const odds = rarity.rollOdds('Eyes');
+    const cerca = (a, b) => Math.abs(a - b) < 1e-9;
+    check('el comun queda en el tope', cerca(odds.Comun, MAX_ODDS), `(${odds.Comun})`);
+    check('el Super Rare no cambia', odds.Super < 0.006, `(${odds.Super})`);
+    check('los Rare se llevan lo que sobra', cerca(odds.R1, (1 - MAX_ODDS - odds.Super) / 3), `(${odds.R1})`);
+    check('suman 100%', cerca(Object.values(odds).reduce((a, b) => a + b, 0), 1));
+
+    const pocos = createRarity({ categories: { Hat: { Comun: 7, Otro: 3 } } }).rollOdds('Hat');
+    check('con muy pocos valores no se topea', cerca(pocos.Comun, 0.7), `(${pocos.Comun})`);
+
+    const real = getRarity();
+    const pasados = [];
+    for (const category of real.categories.filter(c => c !== 'Effect')) {
+        for (const actual of [undefined, ...Object.keys(real.probabilities(category))]) {
+            const odds = real.rollOdds(category, { exclude: actual ? [actual] : [] });
+            const suma = Object.values(odds).reduce((a, b) => a + b, 0);
+            if (!cerca(suma, 1)) pasados.push(`${category} sin ${actual}: suma ${suma}`);
+            for (const [valor, p] of Object.entries(odds)) {
+                if (p > MAX_ODDS + 1e-9) pasados.push(`${category}/${valor} sin ${actual}: ${p}`);
+            }
+        }
+    }
+    check('con la coleccion real, ningun trait pasa el tope y todo suma 100%', pasados.length === 0, pasados.join(', '));
 }
 
 console.log('\n--- Con la rareza real, el sorteo respeta las odds ---');

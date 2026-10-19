@@ -37,6 +37,34 @@ function fixedOdds(share) {
     return band.min + (share - band.desde) / (band.hasta - band.desde) * (band.max - band.min);
 }
 
+// Ningun trait pasa de MAX_ODDS en un roll: en Eyes el unico comun (Pale Dot)
+// se llevaba ~75%. Lo que sobra se reparte entre los demas en proporcion a sus
+// odds, menos los Super Rare, que quedan como estan.
+const MAX_ODDS = 0.3;
+const SUPER_RARE_HASTA = ROLL_ODDS.find(b => b.tier === 'Super Rare').hasta;
+
+function capOdds(odds, fijos) {
+    const libres = Object.keys(odds).filter(v => !fijos.has(v)).length;
+    const fijosSum = [...fijos].reduce((sum, v) => sum + odds[v], 0);
+    if (libres * MAX_ODDS + fijosSum < 1) return odds;
+    const result = { ...odds };
+    const topeados = new Set();
+    for (;;) {
+        const sobre = Object.keys(result).filter(v => result[v] > MAX_ODDS);
+        if (sobre.length === 0) return result;
+        const receptores = Object.keys(result).filter(v => !topeados.has(v) && !fijos.has(v) && !sobre.includes(v));
+        const base = receptores.reduce((sum, v) => sum + result[v], 0);
+        if (base === 0) return result;
+        let excess = 0;
+        for (const v of sobre) {
+            excess += result[v] - MAX_ODDS;
+            result[v] = MAX_ODDS;
+            topeados.add(v);
+        }
+        for (const v of receptores) result[v] *= (base + excess) / base;
+    }
+}
+
 // El sorteo trabaja con enteros (crypto.randomInt no acepta decimales): cada
 // odds se pasa a "tickets" sobre este total.
 const TICKETS = 1_000_000_000;
@@ -94,7 +122,7 @@ function createRarity(snapshot) {
 
         const rest = Math.max(0, 1 - fixedSum);
         for (const [value, count] of free) odds[value] = rest * count / freeCount;
-        return odds;
+        return capOdds(odds, new Set(Object.keys(odds).filter(v => share[v] < SUPER_RARE_HASTA)));
     }
 
     // Sorteo ponderado por las odds del roll. randomInt es de crypto y no
@@ -131,4 +159,4 @@ function getRarity() {
     return defaultInstance;
 }
 
-module.exports = { createRarity, getRarity, SNAPSHOT_PATH, ROLL_ODDS, TICKETS };
+module.exports = { createRarity, getRarity, SNAPSHOT_PATH, ROLL_ODDS, MAX_ODDS, TICKETS };
