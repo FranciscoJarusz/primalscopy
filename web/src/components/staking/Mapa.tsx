@@ -13,9 +13,17 @@
 // de grande, cada filtro se recalcula en cada cuadro y la animacion se traba.
 // Lo que tiene que medir lo mismo en pantalla con cualquier zoom (nombres,
 // avatares, ondas) se achica con la variable CSS --k, que es la escala.
-import { createRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Periodo } from '@/lib/staking';
-import { fog, miniaturaPrimal } from '@/lib/staking';
+import {
+    createRef,
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
+import type { Boost, Periodo } from '@/lib/staking';
+import { fog, fogDelPeriodo, miniaturaPrimal } from '@/lib/staking';
 import { CapaPrimals, type Vista } from './capaPrimals';
 import { FONDO, FORMAS, LAGOS, LINEAS } from './mapaDatos';
 
@@ -90,7 +98,12 @@ const ESTILO_FIJO: React.CSSProperties = {
 const CAJAS: Record<string, Caja> = Object.fromEntries(
     Object.entries(FORMAS).map(([id, d]) => {
         const n = (d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
-        const caja = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+        const caja = {
+            x0: Infinity,
+            y0: Infinity,
+            x1: -Infinity,
+            y1: -Infinity,
+        };
         for (let i = 0; i + 1 < n.length; i += 2) {
             caja.x0 = Math.min(caja.x0, n[i] + DX);
             caja.x1 = Math.max(caja.x1, n[i] + DX);
@@ -149,6 +162,7 @@ const BORDE_TEXTO = {
 
 export default function Mapa({
     periodos,
+    boost = null,
     dias,
     alElegir,
     poblacion,
@@ -157,6 +171,7 @@ export default function Mapa({
     enfocado = null,
 }: {
     periodos: Periodo[];
+    boost?: Boost | null;
     dias: number | null;
     alElegir: (dias: number) => void;
     // Los Primals entrenando en cada periodo, de todas las wallets.
@@ -176,18 +191,35 @@ export default function Mapa({
     const capa = useRef<CapaPrimals | null>(null);
     // Una capa de sombra por region (ver mas abajo), que se mueve como el mapa.
     const sombras = useMemo(
-        () => Object.fromEntries(ZONAS.map((z) => [z.id, createRef<SVGSVGElement>()])),
+        () =>
+            Object.fromEntries(
+                ZONAS.map((z) => [z.id, createRef<SVGSVGElement>()])
+            ),
         []
     );
-    const camara = useCamara(caja, [svg, ...Object.values(sombras)], [svgBordes, svgArriba], (v, w, h) =>
-        capa.current?.setVista(v, w, h)
+    const camara = useCamara(
+        caja,
+        [svg, ...Object.values(sombras)],
+        [svgBordes, svgArriba],
+        (v, w, h) => capa.current?.setVista(v, w, h)
     );
     // La region (o el Primal) bajo el mouse, y donde mostrar su cartelito.
-    const [encima, setEncima] = useState<{ id: string; x: number; y: number } | null>(null);
-    const [primal, setPrimal] = useState<{ tokenId: string; mio: boolean; x: number; y: number } | null>(null);
+    const [encima, setEncima] = useState<{
+        id: string;
+        x: number;
+        y: number;
+    } | null>(null);
+    const [primal, setPrimal] = useState<{
+        tokenId: string;
+        mio: boolean;
+        x: number;
+        y: number;
+    } | null>(null);
     const [foco, setFoco] = useState<string | null>(null);
     // Las ondas que deja cada toque, en coordenadas del mundo.
-    const [ondas, setOndas] = useState<{ n: number; x: number; y: number; color: string }[]>([]);
+    const [ondas, setOndas] = useState<
+        { n: number; x: number; y: number; color: string }[]
+    >([]);
     const contador = useRef(0);
     const ultimoToque = useRef(0);
 
@@ -239,7 +271,11 @@ export default function Mapa({
             // Elegida desde la leyenda: la ola de saltos sale del nombre.
             const z = ZONAS.find((x) => x.id === elegida)!;
             if (Date.now() - ultimoToque.current > 300) {
-                capa.current?.saltar(z.id, z.etiqueta.x + DX, z.etiqueta.y + DY);
+                capa.current?.saltar(
+                    z.id,
+                    z.etiqueta.x + DX,
+                    z.etiqueta.y + DY
+                );
             }
         } else if (habiaElegida.current) {
             habiaElegida.current = false;
@@ -256,7 +292,12 @@ export default function Mapa({
         const p = capa.current?.posicion(enfocado);
         if (!p) return;
         const lado = 60;
-        volarA({ x0: p.x - lado, y0: p.y - lado, x1: p.x + lado, y1: p.y + lado });
+        volarA({
+            x0: p.x - lado,
+            y0: p.y - lado,
+            x1: p.x + lado,
+            y1: p.y + lado,
+        });
     }, [enfocado, medido, volarA, clavePoblacion]);
 
     // El Primal bajo un punto de la pantalla.
@@ -282,7 +323,10 @@ export default function Mapa({
             const local = camara.local(e);
             const p = camara.aMundo(local);
             const n = ++contador.current;
-            setOndas((o) => [...o, { n, x: p.x - DX, y: p.y - DY, color: z.color }]);
+            setOndas((o) => [
+                ...o,
+                { n, x: p.x - DX, y: p.y - DY, color: z.color },
+            ]);
             setTimeout(() => setOndas((o) => o.filter((x) => x.n !== n)), 1500);
             capa.current?.saltar(z.id, p.x, p.y);
             // La camara se va a mover: el cartel quedaria flotando en otro lado.
@@ -290,7 +334,8 @@ export default function Mapa({
             capa.current?.setResaltado(null);
             // En el celular no hay mouse: tocar un Primal de la region ya
             // elegida (la camara no se mueve) muestra su numero un rato.
-            const tactil = (e.nativeEvent as PointerEvent).pointerType !== 'mouse';
+            const tactil =
+                (e.nativeEvent as PointerEvent).pointerType !== 'mouse';
             const m = tactil && z.id === elegida ? primalEn(local) : null;
             if (m) {
                 capa.current?.setResaltado(m.tokenId);
@@ -345,9 +390,20 @@ export default function Mapa({
 
                 <g transform={`translate(${DX} ${DY})`}>
                     {/* El mar: franjas cada vez mas claras hacia la costa. */}
-                    <rect x={-DX} y={-DY} width={ANCHO} height={ALTO} fill="#090050" />
+                    <rect
+                        x={-DX}
+                        y={-DY}
+                        width={ANCHO}
+                        height={ALTO}
+                        fill="#090050"
+                    />
                     {FONDO.map((f, i) => (
-                        <path key={i} d={f.d} fill={f.color} fillRule="evenodd" />
+                        <path
+                            key={i}
+                            d={f.d}
+                            fill={f.color}
+                            fillRule="evenodd"
+                        />
                     ))}
 
                     {/* Las regiones para tocar. */}
@@ -375,7 +431,9 @@ export default function Mapa({
                             onBlur={() => setFoco(null)}
                             onPointerEnter={(e) => mirar(z, e)}
                             onPointerMove={(e) => mirar(z, e)}
-                            onPointerLeave={() => setEncima((v) => (v?.id === z.id ? null : v))}
+                            onPointerLeave={() =>
+                                setEncima((v) => (v?.id === z.id ? null : v))
+                            }
                         />
                     ))}
 
@@ -395,7 +453,15 @@ export default function Mapa({
             {zonas.map((z) => {
                 const activa = z.id === elegida;
                 const marcada = z.id === encima?.id || z.id === foco;
-                const opacidad = elegida ? (activa ? 0 : marcada ? 0.3 : 0.6) : marcada ? 0.12 : 0;
+                const opacidad = elegida
+                    ? activa
+                        ? 0
+                        : marcada
+                          ? 0.3
+                          : 0.6
+                    : marcada
+                      ? 0.12
+                      : 0;
                 return (
                     <svg
                         key={z.id}
@@ -412,7 +478,11 @@ export default function Mapa({
                             transition: 'opacity 300ms',
                         }}
                     >
-                        <path transform={`translate(${DX} ${DY})`} d={FORMAS[z.id]} fill={elegida ? '#090050' : '#fff'} />
+                        <path
+                            transform={`translate(${DX} ${DY})`}
+                            d={FORMAS[z.id]}
+                            fill={elegida ? '#090050' : '#fff'}
+                        />
                     </svg>
                 );
             })}
@@ -421,11 +491,16 @@ export default function Mapa({
                 debajo de los Primals (si no, la linea les pasa por encima) y en
                 su propia capa, que sigue al viewBox en cada cuadro como la de
                 arriba: es liviana y asi no se repinta el mapa base. */}
-            <svg ref={svgBordes} viewBox={`0 0 ${ANCHO} ${ALTO}`} className="absolute inset-0 block w-full h-full pointer-events-none">
+            <svg
+                ref={svgBordes}
+                viewBox={`0 0 ${ANCHO} ${ALTO}`}
+                className="absolute inset-0 block w-full h-full pointer-events-none"
+            >
                 <g transform={`translate(${DX} ${DY})`}>
                     {zonas.map((z) => {
                         const activa = z.id === elegida;
-                        const marcada = !elegida && (z.id === encima?.id || z.id === foco);
+                        const marcada =
+                            !elegida && (z.id === encima?.id || z.id === foco);
                         return (
                             <path
                                 key={z.id}
@@ -443,16 +518,43 @@ export default function Mapa({
                 </g>
             </svg>
 
-            <canvas ref={lienzo} className="absolute inset-0 w-full h-full pointer-events-none" />
+            <canvas
+                ref={lienzo}
+                className="absolute inset-0 w-full h-full pointer-events-none"
+            />
 
-            <svg ref={svgArriba} viewBox={`0 0 ${ANCHO} ${ALTO}`} className="absolute inset-0 block w-full h-full pointer-events-none">
+            <svg
+                ref={svgArriba}
+                viewBox={`0 0 ${ANCHO} ${ALTO}`}
+                className="absolute inset-0 block w-full h-full pointer-events-none"
+            >
                 <g transform={`translate(${DX} ${DY})`}>
                     {/* La onda de cada toque. */}
                     {ondas.map((o) => (
                         <g key={o.n} style={enPantalla(o.x, o.y)}>
-                            <circle r={80} fill={o.color} fillOpacity={0.45} stroke="#fff" strokeWidth={3} className="mapa-onda" />
-                            <circle r={150} fill="none" stroke="#fdf468" strokeWidth={6} className="mapa-onda" />
-                            <circle r={220} fill="none" stroke="#fdf468" strokeWidth={3} className="mapa-onda" style={{ animationDelay: '.15s' }} />
+                            <circle
+                                r={80}
+                                fill={o.color}
+                                fillOpacity={0.45}
+                                stroke="#fff"
+                                strokeWidth={3}
+                                className="mapa-onda"
+                            />
+                            <circle
+                                r={150}
+                                fill="none"
+                                stroke="#fdf468"
+                                strokeWidth={6}
+                                className="mapa-onda"
+                            />
+                            <circle
+                                r={220}
+                                fill="none"
+                                stroke="#fdf468"
+                                strokeWidth={3}
+                                className="mapa-onda"
+                                style={{ animationDelay: '.15s' }}
+                            />
                         </g>
                     ))}
 
@@ -462,19 +564,31 @@ export default function Mapa({
                         {zonas.map((z) => {
                             const activa = z.id === elegida;
                             return (
-                                <g key={z.id} style={enPantallaEtiqueta(z.etiqueta.x, z.etiqueta.y)}>
+                                <g
+                                    key={z.id}
+                                    style={enPantallaEtiqueta(
+                                        z.etiqueta.x,
+                                        z.etiqueta.y
+                                    )}
+                                >
                                     <g
                                         className="transition-all duration-300"
                                         style={{
                                             transformOrigin: '0px -8px',
-                                            transform: activa ? 'scale(1.3)' : 'scale(1)',
-                                            transitionTimingFunction: 'cubic-bezier(.2,.9,.3,1.4)',
-                                            opacity: elegida && !activa ? 0.55 : 1,
+                                            transform: activa
+                                                ? 'scale(1.3)'
+                                                : 'scale(1)',
+                                            transitionTimingFunction:
+                                                'cubic-bezier(.2,.9,.3,1.4)',
+                                            opacity:
+                                                elegida && !activa ? 0.55 : 1,
                                         }}
                                     >
                                         <text
                                             textAnchor="middle"
-                                            fontSize={z.id === 'varnoss' ? 20 : 24}
+                                            fontSize={
+                                                z.id === 'varnoss' ? 20 : 24
+                                            }
                                             letterSpacing={2.5}
                                             fill={activa ? '#fdf468' : '#fff'}
                                             strokeWidth={5}
@@ -482,8 +596,42 @@ export default function Mapa({
                                         >
                                             {z.nombre}
                                         </text>
-                                        <text y={24} textAnchor="middle" fontSize={13} letterSpacing={1} fill="#fdf468" strokeWidth={4} {...BORDE_TEXTO} style={{ opacity: OPACIDAD_DETALLE }}>
-                                            {z.days} days · {fog(z.periodo.perDay * z.days)} FOG
+                                        <text
+                                            y={24}
+                                            textAnchor="middle"
+                                            fontSize={13}
+                                            letterSpacing={1}
+                                            fill="#fdf468"
+                                            strokeWidth={4}
+                                            {...BORDE_TEXTO}
+                                            style={{
+                                                opacity: OPACIDAD_DETALLE,
+                                            }}
+                                        >
+                                            {z.days} days ·{' '}
+                                            {(() => {
+                                                const normal =
+                                                    z.periodo.perDay * z.days;
+                                                const total = fogDelPeriodo(
+                                                    z.periodo.perDay,
+                                                    z.days,
+                                                    boost
+                                                );
+                                                return total > normal ? (
+                                                    <>
+                                                        <tspan
+                                                            textDecoration="line-through"
+                                                            opacity={0.6}
+                                                        >
+                                                            {fog(normal)}
+                                                        </tspan>{' '}
+                                                        {fog(total)}
+                                                    </>
+                                                ) : (
+                                                    fog(normal)
+                                                );
+                                            })()}{' '}
+                                            FOG
                                         </text>
                                     </g>
                                 </g>
@@ -500,7 +648,9 @@ export default function Mapa({
                     style={{ left: primal.x, top: primal.y }}
                 >
                     #{primal.tokenId}
-                    {primal.mio && <span className="opacity-70 ml-2">yours</span>}
+                    {primal.mio && (
+                        <span className="opacity-70 ml-2">yours</span>
+                    )}
                 </div>
             ) : (
                 conCartel &&
@@ -511,7 +661,10 @@ export default function Mapa({
                     >
                         {conCartel.nombre} {conCartel.days}d
                         <span className="opacity-70 ml-2">
-                            {(conCartel.periodo.training ?? 0).toLocaleString('en-US')} staking
+                            {(conCartel.periodo.training ?? 0).toLocaleString(
+                                'en-US'
+                            )}{' '}
+                            staking
                         </span>
                     </div>
                 )
@@ -521,9 +674,24 @@ export default function Mapa({
                 {[
                     // En el celular el zoom es con los dedos: queda solo el
                     // de ver el mapa entero.
-                    { texto: '+', label: 'Zoom in', accion: () => camara.zoom(1.4), soloCompu: true },
-                    { texto: '−', label: 'Zoom out', accion: () => camara.zoom(1 / 1.4), soloCompu: true },
-                    { texto: '⤢', label: 'Show the whole map', accion: camara.verTodo, soloCompu: false },
+                    {
+                        texto: '+',
+                        label: 'Zoom in',
+                        accion: () => camara.zoom(1.4),
+                        soloCompu: true,
+                    },
+                    {
+                        texto: '−',
+                        label: 'Zoom out',
+                        accion: () => camara.zoom(1 / 1.4),
+                        soloCompu: true,
+                    },
+                    {
+                        texto: '⤢',
+                        label: 'Show the whole map',
+                        accion: camara.verTodo,
+                        soloCompu: false,
+                    },
                 ].map((b) => (
                     <button
                         key={b.label}
@@ -569,9 +737,14 @@ function useCamara(
     // El vuelo en curso (requestAnimationFrame); tocar el mapa lo corta.
     const vuelo = useRef(0);
 
-    const contener = () => Math.min(tam.current.w / ANCHO, tam.current.h / ALTO);
+    const contener = () =>
+        Math.min(tam.current.w / ANCHO, tam.current.h / ALTO);
     const cubrir = () => Math.max(tam.current.w / ANCHO, tam.current.h / ALTO);
-    const inicio = (): Vista => ({ cx: ANCHO / 2, cy: ALTO / 2, escala: cubrir() });
+    const inicio = (): Vista => ({
+        cx: ANCHO / 2,
+        cy: ALTO / 2,
+        escala: cubrir(),
+    });
 
     // Mantiene la escala en rango y el mapa cerca de la pantalla. Deja un
     // margen de mar para poder encuadrar una region de la orilla al lado del
@@ -583,9 +756,15 @@ function useCamara(
             const margen = (pantalla * 0.3) / escala;
             const desde = medio - margen;
             const hasta = total - medio + margen;
-            return desde > hasta ? total / 2 : Math.min(Math.max(c, desde), hasta);
+            return desde > hasta
+                ? total / 2
+                : Math.min(Math.max(c, desde), hasta);
         };
-        return { escala, cx: fijar(v.cx, tam.current.w, ANCHO), cy: fijar(v.cy, tam.current.h, ALTO) };
+        return {
+            escala,
+            cx: fijar(v.cx, tam.current.w, ANCHO),
+            cy: fijar(v.cy, tam.current.h, ALTO),
+        };
     };
 
     const actual = () => vista.current ?? ajustar(inicio());
@@ -605,7 +784,10 @@ function useCamara(
         clearTimeout(asentar.current);
         pintada.current = a;
         for (const svg of fijos) {
-            svg.current?.setAttribute('viewBox', viewBoxDe(a, 1 + 2 * SOBRANTE));
+            svg.current?.setAttribute(
+                'viewBox',
+                viewBoxDe(a, 1 + 2 * SOBRANTE)
+            );
             if (svg.current) svg.current.style.transform = '';
         }
     };
@@ -637,7 +819,11 @@ function useCamara(
                 a.cy - h / a.escala / 2 >= b.cy - (h * lado) / b.escala / 2 &&
                 a.cy + h / a.escala / 2 <= b.cy + (h * lado) / b.escala / 2;
             if (!cubre) {
-                pintar({ cx: a.cx, cy: a.cy, escala: a.escala < b.escala ? a.escala / 1.6 : a.escala });
+                pintar({
+                    cx: a.cx,
+                    cy: a.cy,
+                    escala: a.escala < b.escala ? a.escala / 1.6 : a.escala,
+                });
                 b = pintada.current!;
             } else if (a.escala / b.escala > 2.5) {
                 pintar(a);
@@ -649,7 +835,8 @@ function useCamara(
             const tx = (b.cx - a.cx) * a.escala;
             const ty = (b.cy - a.cy) * a.escala;
             for (const svg of fijos) {
-                if (svg.current) svg.current.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+                if (svg.current)
+                    svg.current.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
             }
             clearTimeout(asentar.current);
             asentar.current = window.setTimeout(repintar, 150);
@@ -668,14 +855,23 @@ function useCamara(
         cortarVuelo();
         const desde = actual();
         const hasta = ajustar(destino);
-        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return aplicar(hasta);
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches)
+            return aplicar(hasta);
         // El mapa base se pinta una vez con una vista que abarca el origen y el
         // destino: durante el vuelo solo se escala, sin bordes sin pintar.
         const { w, h } = tam.current;
-        const borde = (v: Vista) => [v.cx - w / v.escala / 2, v.cy - h / v.escala / 2, v.cx + w / v.escala / 2, v.cy + h / v.escala / 2];
+        const borde = (v: Vista) => [
+            v.cx - w / v.escala / 2,
+            v.cy - h / v.escala / 2,
+            v.cx + w / v.escala / 2,
+            v.cy + h / v.escala / 2,
+        ];
         const [a0, a1, a2, a3] = borde(desde);
         const [b0, b1, b2, b3] = borde(hasta);
-        const x0 = Math.min(a0, b0), y0 = Math.min(a1, b1), x1 = Math.max(a2, b2), y1 = Math.max(a3, b3);
+        const x0 = Math.min(a0, b0),
+            y0 = Math.min(a1, b1),
+            x1 = Math.max(a2, b2),
+            y1 = Math.max(a3, b3);
         const lado = 1 + 2 * SOBRANTE;
         // Si lo ya pintado abarca todo el vuelo (acercarse a una region que ya
         // se ve), no hace falta: repintar al arrancar trababa el primer cuadro.
@@ -690,7 +886,12 @@ function useCamara(
             pintar({
                 cx: (x0 + x1) / 2,
                 cy: (y0 + y1) / 2,
-                escala: Math.min(desde.escala, hasta.escala, (w * lado) / (x1 - x0), (h * lado) / (y1 - y0)),
+                escala: Math.min(
+                    desde.escala,
+                    hasta.escala,
+                    (w * lado) / (x1 - x0),
+                    (h * lado) / (y1 - y0)
+                ),
             });
             aplicar(desde);
         }
@@ -701,7 +902,10 @@ function useCamara(
             aplicar({
                 cx: desde.cx + (hasta.cx - desde.cx) * e,
                 cy: desde.cy + (hasta.cy - desde.cy) * e,
-                escala: Math.exp(Math.log(desde.escala) + (Math.log(hasta.escala) - Math.log(desde.escala)) * e),
+                escala: Math.exp(
+                    Math.log(desde.escala) +
+                        (Math.log(hasta.escala) - Math.log(desde.escala)) * e
+                ),
             });
             if (t < 1) vuelo.current = requestAnimationFrame(paso);
         };
@@ -729,7 +933,10 @@ function useCamara(
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const volverAlInicio = useCallback(() => volarRef.current(inicio(), 800), []); // eslint-disable-line react-hooks/exhaustive-deps
+    const volverAlInicio = useCallback(
+        () => volarRef.current(inicio(), 800),
+        []
+    ); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Mide la caja que envuelve al SVG (un ResizeObserver sobre el <svg> mismo
     // mide lo que dibuja, no su tamano en la pagina). La primera vez arranca
@@ -745,9 +952,14 @@ function useCamara(
             tam.current = { w: width, h: height };
             if (primera) {
                 primera = false;
-                aplicar({ cx: ANCHO / 2, cy: ALTO / 2, escala: contener() * 0.9 });
+                aplicar({
+                    cx: ANCHO / 2,
+                    cy: ALTO / 2,
+                    escala: contener() * 0.9,
+                });
                 espera = window.setTimeout(() => {
-                    if (vista.current && vista.current.escala < cubrir()) volarRef.current(inicio(), 1400);
+                    if (vista.current && vista.current.escala < cubrir())
+                        volarRef.current(inicio(), 1400);
                 }, 350);
                 setMedido(true);
             } else {
@@ -766,9 +978,17 @@ function useCamara(
 
     // La vista que resulta de acercar o alejar `desde` dejando quieto el
     // punto (px, py) de la pantalla.
-    const conZoom = (desde: Vista, factor: number, px = tam.current.w / 2, py = tam.current.h / 2) => {
+    const conZoom = (
+        desde: Vista,
+        factor: number,
+        px = tam.current.w / 2,
+        py = tam.current.h / 2
+    ) => {
         const { w, h } = tam.current;
-        const escala = Math.min(Math.max(desde.escala * factor, contener()), cubrir() * 4);
+        const escala = Math.min(
+            Math.max(desde.escala * factor, contener()),
+            cubrir() * 4
+        );
         return ajustar({
             escala,
             cx: desde.cx + (px - w / 2) * (1 / desde.escala - 1 / escala),
@@ -776,7 +996,8 @@ function useCamara(
         });
     };
     // El pellizco sigue a los dedos sin demora.
-    const zoomEn = (factor: number, px?: number, py?: number) => aplicar(conZoom(actual(), factor, px, py));
+    const zoomEn = (factor: number, px?: number, py?: number) =>
+        aplicar(conZoom(actual(), factor, px, py));
 
     // La rueda. Un touchpad (o el pellizco del touchpad, que llega como rueda
     // con ctrl) manda muchos eventos chicos: se siguen al instante, cualquier
@@ -790,7 +1011,11 @@ function useCamara(
     const anclada = (escala: number, { px, py, wx, wy }: Ancla) => {
         const { w, h } = tam.current;
         const e = Math.min(Math.max(escala, contener()), cubrir() * 4);
-        return { escala: e, cx: wx - (px - w / 2) / e, cy: wy - (py - h / 2) / e };
+        return {
+            escala: e,
+            cx: wx - (px - w / 2) / e,
+            cy: wy - (py - h / 2) / e,
+        };
     };
     const seguir = () => {
         let antes = performance.now();
@@ -800,7 +1025,10 @@ function useCamara(
             const a = actual();
             const k = 1 - Math.exp(-(ahora - antes) / 40);
             antes = ahora;
-            const escala = Math.exp(Math.log(a.escala) + (Math.log(o.escala) - Math.log(a.escala)) * k);
+            const escala = Math.exp(
+                Math.log(a.escala) +
+                    (Math.log(o.escala) - Math.log(a.escala)) * k
+            );
             if (Math.abs(escala / o.escala - 1) < 0.003) {
                 objetivo.current = null;
                 aplicar(anclada(o.escala, o.ancla));
@@ -818,7 +1046,13 @@ function useCamara(
         const ancla = { px: p.x, py: p.y, wx: m.x, wy: m.y };
         const enCurso = objetivo.current;
         const base = enCurso?.escala ?? actual().escala;
-        const escala = Math.min(Math.max(base * Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0015)), contener()), cubrir() * 4);
+        const escala = Math.min(
+            Math.max(
+                base * Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0015)),
+                contener()
+            ),
+            cubrir() * 4
+        );
         if (Math.abs(dy) < 50 || e.ctrlKey) {
             // Touchpad: directo.
             cortarVuelo();
@@ -862,7 +1096,9 @@ function useCamara(
             const antes = punteros.current.get(e.pointerId);
             if (!antes) return;
             const ahora = local(e);
-            const otros = [...punteros.current.entries()].filter(([id]) => id !== e.pointerId);
+            const otros = [...punteros.current.entries()].filter(
+                ([id]) => id !== e.pointerId
+            );
             punteros.current.set(e.pointerId, ahora);
             if (otros.length === 1) {
                 // Pellizco: la escala cambia igual que la distancia entre los
@@ -871,7 +1107,8 @@ function useCamara(
                 const d0 = Math.hypot(antes.x - o.x, antes.y - o.y);
                 const d1 = Math.hypot(ahora.x - o.x, ahora.y - o.y);
                 movido.current += Math.abs(d1 - d0);
-                if (d0 > 0) zoomEn(d1 / d0, (ahora.x + o.x) / 2, (ahora.y + o.y) / 2);
+                if (d0 > 0)
+                    zoomEn(d1 / d0, (ahora.x + o.x) / 2, (ahora.y + o.y) / 2);
                 return;
             }
             const dx = ahora.x - antes.x;
@@ -884,7 +1121,11 @@ function useCamara(
                 caja.current!.setPointerCapture(e.pointerId);
             }
             const a = actual();
-            aplicar({ ...a, cx: a.cx - dx / a.escala, cy: a.cy - dy / a.escala });
+            aplicar({
+                ...a,
+                cx: a.cx - dx / a.escala,
+                cy: a.cy - dy / a.escala,
+            });
         },
         onPointerUp: soltar,
         onPointerCancel: soltar,
@@ -898,8 +1139,10 @@ function useCamara(
         aMundo,
         volarA,
         volverAlInicio,
-        arrastro: () => movido.current > 6 || Date.now() - finArrastre.current < 300,
+        arrastro: () =>
+            movido.current > 6 || Date.now() - finArrastre.current < 300,
         zoom: (factor: number) => volar(conZoom(actual(), factor), 300),
-        verTodo: () => volar({ cx: ANCHO / 2, cy: ALTO / 2, escala: contener() }, 700),
+        verTodo: () =>
+            volar({ cx: ANCHO / 2, cy: ALTO / 2, escala: contener() }, 700),
     };
 }

@@ -69,7 +69,27 @@ export type ConfigStaking = {
     // Los dias seguidos de cada insignia y los de gracia entre periodos.
     badges: number[];
     graceDays: number;
+    boost?: Boost | null;
 };
+export type Boost = {
+    multiplier: number;
+    title: string;
+    startAt: string;
+    endsAt: string;
+};
+
+// Cuantos de los `dias` de un entrenamiento que empieza ahora caen dentro del
+// boost (un dia cuenta si termina antes de que se acabe el evento).
+export function diasConBoost(boost: Boost | null | undefined, dias: number, ahora = Date.now()) {
+    if (!boost) return 0;
+    const DIA = 24 * 60 * 60 * 1000;
+    return Math.max(0, Math.min(dias, Math.floor((Date.parse(boost.endsAt) - ahora) / DIA)));
+}
+
+export function fogDelPeriodo(porDia: number, dias: number, boost?: Boost | null) {
+    const conBoost = diasConBoost(boost, dias);
+    return porDia * (dias - conBoost) + Math.floor(porDia * (boost?.multiplier ?? 1)) * conBoost;
+}
 
 // La coleccion entera, para el porcentaje que esta en staking, si el backend
 // todavia no manda collectionSize.

@@ -15,6 +15,8 @@ import {
     MOTIVOS,
     TOTAL_PRIMALS,
     bonusPorCantidad,
+    diasConBoost,
+    fogDelPeriodo,
     rangoEscalon,
     entrenar,
     fog,
@@ -32,6 +34,7 @@ import Mapa, { ZONAS } from './Mapa';
 import { demoStaking } from './demo';
 import Tienda from './Tienda';
 import Recientes from './Recientes';
+import Boost from './Boost';
 import Mensaje, { type Aviso } from './Mensaje';
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -193,6 +196,7 @@ export default function Staking() {
             {config ? (
                 <Mapa
                     periodos={config.periods}
+                    boost={config.boost}
                     dias={diasElegidos}
                     alElegir={(dias) => setPanel({ tipo: 'zona', dias })}
                     poblacion={demo?.poblacion ?? poblacionConMios}
@@ -210,6 +214,7 @@ export default function Staking() {
                 derecha. El contenedor no toma clicks para no tapar el mapa. */}
             <div className="pointer-events-none absolute inset-x-0 top-20 sm:top-28 lg:top-36 px-4 sm:px-8 lg:px-16 xl:px-30 flex flex-wrap items-start justify-between gap-2">
                 <div className="flex flex-col items-start gap-2">
+                    <div className="flex flex-wrap items-stretch gap-2">
                     {/* En el celular el titulo y los numeros van en una sola
                         linea, con el FOG abreviado (900K): cada fila de arriba
                         le saca mapa a la pantalla. */}
@@ -234,11 +239,13 @@ export default function Staking() {
                             )}
                         </div>
                     </div>
+                    {config?.boost && <Boost boost={config.boost} />}
+                    </div>
                     {/* La leyenda: cada region con su color y su periodo. En
                         el celular no: ocupaba tres filas y repite los nombres
                         del mapa. */}
                     {config && (
-                        <div className="hidden sm:flex flex-wrap gap-1.5 max-w-md">
+                        <div className="hidden sm:flex flex-wrap gap-1.5">
                             {ZONAS.filter((z) =>
                                 config.periods.some((p) => p.days === z.days)
                             ).map((z) => {
@@ -274,13 +281,6 @@ export default function Staking() {
                                     </button>
                                 );
                             })}
-                        </div>
-                    )}
-                    {/* Los ultimos premios de las ruletas. En el celular no:
-                        arriba ya no entra nada mas. */}
-                    {config && (
-                        <div className="hidden sm:block">
-                            <Recientes catalogo={config.catalog} />
                         </div>
                     )}
                 </div>
@@ -413,6 +413,13 @@ export default function Staking() {
                     ) : (
                         'Staking opens soon.'
                     )}
+                </div>
+            )}
+
+            {/* Hasta 1400 px va mas arriba para no pisar el cartel centrado de abajo. */}
+            {config && (
+                <div className="pointer-events-none hidden sm:flex justify-end absolute right-8 lg:right-16 xl:right-30 bottom-16 min-[1400px]:bottom-4">
+                    <Recientes catalogo={config.catalog} />
                 </div>
             )}
 
@@ -846,6 +853,9 @@ function PanelZona({
     const porDiaEstimado = Math.floor(
         (config.dailyRate * (100 + periodo.bonus + extra)) / 100
     );
+    const boostDias = diasConBoost(config.boost, dias);
+    const multiplicador = config.boost?.multiplier ?? 1;
+    const totalEstimado = fogDelPeriodo(porDiaEstimado, dias, config.boost);
 
     const desmandar = async (ids: string[]) => {
         setConfirmar(null);
@@ -1097,12 +1107,16 @@ function PanelZona({
                     </button>
                     <p className="text-lightblue/70 text-xs -mt-1">
                         {elegidos.size > 0 &&
-                            `Up to ${fog(elegidos.size * porDiaEstimado * dias)} FOG in ${dias} days${
+                            `Up to ${fog(elegidos.size * totalEstimado)} FOG in ${dias} days${
                                 extra > 0
                                     ? `, with +${extra}% for staking ${conElegidos} Primals`
                                     : ''
+                            }${
+                                boostDias > 0
+                                    ? `${extra > 0 ? ' and' : ','} x${multiplicador} on ${boostDias === dias ? 'every day' : `${boostDias} of them`} for ${config.boost!.title}`
+                                    : ''
                             }.${
-                                periodo.bonus + extra > 0
+                                periodo.bonus + extra > 0 || boostDias > 0
                                     ? ' Unstake early and you keep only the base FOG.'
                                     : ''
                             } `}
@@ -1138,6 +1152,19 @@ function Reglas({
                     {fog(config.dailyRate)} FOG in your wallet, plus the bonus
                     of its region.
                 </li>
+                {config.boost && (
+                    <li>
+                        {config.boost.title}: every day of staking that ends
+                        before{' '}
+                        {new Date(config.boost.endsAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                        })}{' '}
+                        earns x{config.boost.multiplier} FOG, bonuses
+                        included. Unstake early and you lose it, like the
+                        bonus.
+                    </li>
+                )}
                 {config.quantityTiers.some((e) => e.bonus > 0) && (
                     <li>
                         The more Primals you have staking, the more each one

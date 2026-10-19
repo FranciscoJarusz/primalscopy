@@ -25,6 +25,19 @@ export function initLenis() {
             null,
     });
 
+    // La rueda dentro de una lista con scroll propio (data-lenis-prevent) frena
+    // a la pagina: si no, la inercia de DURACION la seguia bajando mientras la
+    // lista tambien bajaba.
+    document.addEventListener(
+        'wheel',
+        (e) => {
+            if (!lenis?.isScrolling) return;
+            if (!(e.target as HTMLElement).closest?.('[data-lenis-prevent]')) return;
+            lenis.scrollTo(lenis.animatedScroll, { immediate: true });
+        },
+        { capture: true, passive: true }
+    );
+
     document.addEventListener('click', (e: MouseEvent) => {
         const link = (e.target as HTMLElement).closest<HTMLAnchorElement>(
             'a[href^="#"]'

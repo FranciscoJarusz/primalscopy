@@ -470,6 +470,44 @@ async function main() {
     check('y la wallet lo ve enviado', d.status === 'sent' && d.note === '0xabc');
     check('sin token de admin no se tocan las ruletas', (await send('PUT', `${BASE}/api/admin/staking/wheels/lowkey`, { prizes: [] })).status === 401);
 
+    console.log('\nBoost');
+    await configurar({ quantityTiers: [{ min: 1, bonus: 0 }] });
+    owners.set('42', O);
+    await entrenar(tO, ['42'], 7);
+    pasanDias(['42'], 1);
+    await verificar();
+    check('multiplicador invalido se rechaza', (await configurar({ boost: { multiplier: 1, days: 30 } })).status === 400
+        && (await configurar({ boost: { multiplier: 2.555, days: 30 } })).status === 400);
+    check('dias invalidos se rechazan', (await configurar({ boost: { multiplier: 2, days: 0 } })).status === 400);
+    check('se crea un x2 por 30 dias', (await configurar({ boost: { multiplier: 2, days: 30, title: 'Fog Week' } })).ok);
+    cfg = await (await fetch(`${BASE}/api/staking/config`)).json();
+    check('la pagina lo ve con su titulo y su fin', cfg.boost?.multiplier === 2 && cfg.boost.title === 'Fog Week'
+        && Date.parse(cfg.boost.endsAt) - Date.parse(cfg.boost.startAt) === 30 * DAY, JSON.stringify(cfg.boost));
+    check('no puede haber dos a la vez', (await configurar({ boost: { multiplier: 3, days: 5 } })).status === 400);
+    pasanDias(['42'], 2);
+    const configPath = path.join(TMP, '_generated', 'staking', 'config.json');
+    const guardada = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    for (const b of guardada.boosts) for (const campo of ['startAt', 'endsAt']) {
+        b[campo] = new Date(Date.parse(b[campo]) - 2 * DAY).toISOString();
+    }
+    fs.writeFileSync(configPath, JSON.stringify(guardada, null, 2));
+    await verificar();
+    const del42 = async () => (await yo(tO)).stakes.find(s => s.tokenId === '42');
+    check('el dia de antes paga 30 y los 2 del boost 60', (await del42()).earned === 30 + 2 * 60, JSON.stringify(await del42()));
+    check('terminarlo antes', (await configurar({ boost: { end: true } })).ok);
+    cfg = await (await fetch(`${BASE}/api/staking/config`)).json();
+    check('ya no se ve', cfg.boost === null);
+    check('y lo ganado con el boost queda', (await del42()).earned === 150);
+    const terminado = (await (await configurar({})).json()).boosts[0];
+    check('archivarlo lo marca y no cambia lo ganado', (await configurar({ boost: { archive: terminado.id } })).ok
+        && JSON.parse(fs.readFileSync(configPath, 'utf8')).boosts[0].archived === true && (await del42()).earned === 150);
+    await configurar({ boost: { multiplier: 2, days: 3 } });
+    const corriendo = JSON.parse(fs.readFileSync(configPath, 'utf8')).boosts[1];
+    check('uno que sigue corriendo no se archiva', (await configurar({ boost: { archive: corriendo.id } })).status === 400);
+    await configurar({ boost: { end: true } });
+    d = await sacar(tO, ['42']);
+    check('sacarlo antes de tiempo pierde el boost', d.unstaked[0].earned === 3 * 30 && d.unstaked[0].bonusLost === 60, JSON.stringify(d.unstaked));
+
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });
     process.exit(fail ? 1 : 0);

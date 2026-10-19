@@ -203,6 +203,15 @@ function activosLectura() {
     return activosMemo.datos;
 }
 
+// Los boosts de la config, para creditedFog: se llama una vez por
+// entrenamiento y releer la config cada vez frenaba el ranking.
+let boostsMemo = { clave: null, datos: [] };
+function boostsLectura() {
+    const clave = claveDe(CONFIG_PATH);
+    if (clave !== boostsMemo.clave) boostsMemo = { clave, datos: readJson(CONFIG_PATH, {}).boosts ?? [] };
+    return boostsMemo.datos;
+}
+
 // Lo que depende ademas de la hora (que periodos ya terminaron, las rachas)
 // se recalcula como mucho cada TTL_PUBLICO_MS aunque no cambie nada.
 const TTL_PUBLICO_MS = 30 * 1000;
@@ -251,6 +260,7 @@ function getConfig() {
         dailyRate: saved.dailyRate ?? DEFAULT_CONFIG.dailyRate,
         periods: saved.periods ?? DEFAULT_CONFIG.periods,
         quantityTiers: saved.quantityTiers ?? DEFAULT_CONFIG.quantityTiers,
+        boosts: saved.boosts ?? [],
         catalog: DEFAULT_CONFIG.catalog
             .filter(item => !removed.includes(item.id))
             .map(item => ({ ...item, ...sinTextosViejos(savedItems.get(item.id)) }))
@@ -303,6 +313,43 @@ function updateConfig(changes = {}) {
             tiers.push({ min, bonus });
         }
         config.quantityTiers = tiers.sort((a, b) => a.min - b.min);
+    }
+
+    // Un boost arranca ahora y dura `days` dias. No se puede editar ni borrar:
+    // el FOG se calcula en el momento con la lista de boosts, asi que tocar uno
+    // que ya corrio cambiaria lo que ya se gano. Terminarlo antes solo le
+    // corta los dias que faltan.
+    if ('boost' in changes) {
+        const now = Date.now();
+        const actual = boostActivo(config.boosts, now);
+        if (changes.boost?.archive) {
+            // Solo lo esconde del admin: sigue en la lista porque el FOG que
+            // ya pago se calcula con el.
+            const boost = config.boosts.find(b => b.id === String(changes.boost.archive));
+            if (!boost) return { error: 'Unknown boost.' };
+            if (Date.parse(boost.endsAt) > now) return { error: "A boost that hasn't ended can't be archived." };
+            boost.archived = true;
+        } else if (changes.boost?.end) {
+            if (!actual) return { error: 'There is no boost running.' };
+            actual.endsAt = new Date(now).toISOString();
+        } else {
+            if (actual) return { error: 'There is already a boost running. End it first.' };
+            const multiplier = Number(changes.boost?.multiplier);
+            if (!Number.isFinite(multiplier) || multiplier <= 1 || multiplier > 10
+                || Math.round(multiplier * 100) !== multiplier * 100) {
+                return { error: 'The multiplier must be more than 1 and up to 10 (like 2 or 1.5).' };
+            }
+            const days = intEntre(changes.boost?.days, 1, 365);
+            if (days === null) return { error: 'A boost lasts between 1 and 365 days.' };
+            const title = String(changes.boost?.title || '').trim().slice(0, 40);
+            config.boosts = [...config.boosts, {
+                id: `boost-${now}`,
+                multiplier,
+                title: title || `x${multiplier} FOG`,
+                startAt: new Date(now).toISOString(),
+                endsAt: new Date(now + days * DAY_MS).toISOString()
+            }];
+        }
     }
 
     if ('catalog' in changes) {
@@ -423,6 +470,27 @@ function perDayFor(config, days) {
     return { bonus: period.bonus, perDay: Math.floor(config.dailyRate * (100 + period.bonus) / 100) };
 }
 
+// --- Boosts ----------------------------------------------------------------
+// Un evento que multiplica el FOG (ej. x2 por 30 dias). Paga mas cada dia de
+// cualquier entrenamiento que termine dentro del evento, aunque haya empezado
+// antes. Multiplica el dia entero (base + region + cantidad). Sacarlo o
+// listarlo antes de tiempo lo pierde, como el bonus (finish paga solo la base).
+
+function boostActivo(boosts = [], t = Date.now()) {
+    return boosts.find(b => Date.parse(b.startAt) <= t && t < Date.parse(b.endsAt)) ?? null;
+}
+
+// El multiplicador del dia que termina en `t`, en centesimos (x2 = 200): asi
+// la cuenta sigue siendo entera con un x1.5.
+function boostCentesimos(boosts, t) {
+    const b = boosts.find(x => Date.parse(x.startAt) < t && t <= Date.parse(x.endsAt));
+    return b ? Math.round(b.multiplier * 100) : 100;
+}
+
+function publicBoost(boost) {
+    return boost && { multiplier: boost.multiplier, title: boost.title, startAt: boost.startAt, endsAt: boost.endsAt };
+}
+
 // Lo que ve cualquiera: la tasa, los periodos y el catalogo con lo que ya se
 // puede canjear.
 function publicConfig() {
@@ -454,7 +522,8 @@ function publicConfig() {
         // Para el % de la coleccion en staking (ver collectionSupply.js).
         collectionSize: require('./collectionSupply').conocido(),
         badges: BADGES,
-        graceDays: GRACE_MS / DAY_MS
+        graceDays: GRACE_MS / DAY_MS,
+        boost: publicBoost(boostActivo(config.boosts, now))
     };
 }
 
@@ -543,17 +612,21 @@ function stakingCounter(history = readHistory(), active = activosLectura()) {
 // El FOG ganado por un entrenamiento. Cada dia completo paga la tasa base mas
 // el bonus de la region mas el del escalon por cantidad de ese dia (cuantos
 // Primals tenia la wallet en staking al cerrar ese dia). Los entrenamientos de
-// antes de los escalones no los tienen y pagan siempre `perDay`.
-function creditedFog(stake, cuenta) {
+// antes de los escalones no los tienen y pagan siempre `perDay`. Los dias que
+// terminan dentro de un boost se multiplican.
+function creditedFog(stake, cuenta, boosts = boostsLectura()) {
     const days = creditedDays(stake);
-    if (!stake.tiers?.length) return days * stake.perDay;
+    if (!stake.tiers?.length && !boosts.length) return days * stake.perDay;
     cuenta ??= contador();
     const start = Date.parse(stake.startAt);
     const base = baseRateOf(stake);
     let total = 0;
     for (let i = 1; i <= days; i++) {
-        const n = cuenta(stake.wallet, start + i * DAY_MS);
-        total += Math.floor(base * (100 + stake.bonus + tierBonus(stake.tiers, n)) / 100);
+        const t = start + i * DAY_MS;
+        const boost = boostCentesimos(boosts, t);
+        total += stake.tiers?.length
+            ? Math.floor(base * (100 + stake.bonus + tierBonus(stake.tiers, cuenta(stake.wallet, t))) * boost / 10000)
+            : Math.floor(stake.perDay * boost / 100);
     }
     return total;
 }

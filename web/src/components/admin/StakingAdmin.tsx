@@ -8,8 +8,10 @@ import {
 } from 'react-icons/fi';
 import { iconoPremio } from '@/lib/staking';
 import StakingWheelsAdmin from './StakingWheelsAdmin';
+import BoostAdmin, { type BoostGuardado } from './BoostAdmin';
 import { useApodos, walletCorta } from '@/lib/nicknames';
 import { BACKEND_URL } from '@/lib/backend';
+import { APECHAIN } from '@/lib/cultomizer/contracts';
 
 type Periodo = { days: number; bonus: number };
 type Escalon = { min: number; bonus: number };
@@ -29,6 +31,7 @@ type Config = {
     periods: Periodo[];
     quantityTiers: Escalon[];
     catalog: Premio[];
+    boosts?: BoostGuardado[];
 };
 type Resumen = {
     config: Config;
@@ -76,6 +79,9 @@ const botonChico =
 const panel =
     'flex flex-col gap-4 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50';
 const titulo = 'font-accent uppercase text-yellow text-2xl';
+// Las listas que la usan llevan data-lenis-prevent: sin eso Lenis se queda con
+// la rueda y no bajan.
+const lista = 'max-h-96 overflow-y-auto overscroll-contain pr-2';
 
 const fog = (n: number) => n.toLocaleString('en-US');
 const fecha = (iso: string) =>
@@ -111,8 +117,27 @@ const aBorrador = (c: Config): Borrador => ({
 export default function StakingAdmin({ token }: { token: string }) {
     const apodos = useApodos();
     // El apodo (si tiene) y la wallet corta al lado.
-    const quien = (w: string) =>
-        apodos[w.toLowerCase()] ? `${apodos[w.toLowerCase()]} · ${walletCorta(w)}` : walletCorta(w);
+    const quien = (w: string) => {
+        const link = (
+            <a
+                href={`${APECHAIN.explorador}/address/${w}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View on ApeScan"
+                className="hover:text-yellow underline-offset-4 hover:underline transition-all duration-300"
+            >
+                {walletCorta(w)}
+            </a>
+        );
+        return apodos[w.toLowerCase()] ? (
+            <>
+                <b className="text-white font-semibold">{apodos[w.toLowerCase()]}</b>{' '}
+                <span className="text-lightblue/60">· {link}</span>
+            </>
+        ) : (
+            link
+        );
+    };
 
     const [resumen, setResumen] = useState<Resumen | null>(null);
     const [borrador, setBorrador] = useState<Borrador | null>(null);
@@ -436,6 +461,18 @@ export default function StakingAdmin({ token }: { token: string }) {
                                 'It runs on its own every 10 minutes.'}
                         </span>
                     </div>
+                </div>
+            )}
+
+            {resumen && (
+                <div className={panel}>
+                    <BoostAdmin
+                        boosts={resumen.config.boosts ?? []}
+                        enviar={async (cambios) => {
+                            const config = await enviar(cambios);
+                            setResumen((r) => (r ? { ...r, config } : r));
+                        }}
+                    />
                 </div>
             )}
 
@@ -839,8 +876,9 @@ export default function StakingAdmin({ token }: { token: string }) {
                                 Nobody has trained yet.
                             </p>
                         ) : (
+                            <div className={lista} data-lenis-prevent>
                             <table className="w-full text-sm text-lightblue">
-                                <thead className="text-lightblue/60 text-left">
+                                <thead className="sticky top-0 bg-darkblue text-lightblue/60 text-left">
                                     <tr>
                                         <th className="font-normal pb-2">
                                             Wallet
@@ -871,13 +909,14 @@ export default function StakingAdmin({ token }: { token: string }) {
                                             <td className="py-1.5 text-right">
                                                 {fog(w.spent)}
                                             </td>
-                                            <td className="py-1.5 text-right text-yellow">
+                                            <td className="py-1.5 text-right text-yellow font-semibold">
                                                 {fog(w.balance)}
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
+                            </div>
                         )}
                     </div>
                     <div className="flex flex-col gap-5 sm:gap-8">
@@ -888,10 +927,10 @@ export default function StakingAdmin({ token }: { token: string }) {
                                     No redemptions yet.
                                 </p>
                             ) : (
-                                <ul className="text-sm text-lightblue flex flex-col gap-1.5">
+                                <ul data-lenis-prevent className={`${lista} text-sm text-lightblue flex flex-col gap-1.5`}>
                                     {resumen.redemptions.map((r) => (
                                         <li key={r.id} className="flex gap-3">
-                                            <span className="text-lightblue/60 w-28 shrink-0">
+                                            <span className="text-lightblue/60 w-32 shrink-0 whitespace-nowrap">
                                                 {fecha(r.at)}
                                             </span>
                                             <span className="font-mono">
@@ -899,7 +938,10 @@ export default function StakingAdmin({ token }: { token: string }) {
                                             </span>
                                             <span className="flex-1 text-right">
                                                 {/* El nombre de hoy: si el premio se renombro, el viejo confunde. */}
-                                                {resumen.config.catalog.find((i) => i.id === r.item)?.label ?? r.label} · {fog(r.price)} FOG
+                                                <b className="text-white font-semibold">
+                                                    {resumen.config.catalog.find((i) => i.id === r.item)?.label ?? r.label}
+                                                </b>{' '}
+                                                · <span className="text-yellow">{fog(r.price)} FOG</span>
                                             </span>
                                         </li>
                                     ))}
@@ -914,19 +956,21 @@ export default function StakingAdmin({ token }: { token: string }) {
                                     while training.
                                 </p>
                             ) : (
-                                <ul className="text-sm text-lightblue flex flex-col gap-1.5">
+                                <ul data-lenis-prevent className={`${lista} text-sm text-lightblue flex flex-col gap-1.5`}>
                                     {resumen.endings.map((e, i) => (
                                         <li key={i} className="flex gap-3">
-                                            <span className="text-lightblue/60 w-28 shrink-0">
+                                            <span className="text-lightblue/60 w-32 shrink-0 whitespace-nowrap">
                                                 {fecha(e.at)}
                                             </span>
-                                            <span>#{e.tokenId}</span>
+                                            <b className="text-white font-semibold">#{e.tokenId}</b>
                                             <span className="flex-1 text-right">
                                                 {MOTIVOS[e.reason] ?? e.reason}{' '}
-                                                · kept {fog(e.earned)} FOG
-                                                {e.bonusLost
-                                                    ? `, lost ${fog(e.bonusLost)} of bonus`
-                                                    : ''}
+                                                · kept <span className="text-yellow">{fog(e.earned)} FOG</span>
+                                                {e.bonusLost ? (
+                                                    <>
+                                                        , lost <span className="text-red-300">{fog(e.bonusLost)}</span> of bonus
+                                                    </>
+                                                ) : null}
                                             </span>
                                         </li>
                                     ))}
