@@ -1,5 +1,3 @@
-// lib/nftOwnership.js
-//
 // Lee quien es el dueño de un token, directo de ApeChain.
 //
 // Esto SIEMPRE se consulta en el momento de la operacion, nunca se cachea ni

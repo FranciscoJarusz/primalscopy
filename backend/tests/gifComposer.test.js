@@ -1,5 +1,3 @@
-// tests/gifComposer.test.js
-//
 // El armado del GIF final avanza cada capa cuadro por cuadro con un solo
 // lienzo, en vez de guardar una copia por cuadro (asi no ocupa ~1,8 GB). Este
 // test comprueba que el resultado sea el mismo que con el metodo anterior

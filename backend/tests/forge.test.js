@@ -1,5 +1,3 @@
-// tests/forge.test.js
-//
 // Prueba el Forge de punta a punta en modo de prueba: rollear, que las opciones
 // respeten las reglas, elegir, cancelar, y que un NFT tocado por el modo de
 // prueba no se pueda publicar en produccion hasta restaurarlo.

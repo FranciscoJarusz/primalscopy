@@ -1,5 +1,3 @@
-// routes/authRoutes.js
-//
 // Login por firma de wallet, en dos pasos:
 //
 //   POST /api/auth/nonce   { address }            -> { nonce, message }

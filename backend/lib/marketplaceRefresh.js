@@ -1,5 +1,3 @@
-// lib/marketplaceRefresh.js
-//
 // Le pide a los marketplaces que vuelvan a leer un NFT despues de guardarlo.
 //
 // Por que hace falta: la ficha del NFT carga la imagen desde su URL, que lleva

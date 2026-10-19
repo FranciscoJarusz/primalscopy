@@ -1,5 +1,3 @@
-// lib/winCards.js
-//
 // La tarjeta para compartir un premio de ruleta en X. El intent de X solo
 // acepta texto y un link (no se puede adjuntar una imagen), asi que el post
 // lleva un link a /staking/win/<id> y esa pagina le dice a X que muestre esta

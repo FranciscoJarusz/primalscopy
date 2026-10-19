@@ -1,5 +1,3 @@
-// lib/gifComposerWorker.js
-//
 // El hilo aparte donde corre composeGif (ver composeGifInWorker en
 // gifComposer.js). Recibe las rutas de las capas, devuelve el GIF y el primer
 // cuadro, y termina.

@@ -1,5 +1,3 @@
-// lib/promoStore.js
-//
 // Codigos promocionales: el equipo los crea desde el panel de admin (por
 // ejemplo, para postear en Discord) y cualquier wallet logueada los canjea.
 // No hace falta tener un Primal: un roll gratis puede ser lo que convenza a
@@ -88,7 +86,6 @@ function statusOf(entry) {
         : 'active';
 }
 
-// Lo que ve el panel: el codigo con su estado ya calculado.
 function summary(entry) {
     return { archived: false, ...entry, uses: entry.redemptions.length, status: statusOf(entry) };
 }

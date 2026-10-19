@@ -1,5 +1,3 @@
-// tests/robustez.test.js
-//
 // Dos cosas que antes tiraban abajo o vaciaban datos sin avisar:
 //   - un error despues de un await en una ruta (Express 4 no lo atrapaba y
 //     Node terminaba el proceso): ver lib/asyncErrors.js.

@@ -1,5 +1,3 @@
-// tests/feed.test.js
-//
 // Prueba la contabilidad del feed: se guardan las ultimas N, la que sobra se
 // borra con su JPEG, y las paginas salen de a 50. Sin el recorte, la carpeta de
 // miniaturas crece para siempre.

@@ -1,9 +1,3 @@
-// La apertura de una key o del Summon shard, como pidio el dueño: primero el
-// popup de "compra hecha" (como el del Customizer) con el boton para abrirla,
-// despues una cinta de cartas que pasa rapido y frena entre dos flechas en el
-// premio que toco, y al final ese premio en grande, con rayos y confeti. El
-// premio ya lo decidio el backend al canjear (lib/stakingWheels.js); aca solo
-// se muestra.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FiVolume2, FiVolumeX } from 'react-icons/fi';
@@ -338,7 +332,6 @@ function Cinta({
                     />
                 ))}
             </div>
-            {/* Las flechas, arriba y abajo: rebotan con cada carta que pasa. */}
             <div
                 ref={flechas}
                 className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 flex flex-col justify-between items-center py-1"
@@ -389,7 +382,6 @@ function Carta({
         >
             <div className="aspect-square grid place-items-center p-1.5">
                 {premio.kind === 'fog' || premio.kind === 'ape' ? (
-                    // El orbe de FOG o la pila de APE, con la cantidad encima.
                     <div className="relative w-full h-full grid place-items-center">
                         <img src={imagen!} alt="" className="absolute inset-0 w-full h-full object-contain p-1" draggable={false} />
                         <span
@@ -417,8 +409,6 @@ function Carta({
     );
 }
 
-// El final: la carta que toco en grande, con rayos girando detras y confeti
-// del color de su rareza.
 // El sonido del premio: notas que suben, mas cuanto mas raro (gris 1, azul 2,
 // violeta 3, dorado 4 y un brillo al final).
 function sonarPremio(chance: number) {

@@ -1,5 +1,3 @@
-// middleware/bearerToken.js
-//
 // El token del header "Authorization: Bearer <token>", o '' si no viene. Lo
 // usan las dos guardas: la del admin y la de la sesion de wallet.
 

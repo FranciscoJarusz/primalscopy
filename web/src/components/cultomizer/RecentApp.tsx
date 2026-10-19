@@ -1,15 +1,3 @@
-// Pantalla de "Recent Customizations" (isla de React).
-//
-// "Recent Customizations": las ultimas customizaciones que se publicaron
-// on-chain, para ver que esta armando la comunidad.
-//
-// Es un feed de eventos y no un listado de tokens: si alguien actualizo el
-// mismo primal tres veces, aparece tres veces, una por cada version que armo.
-// Por eso la key de cada tarjeta es el id de la entrada y nunca el tokenId.
-//
-// Las miniaturas son JPEG del primer frame y no los GIF: diez GIF de 2000px en
-// una misma pantalla son decenas de MB y la grilla tardaria una eternidad en
-// aparecer.
 import { useCallback, useEffect, useState } from 'react';
 import { scrollToTop } from '@/lib/lenis';
 import { goTo, useSearchParams } from '@/lib/navigation';
@@ -83,7 +71,6 @@ function RecentCustomizationsContent() {
     const [total, setTotal] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    // Cuanto adelanta el reloj del visitante respecto del server.
     const [clockOffsetMs, setClockOffsetMs] = useState<number>(0);
 
     const load = useCallback(async (pageToLoad: number) => {
@@ -124,7 +111,6 @@ function RecentCustomizationsContent() {
 
         const params = new URLSearchParams();
         if (backTokenId) params.set('from', backTokenId);
-        // La pagina 1 va sin parametro, para que la URL quede limpia.
         if (acotada > 1) params.set('page', String(acotada));
         const query = params.toString();
 
@@ -282,8 +268,6 @@ function RecentCustomizationsContent() {
                 </div>
             )}
 
-            {/* Paginado. Aparece solo si hay mas de una pagina: con 30
-          customizaciones en total, los botones no aportan nada. */}
             {!cargando && !fallo && demo === 0 && totalPages > 1 && (
                 <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 font-accent uppercase text-sm text-lightblue">
                     <button
@@ -315,7 +299,4 @@ function RecentCustomizationsContent() {
     );
 }
 
-// El envoltorio de Suspense que habia aca existia solo porque el
-// useSearchParams de Next lo exigia para poder prerenderizar. El equivalente
-// propio lee la URL en un efecto y no suspende, asi que no hace falta.
 export default RecentCustomizationsContent;

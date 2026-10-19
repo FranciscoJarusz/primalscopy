@@ -1,7 +1,3 @@
-// El mapa de staking: cuatro regiones (el mapa "Primal Cult Map2" que paso el
-// usuario), cada una con su periodo de entrenamiento. Tocar una region abre el
-// panel para mandar Primals ahi.
-//
 // Todo es un SVG: las costas, las regiones, las etiquetas y los Primals
 // escalan juntos. La camara es el viewBox: al cargar baja desde el mapa entero,
 // al elegir una region viaja hasta ella y la encuadra al lado del panel, y al
@@ -189,7 +185,6 @@ export default function Mapa({
     const svgBordes = useRef<SVGSVGElement>(null);
     const lienzo = useRef<HTMLCanvasElement>(null);
     const capa = useRef<CapaPrimals | null>(null);
-    // Una capa de sombra por region (ver mas abajo), que se mueve como el mapa.
     const sombras = useMemo(
         () =>
             Object.fromEntries(
@@ -203,7 +198,6 @@ export default function Mapa({
         [svgBordes, svgArriba],
         (v, w, h) => capa.current?.setVista(v, w, h)
     );
-    // La region (o el Primal) bajo el mouse, y donde mostrar su cartelito.
     const [encima, setEncima] = useState<{
         id: string;
         x: number;
@@ -216,7 +210,6 @@ export default function Mapa({
         y: number;
     } | null>(null);
     const [foco, setFoco] = useState<string | null>(null);
-    // Las ondas que deja cada toque, en coordenadas del mundo.
     const [ondas, setOndas] = useState<
         { n: number; x: number; y: number; color: string }[]
     >([]);
@@ -228,7 +221,6 @@ export default function Mapa({
         return periodo ? [{ ...z, periodo }] : [];
     });
 
-    // La capa de los Primals (un canvas, ver capaPrimals.ts).
     useLayoutEffect(() => {
         if (!lienzo.current) return;
         const c = new CapaPrimals(lienzo.current, miniatura);
@@ -300,7 +292,6 @@ export default function Mapa({
         });
     }, [enfocado, medido, volarA, clavePoblacion]);
 
-    // El Primal bajo un punto de la pantalla.
     const primalEn = (p: { x: number; y: number }) => {
         const m = camara.aMundo(p);
         return capa.current?.enPunto(m.x, m.y) ?? null;
@@ -389,7 +380,6 @@ export default function Mapa({
                 </defs>
 
                 <g transform={`translate(${DX} ${DY})`}>
-                    {/* El mar: franjas cada vez mas claras hacia la costa. */}
                     <rect
                         x={-DX}
                         y={-DY}
@@ -406,7 +396,6 @@ export default function Mapa({
                         />
                     ))}
 
-                    {/* Las regiones para tocar. */}
                     {zonas.map((z) => (
                         <path
                             key={z.id}
@@ -529,7 +518,6 @@ export default function Mapa({
                 className="absolute inset-0 block w-full h-full pointer-events-none"
             >
                 <g transform={`translate(${DX} ${DY})`}>
-                    {/* La onda de cada toque. */}
                     {ondas.map((o) => (
                         <g key={o.n} style={enPantalla(o.x, o.y)}>
                             <circle
@@ -558,8 +546,6 @@ export default function Mapa({
                         </g>
                     ))}
 
-                    {/* Los nombres y el periodo de cada region. El de la
-                        elegida crece con un rebote. */}
                     <g className="font-accent uppercase">
                         {zonas.map((z) => {
                             const activa = z.id === elegida;
@@ -641,7 +627,6 @@ export default function Mapa({
                 </g>
             </svg>
 
-            {/* El cartelito del Primal o de la region bajo el mouse. */}
             {primal ? (
                 <div
                     className="animate-aparece pointer-events-none absolute z-10 -translate-x-1/2 translate-y-[-150%] bg-yellow text-darkblue h-8 flex items-center font-accent uppercase text-sm leading-none px-3 pb-[0.38em] rounded-lg whitespace-nowrap shadow-lg shadow-darkblue/60"
@@ -916,7 +901,6 @@ function useCamara(
     const volarRef = useRef(volar);
     volarRef.current = volar;
 
-    // Encuadra un rectangulo del mapa en la parte libre de la pantalla.
     const volarA = useCallback((c: Caja) => {
         const { w, h } = tam.current;
         const l = libre(w, h);
@@ -1054,7 +1038,6 @@ function useCamara(
             cubrir() * 4
         );
         if (Math.abs(dy) < 50 || e.ctrlKey) {
-            // Touchpad: directo.
             cortarVuelo();
             aplicar(anclada(escala, ancla));
             return;
@@ -1072,7 +1055,6 @@ function useCamara(
         const r = caja.current!.getBoundingClientRect();
         return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
-    // De un punto de la pantalla a coordenadas del SVG.
     const aMundo = (p: { x: number; y: number }) => {
         const a = actual();
         return {

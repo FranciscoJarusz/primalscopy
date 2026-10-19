@@ -1,5 +1,3 @@
-// lib/stakingJob.js
-//
 // El chequeo periodico del staking: pregunta a la cadena quien es el dueño de
 // cada Primal en entrenamiento y a OpenSea cuales estan listados, y se lo pasa
 // a stakingStore.applyVerification (ver el porque alla).

@@ -1,5 +1,3 @@
-// routes/promoRoutes.js
-//
 // El canje de codigos promocionales (ver lib/promoStore.js). Hace falta la
 // sesion firmada, para saber a que wallet darle el premio, pero no un Primal.
 //

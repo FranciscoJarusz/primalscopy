@@ -8,15 +8,8 @@ import SelectorApp from "@/components/cultomizer/SelectorApp";
 // wallets de celular) hay que levantar el relay y puede pasar varios segundos.
 const ESPERA_RECONEXION_MS = 8000;
 
-/// Esta pantalla solo tiene sentido con wallet conectada: sin eso no hay NFTs
-/// que listar.
-///
-/// Antes, si la wallet no aparecia en 2 segundos, se volvia al Hero. En el
-/// celular eso era un bucle: WalletConnect tardaba mas en reconectar, el Hero
-/// la veia conectada y mandaba de nuevo aca, y de aca se volvia al Hero. Ahora
-/// nunca se redirige: mientras se espera se muestra "Connecting wallet...", y
-/// si no llega se ofrece conectarla aca mismo. Si la reconexion llega tarde,
-/// la lista aparece sola, porque `isConnected` es reactivo.
+/// Nunca redirige al Hero si la wallet tarda: con WalletConnect eso armaba un
+/// bucle entre las dos pantallas.
 export default function SelectorGate() {
   const { isConnected, status } = useAccount();
   const demo = demoCount();

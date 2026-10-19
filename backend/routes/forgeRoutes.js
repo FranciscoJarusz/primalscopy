@@ -1,5 +1,3 @@
-// routes/forgeRoutes.js
-//
 // El Forge: rolls que cambian los traits de un NFT.
 // Ver controllers/forgeController.js.
 

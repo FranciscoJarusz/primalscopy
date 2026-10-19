@@ -1,5 +1,3 @@
-// lib/assetStore.js
-//
 // Donde viven la metadata y las imagenes publicadas de los NFTs.
 //
 // Railway permite un solo volumen por servicio y el nuestro esta montado en

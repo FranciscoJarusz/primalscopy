@@ -1,41 +1,3 @@
-// lib/stakingStore.js
-//
-// Soft staking de Primals: el holder pone sus Primals a "entrenar" 7, 14, 30 o
-// 90 dias sin mandarlos a ningun contrato, y cada dia completo suma FOG a su
-// wallet. Reglas del dueño (octubre de 2026):
-//
-//   - Opt-in: el que no los pone a entrenar no suma.
-//   - FOG por dia igual para todos, con bonus por periodo (14 dias +10%, 30
-//     dias +30%, 90 dias +60%) y un bonus por cantidad que se suma: cuantos
-//     mas Primals tiene la wallet en staking ese dia, mas suma cada uno (2 a 4
-//     +5%, ... 20 o mas +20%). La tasa, los bonus y los precios se cambian
-//     desde el admin.
-//   - Se acredita dia a dia y es de la wallet, no del NFT.
-//   - Se puede sacar antes de tiempo (unstake), pero se pierde el bonus de la
-//     region: la wallet se queda solo con el FOG base de los dias que hizo.
-//     Listarlo cuenta igual que sacarlo; si no, listar y deslistar seria un
-//     unstake gratis. Venderlo o transferirlo lo saca y conserva todo.
-//   - Al terminar el periodo deja de sumar: hay que volver a la pagina a
-//     entrenarlo de nuevo. Es el gancho para que la gente vuelva.
-//
-// Como no hay contrato, nadie avisa cuando un Primal cambia de dueño. Cada
-// tanto verifyStakes() pregunta a la cadena quien es el dueño de cada Primal
-// en entrenamiento y a OpenSea cuales estan listados. Cada entrenamiento
-// guarda `verifiedAt`, la ultima vez que se confirmo que seguia en regla, y
-// solo cuentan los dias completos hasta ahi. Asi un Primal vendido nunca suma
-// un dia que no se pudo verificar, y si la cadena u OpenSea no contestan un
-// rato no se pierde nada: el proximo chequeo bueno acredita los dias de golpe.
-//
-// La tasa, el bonus de la region y los escalones por cantidad de cada
-// entrenamiento quedan fijos al empezar: cambiarlos en el admin vale para los
-// entrenamientos nuevos, no para los que ya estan corriendo. Lo que si cambia
-// dia a dia es cuantos Primals tiene la wallet en staking, y con eso el
-// escalon que le toca.
-//
-// Todo vive en JSONs del volumen. Las funciones que escriben son sincronicas
-// a proposito, como en forgeStore: leer, decidir y escribir sin un await en el
-// medio hace que dos canjes a la vez no puedan gastar el mismo FOG.
-
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -65,12 +27,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // la racha vuelve a cero, pero las insignias ganadas quedan.
 const BADGES = [90, 180, 365];
 const GRACE_MS = 3 * DAY_MS;
-// Motivos de salida que pierden el bonus si el periodo no habia terminado.
 const LOSES_BONUS = new Set(['unstaked', 'listed']);
 const TOKEN_ID_REGEX = /^\d{1,10}$/;
 
-// Lo que propuso el dueño. Arranca apagado: se prende desde el admin cuando
-// este todo listo, y apagarlo solo frena los entrenamientos nuevos.
 const DEFAULT_CONFIG = {
     enabled: false,
     dailyRate: 30,
@@ -185,7 +144,6 @@ function readHistory() {
     return historial.datos;
 }
 
-// stakingCounter() de los archivos como estan ahora.
 let contadorMemo = { clave: null, cuenta: null };
 function contador() {
     const clave = claveDe(HISTORY_PATH, ACTIVE_PATH);
@@ -227,14 +185,12 @@ const rankingMemo = conTtl();
 const totalesMemo = conTtl();
 const mapaMemo = conTtl();
 
-// --- Configuracion ---------------------------------------------------------
 
 // Descripciones que tenian los premios por defecto y quedaron mal. Guardar la
 // config desde el admin guarda el catalogo entero, con estas incluidas: si la
 // guardada es una de estas, se usa la de DEFAULT_CONFIG. Una que alguien
 // escribio a mano no se toca.
 const DESCRIPCIONES_VIEJAS = {
-    // No acuña nada: sortea Primals que ya tiene el vault (Trout, 2026-10-16).
     'summon-shard': ['Summon a new Primal']
 };
 
@@ -369,7 +325,6 @@ function updateConfig(changes = {}) {
             }
             if ('description' in change) item.description = String(change.description || '').trim().slice(0, 120);
             if ('enabled' in change) item.enabled = Boolean(change.enabled);
-            // Cuantos quedan para vender; vacio es sin limite.
             if ('stock' in change) {
                 if (change.stock === null || change.stock === '') item.stock = null;
                 else {
@@ -408,20 +363,16 @@ function updateConfig(changes = {}) {
     return { config };
 }
 
-// --- Iconos de los premios -------------------------------------------------
 
 function borrarIcono(file) {
     if (!file || !ICON_FILE_REGEX.test(file)) return;
     fs.rm(path.join(ICONS_DIR, file), { force: true }, () => {});
 }
 
-// La ruta de un icono subido, o null si el nombre no es uno de los nuestros.
 function iconPath(file) {
     return ICON_FILE_REGEX.test(String(file)) ? path.join(ICONS_DIR, file) : null;
 }
 
-// Pasa la imagen a WebP de 256 px como maximo (un GIF animado sigue animado) y
-// la deja como icono del premio. Devuelve { config } o { error, status }.
 async function setCatalogIcon(id, buffer) {
     if (!getConfig().catalog.some(i => i.id === id)) return { error: `Unknown reward: ${id}.`, status: 404 };
     let webp;
@@ -449,7 +400,6 @@ async function setCatalogIcon(id, buffer) {
     return { config };
 }
 
-// Vuelve al icono que viene con el sitio.
 function clearCatalogIcon(id) {
     const config = getConfig();
     const item = config.catalog.find(i => i.id === id);
@@ -491,12 +441,8 @@ function publicBoost(boost) {
     return boost && { multiplier: boost.multiplier, title: boost.title, startAt: boost.startAt, endsAt: boost.endsAt };
 }
 
-// Lo que ve cualquiera: la tasa, los periodos y el catalogo con lo que ya se
-// puede canjear.
 function publicConfig() {
     const config = getConfig();
-    // Cuantos Primals estan entrenando en cada periodo: el mapa de /staking lo
-    // muestra en cada zona.
     const now = Date.now();
     const active = activosLectura();
     const training = {};
@@ -519,7 +465,6 @@ function publicConfig() {
                 return { ...item, status, redeemable: status === 'available', wheel: wheels.WHEEL_ITEMS.includes(item.id) };
             }),
         totals: globalTotals(active, now),
-        // Para el % de la coleccion en staking (ver collectionSupply.js).
         collectionSize: require('./collectionSupply').conocido(),
         badges: BADGES,
         graceDays: GRACE_MS / DAY_MS,
@@ -543,7 +488,6 @@ function trainingByPeriod() {
     });
 }
 
-// --- Entrenamientos --------------------------------------------------------
 
 function readActive() {
     return readJson(ACTIVE_PATH, {});
@@ -560,7 +504,6 @@ function creditedDays(stake) {
     return Math.max(0, Math.floor((until - Date.parse(stake.startAt)) / DAY_MS));
 }
 
-// El bonus del escalon que le toca a `count` Primals en staking a la vez.
 function tierBonus(tiers = [], count) {
     let bonus = 0;
     for (const t of tiers) if (count >= t.min) bonus = t.bonus;
@@ -592,7 +535,6 @@ function stakingCounter(history = readHistory(), active = activosLectura()) {
         w.starts.sort((a, b) => a - b);
         w.ends.sort((a, b) => a - b);
     }
-    // Cuantos valores de la lista ordenada son <= t (o < t).
     const hasta = (list, t, incluido) => {
         let lo = 0;
         let hi = list.length;
@@ -752,8 +694,7 @@ function applyVerification({ owners, listings, checkedAt }) {
         if (Date.parse(stake.startAt) >= checkedAt || !owners.has(tokenId)) continue;
         // Sin dueño es que ese ownerOf fallo (el multicall deja fallar uno
         // solo): no es una venta. Queda para el proximo chequeo, como cuando
-        // se cae la cadena entera. Antes contaba como "transferred" y sacaba
-        // del entrenamiento Primals que nadie habia vendido.
+        // se cae la cadena entera.
         const owner = owners.get(tokenId);
         if (!owner) continue;
 
@@ -809,7 +750,6 @@ function unstake(wallet, tokenIds, { ownedIds }) {
     return { unstaked, rejected };
 }
 
-// --- Insignias -------------------------------------------------------------
 
 // Los tramos en que cada wallet tuvo al menos un Primal en staking, con los
 // huecos de hasta GRACE_MS unidos. Sale del historial y de los activos: no
@@ -882,9 +822,6 @@ function publicStake(stake, now = Date.now(), cuenta) {
     };
 }
 
-// El saldo y los Primals entrenando de una wallet, los que terminaron su
-// periodo y se pueden volver a mandar (`restake`: de los ultimos 30 dias, con
-// el periodo que hicieron) y las insignias.
 function walletSummary(wallet) {
     const key = wallet.toLowerCase();
     const now = Date.now();
@@ -923,8 +860,6 @@ function walletSummary(wallet) {
     };
 }
 
-// Lo publico de cada wallet para el ranking de /stats: el saldo de FOG y las
-// insignias ganadas. Solo las wallets que alguna vez stakearon.
 function leaderboard() {
     return rankingMemo(claveDe(ACTIVE_PATH, WALLETS_PATH, HISTORY_PATH), () => {
         const now = Date.now();
@@ -932,7 +867,6 @@ function leaderboard() {
         const wallets = readWallets();
         const streaks = streaksByWallet(readHistory(), active, now);
         const cuenta = contador();
-        // Lo que va sumando cada wallet con sus entrenamientos en curso.
         const enCurso = {};
         for (const stake of Object.values(active)) {
             enCurso[stake.wallet] = (enCurso[stake.wallet] ?? 0) + creditedFog(stake, cuenta);
@@ -950,8 +884,6 @@ function leaderboard() {
     });
 }
 
-// Los numeros globales de /staking: Primals en staking ahora y FOG ganado en
-// total, contando lo que van sumando los entrenamientos en curso.
 function globalTotals(active, now) {
     return totalesMemo(claveDe(ACTIVE_PATH, WALLETS_PATH, HISTORY_PATH), () => {
         const enCurso = Object.values(active);
@@ -964,7 +896,6 @@ function globalTotals(active, now) {
     });
 }
 
-// --- Canjes ----------------------------------------------------------------
 
 // Devuelve { redemption, balance } o { error, reason, status }.
 function redeem(wallet, itemId) {
@@ -996,12 +927,10 @@ function redeem(wallet, itemId) {
     };
     const granted = grant.grant(key, redemption.id, item);
     if (granted?.error) return { error: granted.error, reason: 'sold-out', status: 409 };
-    // Uno menos en stock (si tiene limite).
     if (Number.isInteger(item.stock)) {
         item.stock -= 1;
         guardar(CONFIG_PATH, config);
     }
-    // Una ruleta que dio FOG: se acredita junto con el cobro de la key.
     const fog = granted?.fog ?? 0;
 
     const totals = wallets[key] || { earned: 0, spent: 0 };
@@ -1014,10 +943,7 @@ function redeem(wallet, itemId) {
         ...(granted?.delivery ? { delivery: granted.delivery } : {}) };
 }
 
-// --- Premios de afuera de la tienda (codigos promocionales) -----------------
 
-// Suma FOG a una wallet sin staking de por medio. `reason` queda en el
-// historial (por ejemplo "promo:DISCORD5K").
 function grantFog(wallet, amount, reason) {
     const key = wallet.toLowerCase();
     const wallets = readWallets();
@@ -1028,8 +954,6 @@ function grantFog(wallet, amount, reason) {
     return { fog: amount };
 }
 
-// Una apertura gratis de una ruleta. Devuelve { win, item } o { error } si no
-// queda nada para ganar.
 function spinWheel(wallet, itemId, reason) {
     const key = wallet.toLowerCase();
     if (!wheels.isAvailable(itemId)) return { error: 'That reward is sold out right now.' };
@@ -1041,7 +965,6 @@ function spinWheel(wallet, itemId, reason) {
     return { win: result.win, item: { id: itemId, label: item?.label ?? itemId, icon: item?.icon } };
 }
 
-// --- Admin -----------------------------------------------------------------
 
 function adminSummary() {
     const active = activosLectura();

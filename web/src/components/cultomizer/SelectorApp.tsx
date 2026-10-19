@@ -76,9 +76,6 @@ export default function SelectorPage({ demo }: { demo?: number }) {
         }
     }, [address, nfts]);
 
-    // El customizer es una ruta de este mismo proyecto. Antes esto miraba una
-    // variable de entorno para decidir si saltar a otro dominio, porque vivian
-    // separados.
     const handleSelectNft = (tokenId: string) => {
         goTo(`/cultomizer/edit?tokenId=${tokenId}`);
     };

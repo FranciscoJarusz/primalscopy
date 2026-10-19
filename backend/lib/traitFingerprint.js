@@ -1,5 +1,3 @@
-// lib/traitFingerprint.js
-//
 // Identifica un trait por su contenido y no por su ruta.
 //
 // Hace falta porque desde /admin se pueden renombrar traits y moverlos entre

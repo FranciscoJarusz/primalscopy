@@ -1,5 +1,3 @@
-// lib/gifComposer.js
-//
 // Compone las capas de traits en un GIF animado, del lado del servidor.
 //
 // Por que en el servidor y no aceptar el GIF que ya genera el navegador: si el
@@ -22,7 +20,6 @@ const { GIFEncoder, quantize, applyPalette } = require('gifenc');
 const SIZE = 2000;
 const DEFAULT_DELAY = 70;
 
-// --- Operaciones sobre buffers RGBA -----------------------------------------
 
 function clearRect(buf, width, { left, top, width: w, height: h }) {
     for (let y = top; y < top + h; y++) {
@@ -73,7 +70,6 @@ function compositeOver(base, top) {
     }
 }
 
-// --- Carga de capas ---------------------------------------------------------
 
 function loadLayer(filePath) {
     const buf = fs.readFileSync(filePath);
@@ -170,7 +166,6 @@ function componerCuadros(layers, totalFrames) {
     return composed;
 }
 
-// --- API --------------------------------------------------------------------
 
 /**
  * Compone las capas (en orden, de atras hacia adelante) en un GIF animado.
@@ -187,12 +182,8 @@ function composeGif(layerPaths, { size = SIZE, quality = 10, onFirstFrame = null
     }
 
     // Cada capa se lee comprimida (unos KB) y sus cuadros se decodifican de a
-    // uno, recien cuando hacen falta. Antes se decodificaban todos y se
-    // guardaba una copia del lienzo por cada cuadro de cada capa: con 7 capas
-    // de 6 cuadros a 2000x2000 eran ~1,8 GB de memoria para un solo GIF, y eso
-    // era lo que tenia la RAM del server en 1-2,6 GB. Ahora: un lienzo por capa
-    // (7 x 16 MB) mas los cuadros de salida. El GIF que sale es el mismo byte a
-    // byte.
+    // uno, recien cuando hacen falta: decodificarlos todos de entrada eran
+    // ~1,8 GB de memoria por GIF.
     const layers = layerPaths.map(abrirCapa);
 
     // Todas las capas son del mismo tamaño en esta coleccion, pero si alguna

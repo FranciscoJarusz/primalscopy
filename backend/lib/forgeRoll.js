@@ -1,10 +1,8 @@
-// lib/forgeRoll.js
-//
 // Las reglas de un roll del Forge, sin nada de HTTP ni disco:
 //
 //   - Entran 6 categorias. Effect no: todos los Primals tienen "Standart"
 //     salvo el #15, cuyo Morale Amulet no tiene arte, asi que rollearla no
-//     cambiaria nada y el #15 podria perder su amuleto. Lo decidio el dueño.
+//     cambiaria nada y el #15 podria perder su amuleto.
 //   - Se pueden conservar hasta 3; el resto se sortea.
 //   - Salen 2 opciones distintas entre si. Cada trait sorteado sale segun la
 //     rareza original de la coleccion, y nunca repite el valor que el NFT ya

@@ -1,5 +1,3 @@
-// lib/primalThumbs.js
-//
 // Miniaturas de los Primals para el mapa de /staking, que muestra a todos los
 // que estan entrenando dispersos en su region: pueden ser cientos a la vez.
 //

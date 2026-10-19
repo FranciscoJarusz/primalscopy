@@ -1,5 +1,3 @@
-// controllers/adminController.js
-//
 // CRUD de traits sobre el filesystem. Todo lo que se escribe cae dentro de
 // TRAITS_PATH, que en producción es un volumen persistente de Railway.
 

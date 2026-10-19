@@ -1,5 +1,3 @@
-// lib/traitRarity.js
-//
 // Rareza de la coleccion y sorteo de traits para los rolls del Forge.
 //
 // Hay dos numeros distintos por trait, y conviene no mezclarlos:
@@ -8,7 +6,7 @@
 //     color con que se muestra (Common, Rare, Super Rare...).
 //   - Las odds del roll (`rollOdds`, y lo que usa `pick`): con que
 //     probabilidad sale en el Forge. Los traits raros salen MENOS que su
-//     rareza en la coleccion, segun los rangos que fijo el dueño (ROLL_ODDS);
+//     rareza en la coleccion, segun los rangos de ROLL_ODDS;
 //     lo que se les saca va a los comunes.
 //
 // Los conteos salen de data/trait-rarity.json, una foto fija que genera
@@ -19,8 +17,7 @@ const path = require('path');
 
 const SNAPSHOT_PATH = path.join(__dirname, '..', 'data', 'trait-rarity.json');
 
-// Odds de un roll para cada color de rareza, por trait (fijadas por el dueño,
-// 2026-09-27). Los cortes `desde`/`hasta` son los mismos que usa el front para
+// Odds de un roll para cada color de rareza, por trait. Los cortes `desde`/`hasta` son los mismos que usa el front para
 // los colores (web/src/components/forge/rareza.ts): si cambian alla, cambiar
 // aca. Dentro de cada color, un trait cae en el rango en proporcion a su
 // rareza: el mas raro cerca de `min`, el menos raro cerca de `max`.

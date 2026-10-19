@@ -1,8 +1,3 @@
-// lib/jsonFiles.js
-//
-// Leer y escribir los JSON del volumen. Antes cada store tenia su copia de
-// estas funciones (staking, ruletas, codigos, Forge, apodos).
-
 const fs = require('fs');
 const path = require('path');
 const { writeAtomic } = require('./assetStore');
@@ -30,8 +25,7 @@ function appendJsonLine(file, entry) {
 
 // Un historial .jsonl (un JSON por linea, solo se le agregan lineas). Una
 // linea rota, por ejemplo si el proceso murio a mitad de un append, se saltea
-// y se avisa: antes un solo error devolvia el historial vacio, y con eso
-// desaparecian rachas e insignias y cambiaban los saldos del staking.
+// y se avisa: devolver el historial vacio cambiaria los saldos del staking.
 function readJsonLines(file, label = path.basename(file)) {
     let text;
     try {

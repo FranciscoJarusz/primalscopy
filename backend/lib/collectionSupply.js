@@ -1,5 +1,3 @@
-// lib/collectionSupply.js
-//
 // Cuantos Primals hay. Sale de la cadena (totalSupply del contrato) y no de un
 // numero fijo: el dueño puede subir el supply (setSupply) y nada tiene que
 // quedar desfasado. RESPALDO es lo que se usa hasta la primera lectura o si

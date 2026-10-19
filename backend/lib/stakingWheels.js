@@ -1,23 +1,3 @@
-// lib/stakingWheels.js
-//
-// Las ruletas de la tienda de FOG: LOWKEY, HIGHKEY, FOGKEY y el Summon shard.
-// Reglas del dueño (octubre de 2026):
-//
-//   - La key se abre apenas se compra: no hay inventario de keys sin abrir.
-//   - Cada key tiene su pozo de premios (NFTs de otras colecciones, APE, FOG),
-//     cargado desde el admin con su imagen, probabilidad y stock.
-//   - No hay "no win": lo peor que toca es un poco de FOG (1000 por defecto).
-//   - El Summon shard es la misma ruleta, pero los premios son los Primals
-//     que tiene el vault del proyecto: se leen de la cadena, no se cargan.
-//
-// El premio se decide aca, con el azar del servidor, en el momento del canje.
-// La animacion de la pagina solo lo muestra. El FOG se acredita al toque; los
-// NFTs, los APE y los Primals quedan como entrega pendiente hasta que el admin
-// los manda desde la wallet del proyecto y los marca como enviados.
-//
-// Las funciones que escriben son sincronicas, como en stakingStore: el canje
-// lee, sortea y descuenta stock sin un await en el medio.
-
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -74,7 +54,6 @@ function vaultPrizes(wheel, wins = readWins()) {
         }));
 }
 
-// Lo que puede tocar ahora en una ruleta: los premios con stock y peso.
 function pool(itemId, data = readWheels(), wins = readWins()) {
     const wheel = data.wheels[itemId];
     if (!wheel) return [];
@@ -193,18 +172,15 @@ function spin(wallet, itemId, redemptionId) {
     return { win, fog: prize.kind === 'fog' ? prize.amount : 0 };
 }
 
-// Un premio por su id (para la tarjeta de compartir), o null.
 function findWin(id) {
     return readWins().find(w => w.id === id) ?? null;
 }
 
-// Los premios que gano una wallet, del ultimo al primero.
 function winsOf(wallet) {
     const key = wallet.toLowerCase();
     return readWins().filter(w => w.wallet === key).reverse().slice(0, 50);
 }
 
-// --- Vault -------------------------------------------------------------------
 
 // Lee de la cadena que Primals tiene el vault. Lo llama el chequeo periodico
 // (stakingJob) y el admin. `getTokenOwners` y `totalSupply` vienen de afuera
@@ -222,7 +198,6 @@ async function refreshVault({ getTokenOwners, totalSupply }) {
     return { tokenIds };
 }
 
-// --- Admin ---------------------------------------------------------------------
 
 function adminWheels() {
     const data = readWheels();
@@ -278,7 +253,6 @@ function updateWheel(itemId, { prizes, vaultWeight } = {}) {
         nuevos.push({ id, label, kind: p.kind, amount, weight, stock, image: anterior?.image ?? null });
     }
 
-    // Las imagenes de los premios que se sacaron ya no se usan.
     for (const viejo of wheel.prizes) {
         if (viejo.image && !nuevos.some(n => n.id === viejo.id)) borrarImagen(viejo.image);
     }
@@ -315,7 +289,6 @@ function setWinStatus(id, { status, note } = {}) {
     return { ok: true };
 }
 
-// --- Imagenes de los premios -------------------------------------------------------
 
 function borrarImagen(file) {
     if (!file || !IMAGE_FILE_REGEX.test(file)) return;
@@ -326,7 +299,6 @@ function imagePath(file) {
     return IMAGE_FILE_REGEX.test(String(file)) ? path.join(IMAGES_DIR, file) : null;
 }
 
-// Pasa la imagen a WebP de 384 px como maximo (un GIF animado sigue animado).
 async function setPrizeImage(itemId, prizeId, buffer) {
     if (!readWheels().wheels[itemId]?.prizes.some(p => p.id === prizeId)) return { error: 'Unknown prize. Save the wheel first.', status: 404 };
     let webp;

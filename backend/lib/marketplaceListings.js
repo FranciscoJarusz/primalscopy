@@ -1,12 +1,5 @@
-// lib/marketplaceListings.js
-//
-// Que Primals estan listados a la venta ahora mismo. El staking lo usa porque
-// un Primal listado no puede entrenar (regla del dueño): el que lo pone a la
-// venta sale del entrenamiento.
-//
-// Solo OpenSea. Magic Eden dejo de soportar ApeChain (en octubre de 2026 su
-// API para la red ya respondia 503, y despues Trout confirmo que ahora es solo
-// Solana): no hay otra fuente que sumar.
+// Un Primal listado no puede entrenar. Solo OpenSea: Magic Eden ya no soporta
+// ApeChain.
 //
 // Se pide la coleccion entera y no token por token: son un par de paginas
 // (117 listados de 51 tokens al probarlo), contra un pedido por Primal en

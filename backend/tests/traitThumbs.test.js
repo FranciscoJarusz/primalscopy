@@ -1,5 +1,3 @@
-// tests/traitThumbs.test.js
-//
 // Prueba las miniaturas de traits: que salgan animadas y chicas, que se
 // guarden y no se regeneren de gusto, que se regeneren si el trait original
 // cambia, y que no se pueda pedir nada fuera de la carpeta de traits.

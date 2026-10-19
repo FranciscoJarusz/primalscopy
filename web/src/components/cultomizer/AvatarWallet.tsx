@@ -1,5 +1,3 @@
-// src/components/AvatarWallet.tsx
-//
 // La foto de la wallet. Si ya sabemos qué Primal tiene, ese; si no, un dibujo
 // hecho con la propia dirección, que sale al instante y no pide nada a la red.
 import { useEffect, useState } from "react";

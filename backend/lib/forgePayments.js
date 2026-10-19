@@ -1,5 +1,3 @@
-// lib/forgePayments.js
-//
 // El cobro del Forge: cada roll se paga con una transferencia de APE (moneda
 // nativa de ApeChain) a la wallet del treasury. No hay contrato: el usuario
 // manda la transferencia desde su wallet y despues nos pasa el hash, y este

@@ -1,5 +1,3 @@
-// lib/traitThumbs.js
-//
 // Miniaturas de los traits para las grillas (customizer, panel de admin).
 //
 // Cada trait es un GIF animado de 2000x2000 que en la grilla se muestra a unos
@@ -102,7 +100,6 @@ function mtime(archivo) {
     }
 }
 
-// Devuelve la ruta en disco de la miniatura, generandola si hace falta.
 async function miniatura(relativa, tamano = 'chica') {
     const config = TAMANOS[tamano];
     if (!config) throw httpError(404, 'Tamaño de miniatura invalido.');
@@ -136,7 +133,6 @@ async function miniatura(relativa, tamano = 'chica') {
     return generando.get(destino);
 }
 
-// Rutas relativas de todos los traits, fuera de _generated.
 function listarTraits(dir = TRAITS_PATH, base = '') {
     const out = [];
     for (const entrada of fs.readdirSync(dir, { withFileTypes: true })) {

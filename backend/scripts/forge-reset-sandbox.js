@@ -1,5 +1,3 @@
-// scripts/forge-reset-sandbox.js
-//
 // Deshace lo que el modo de prueba del Forge escribio en este volumen: cada NFT
 // marcado vuelve a su metadata, imagen y seleccion de antes de la primera
 // prueba, y se le borra la marca. Tambien descarta su roll pendiente.

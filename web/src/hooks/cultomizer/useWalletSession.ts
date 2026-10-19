@@ -1,5 +1,3 @@
-// src/hooks/useWalletSession.ts
-//
 // Sesion probada con el backend.
 //
 // Conectar la wallet (lo que hace la pantalla de inicio) NO prueba nada ante

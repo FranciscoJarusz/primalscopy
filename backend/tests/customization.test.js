@@ -1,5 +1,3 @@
-// tests/customization.test.js
-//
 // Prueba el guardado de una customizacion de punta a punta.
 //
 // El server corre DENTRO de este proceso para poder sustituir la consulta de

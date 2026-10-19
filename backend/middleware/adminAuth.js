@@ -1,5 +1,3 @@
-// middleware/adminAuth.js
-//
 // Auth simple por token compartido. No hay usuarios ni roles: el panel es para
 // el equipo que administra la colección, así que alcanza con un secreto en una
 // variable de entorno de Railway.

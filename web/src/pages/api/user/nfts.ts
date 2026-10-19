@@ -121,12 +121,6 @@ async function fetchMetadata(
     return out;
 }
 
-/// Los NFTs de la coleccion que tiene una wallet, con su metadata.
-///
-/// Reemplaza a las tres rutas que habia antes (nfts-simple, nfts-apechain y
-/// nfts-apechain-optimized), que hacian lo mismo con estrategias distintas y
-/// se llamaban en cascada. Las otras dos barrian la coleccion de a un token por
-/// request: por eso la carga tardaba ~18 segundos.
 export const GET: APIRoute = async ({ url }) => {
     const address = url.searchParams.get('address');
     if (!address) {

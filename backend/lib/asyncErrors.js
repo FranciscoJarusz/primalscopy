@@ -1,5 +1,3 @@
-// lib/asyncErrors.js
-//
 // Express 4 no espera a los handlers async: si uno tira despues de un await,
 // el rechazo no llega a ningun manejador de errores. La request queda colgada
 // y Node, con un rechazo sin atrapar, termina el proceso entero (es lo que

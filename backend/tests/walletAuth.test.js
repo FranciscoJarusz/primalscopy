@@ -1,5 +1,3 @@
-// tests/walletAuth.test.js
-//
 // Prueba del login por firma y del guard de propiedad.
 //
 // Levanta el server real en un puerto aparte y le pega por HTTP, asi se prueba

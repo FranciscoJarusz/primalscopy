@@ -1,4 +1,3 @@
-// Pantalla del Cultomizer (isla de React).
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import GIF from 'gif.js/dist/gif.js';
 import { parseGIF, decompressFrames } from 'gifuct-js';
@@ -13,7 +12,6 @@ import {
 import { BACKEND_URL, BACKEND_BASE_URL } from '@/lib/backend';
 import { LAYER_ORDER } from '@/lib/capas';
 
-// --- Interfaces para Tipado ---
 interface TraitVariant {
     name: string;
     imageUrl: string | null;
@@ -29,7 +27,6 @@ interface CustomizationOptions {
     [traitType: string]: CustomizationOption;
 }
 
-// --- Constantes ---
 const THUMBNAIL_SIZE = 80;
 const GIF_EXPORT_SIZE = 2000;
 const NONE_SELECTION = '__NONE__';
@@ -59,11 +56,9 @@ type LoadedGifLayer = {
 };
 type LoadedLayer = LoadedImageLayer | LoadedGifLayer;
 
-// --- Componente de Contenido ---
 function CustomizerContent() {
     const searchParams = useSearchParams();
 
-    // Lee el ID de la URL
     const tokenIdFromUrl = searchParams.get('tokenId');
 
     const [nftId, setNftId] = useState<string>(tokenIdFromUrl || '');
@@ -132,7 +127,6 @@ function CustomizerContent() {
     const getVariantSelectionValue = (variant: TraitVariant): string =>
         variant.imageUrl || NONE_SELECTION;
 
-    // Cargar datos del NFT automáticamente
     useEffect(() => {
         if (!nftId) return;
         const loadNftData = async () => {
@@ -176,12 +170,6 @@ function CustomizerContent() {
 
                 // Lo que el NFT tiene aplicado HOY, segun el servidor. Manda sobre
                 // todo lo demas: es la unica fuente que no depende del dispositivo.
-                //
-                // Sin esto, al abrir el customizer se veia lo que hubiera en el
-                // localStorage de esa maquina, o los traits originales de la
-                // metadata. Por eso un NFT ya customizado se veia distinto en la
-                // compu y en el celular, y ninguno de los dos mostraba lo que
-                // realmente tiene aplicado.
                 let appliedOnChain: { [key: string]: string } | null = null;
                 try {
                     const savedResponse = await fetch(
@@ -251,7 +239,6 @@ function CustomizerContent() {
                     return;
                 }
 
-                // Restaurar selecciones guardadas (si el usuario vuelve después de navegar)
                 try {
                     const saved = localStorage.getItem(`nft_custom_${nftId}`);
                     if (saved) {
@@ -277,7 +264,6 @@ function CustomizerContent() {
                                         getVariantSelectionValue(variant) ===
                                         savedValue
                                 );
-                            // Si la selección murió, queda el default de la metadata.
                             if (stillExists) {
                                 restored[traitType] = savedValue;
                             }
@@ -343,7 +329,6 @@ function CustomizerContent() {
             const updated = { ...prev };
             if (updated[traitType] === nextValue) delete updated[traitType];
             else updated[traitType] = nextValue;
-            // Persistir cambios para sobrevivir navegación
             try {
                 localStorage.setItem(
                     `nft_custom_${nftId}`,
@@ -544,7 +529,6 @@ function CustomizerContent() {
             }
 
             const gifLayerCache = new Map<string, HTMLCanvasElement>();
-            // Tracks the previous frame's disposal info for each GIF layer
             const gifLayerPrevInfo = new Map<
                 string,
                 {
@@ -620,7 +604,6 @@ function CustomizerContent() {
                         gifLayerPrevInfo.delete(layer.url);
                     }
 
-                    // Aplicar el disposal del frame anterior antes de pintar el actual
                     const prevInfo = gifLayerPrevInfo.get(layer.url);
                     if (prevInfo) {
                         if (prevInfo.disposalType === 2) {
@@ -664,14 +647,12 @@ function CustomizerContent() {
                         gifFrame.dims.top
                     );
 
-                    // Guardar info de este frame para el disposal del siguiente
                     gifLayerPrevInfo.set(layer.url, {
                         dims: gifFrame.dims,
                         disposalType: frameDisposalType,
                         savedData,
                     });
 
-                    // Escalar el canvas acumulado al tamaño de exportación
                     frameCtx.drawImage(
                         layerCanvas,
                         0,
@@ -832,7 +813,6 @@ function CustomizerContent() {
         }
     };
 
-    // Si no hay tokenId, mostrar mensaje de error
     if (!tokenIdFromUrl) {
         return (
             <div className="flex flex-1 items-center justify-center py-10 text-center">
@@ -854,7 +834,6 @@ function CustomizerContent() {
         );
     }
 
-    // Botones claros del sitio: mismos que el "Connect wallet" del header.
     const botonClaro =
         'bg-lightblue text-darkblue font-accent uppercase rounded-md px-3 pb-1 cursor-pointer hover:bg-yellow active:scale-97 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-lightblue disabled:active:scale-100';
 
@@ -887,7 +866,6 @@ function CustomizerContent() {
 
     return (
         <div className="w-full text-white flex flex-col gap-5 sm:gap-8">
-            {/* Header */}
             {/* Sin animaciones de entrada: es una herramienta, y el contenido
                 ya espera a que carguen los datos del NFT. Sumarle una
                 animacion lo hacia sentir lento. */}
@@ -910,7 +888,6 @@ function CustomizerContent() {
                 </button>
             </div>
 
-            {/* Input para cambiar NFT */}
             <div className="bg-darkblue rounded-2xl px-4 py-4 sm:px-5 shadow-lg shadow-darkblue/50">
                 <div className="flex flex-col min-[420px]:flex-row gap-3 sm:gap-4 min-[420px]:items-center">
                     <input
@@ -930,7 +907,6 @@ function CustomizerContent() {
                 </div>
             </div>
 
-            {/* Estados de carga y error */}
             {loading && (
                 <div className="text-center py-16">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow mx-auto mb-4"></div>
@@ -949,14 +925,12 @@ function CustomizerContent() {
                 </div>
             )}
 
-            {/* Contenido del customizer */}
             {!loading && !error && customizationOptions && (
                 // items-start, no items-center: la columna de traits es mucho más
                 // alta que la del preview, y centrarlas dejaba el preview flotando
                 // en el medio con un hueco muerto arriba.
                 <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,2.85fr)] gap-5 sm:gap-8 items-start"
                 >
-                    {/* Columna izquierda - Vista previa del NFT */}
                     <div className="shadow-lg shadow-darkblue/50 bg-darkblue rounded-2xl p-4 sm:p-5 flex flex-col gap-4">
                         <div className="relative flex items-center justify-center">
                             <h3 className="font-accent uppercase text-yellow text-2xl text-center">
@@ -1106,11 +1080,6 @@ function CustomizerContent() {
                             </p>
                         )}
 
-                        {/* Estado de la wallet y de la propiedad del NFT.
-                Hoy solo informa; cuando exista el guardado, el boton
-                va a colgar de ownership === 'owner'. El chequeo real
-                lo hace el backend en cada escritura: esto es interfaz,
-                no seguridad. */}
                         <div className="text-sm text-center">
                             {!walletSession.isConnected && (
                                 <p className="text-lightblue/60 text-xs">
@@ -1222,13 +1191,11 @@ function CustomizerContent() {
                         </div>
                     </div>
 
-                    {/* Columna derecha - Selector de traits */}
                     <div className="bg-darkblue rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-lg shadow-darkblue/50">
                         <h3 className="font-accent uppercase text-yellow text-2xl">
                             Choose a trait
                         </h3>
 
-                        {/* Selector de categorías */}
                         <div className="flex flex-wrap gap-2 sm:gap-3">
                             {seccionesDeTraits.map((traitType) => (
                                 <button
@@ -1248,7 +1215,6 @@ function CustomizerContent() {
                             ))}
                         </div>
 
-                        {/* Variantes del trait seleccionado */}
                         {activeTraitSection && variantesActivas.length > 0 && (
                             <>
                                 <p className="text-xs uppercase text-lightblue/70">
@@ -1381,7 +1347,4 @@ function CustomizerContent() {
     );
 }
 
-// El Suspense que envolvia esto existia solo por el useSearchParams de Next,
-// que obligaba a un limite de suspension para poder prerenderizar. El
-// equivalente propio lee la URL directo, asi que no hace falta.
 export default CustomizerContent;

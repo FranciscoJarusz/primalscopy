@@ -1,5 +1,3 @@
-// lib/remotePublisher.js
-//
 // Publica la imagen y la metadata de un NFT en el hosting donde ya vive la
 // coleccion, por SFTP.
 //

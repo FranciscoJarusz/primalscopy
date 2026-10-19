@@ -1,20 +1,8 @@
-// lib/feedStore.js
+// Es un feed de EVENTOS, no un estado por token: si alguien actualiza el mismo
+// primal tres veces, aparece tres veces.
 //
-// El historial de las ultimas customizaciones publicadas: lo que alimenta la
-// pantalla "Recent Customizations".
-//
-// Es un feed de EVENTOS, no un estado por token. Si alguien actualiza el mismo
-// primal tres veces, aparece tres veces, una por cada variante que armo. Eso es
-// lo que se pidio: la gracia es ver que esta haciendo la comunidad, y las tres
-// pasadas de un mismo token son tres ideas distintas.
-//
-// Cada entrada guarda un JPEG del primer frame y no el GIF. Una pantalla de
-// GIFs de 2000px son decenas de MB; el JPEG chico se ve igual de bien en una
-// miniatura y pesa unos 65 KB.
-//
-// Cuanto ocupa el historial lleno: 1000 entradas x 65 KB = unos 63 MB de
-// imagenes, mas 0,2 MB del indice. Va dentro de ASSETS_ROOT, o sea dentro del
-// volumen, asi que sobrevive a los deploys igual que la metadata.
+// Cada entrada guarda un JPEG del primer frame (~65 KB) y no el GIF: una
+// pantalla de GIFs de 2000px son decenas de MB.
 
 const fs = require('fs');
 const path = require('path');
@@ -29,9 +17,8 @@ const INDEX_PATH = path.join(FEED_DIR, 'index.json');
 // vieja, con su JPEG: el feed no crece para siempre.
 const MAX_ITEMS = Math.max(1, Number(process.env.FEED_MAX_ITEMS || 1000));
 
-// Cuantas se mandan por pagina. 50 es lo que se pidio; el tope existe para que
-// nadie se baje el historial entero de una pidiendo perPage=1000, que serian
-// 63 MB en una sola respuesta.
+// El tope existe para que nadie se baje el historial entero de una pidiendo
+// perPage=1000.
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
 

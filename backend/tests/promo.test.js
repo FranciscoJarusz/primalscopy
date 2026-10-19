@@ -1,5 +1,3 @@
-// tests/promo.test.js
-//
 // Prueba los codigos promocionales: crearlos desde el admin, las reglas del
 // canje (limite de usos, vencimiento, uno por wallet, sin Primal), el limite
 // de intentos, y que el roll gratis llegue al Forge y se gaste antes que uno

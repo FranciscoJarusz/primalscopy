@@ -1,8 +1,5 @@
-// scripts/snapshot-rarity.js
-//
 // Saca una foto de la rareza ORIGINAL de la coleccion: cuantos NFTs tienen
-// cada valor de trait. De ahi salen las probabilidades de los rolls del Forge
-// (el dueño lo decidio asi: un trait raro sale poco).
+// cada valor de trait. De ahi salen las probabilidades de los rolls del Forge.
 //
 // Es una foto y no se recalcula a proposito. Cuando el Forge empiece a cambiar
 // traits, la rareza "en vivo" se mueve con lo que la gente elige: si se

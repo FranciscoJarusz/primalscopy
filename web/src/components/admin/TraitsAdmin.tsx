@@ -1,6 +1,3 @@
-// Panel de traits del admin: subir, renombrar y borrar sin redeployar. Habla
-// directo con la API del backend (/api/admin/*) con el token que le pasa
-// AdminApp.
 import React, {
     useCallback,
     useEffect,
@@ -112,7 +109,6 @@ export default function TraitsAdmin({ token }: { token: string }) {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // --- API helpers -------------------------------------------------------
 
     const authHeaders = useCallback(
         (extra?: Record<string, string>) => ({
@@ -235,9 +231,7 @@ export default function TraitsAdmin({ token }: { token: string }) {
         loadStorageStatus(token);
     }, [token, loadTraits, loadStorageStatus]);
 
-    // --- Selección ---------------------------------------------------------
 
-    // Al cargar datos, cae parado en la primera categoría y su carpeta global.
     useEffect(() => {
         if (!data || data.categories.length === 0) return;
 
@@ -279,7 +273,6 @@ export default function TraitsAdmin({ token }: { token: string }) {
 
     const globalDirName = data?.globalDirName || '_GLOBAL';
 
-    // --- Acciones ----------------------------------------------------------
 
     const uploadFiles = async (files: FileList | File[]) => {
         if (!activeCategory || !activeDirectory) return;
@@ -412,12 +405,10 @@ export default function TraitsAdmin({ token }: { token: string }) {
             uploadFiles(event.dataTransfer.files);
     };
 
-    // --- Panel -------------------------------------------------------------
 
     return (
         <main className="text-white">
             <div className="flex flex-col gap-5 sm:gap-8">
-                {/* Header */}
                 <div data-anim="intro" className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 sm:gap-6">
                     <div>
                         <h1 className="font-accent uppercase text-yellow text-4xl sm:text-6xl lg:text-7xl">
@@ -600,7 +591,6 @@ export default function TraitsAdmin({ token }: { token: string }) {
                     </div>
                 )}
 
-                {/* Estado de la publicacion en el hosting de la coleccion. */}
                 {publisher && !publisher.ok && (
                     <div className="rounded-2xl border-2 border-red-500 bg-red-500/20 px-4 py-4 sm:px-6 sm:py-5">
                         <p className="text-lg font-bold text-red-200">
@@ -635,7 +625,6 @@ export default function TraitsAdmin({ token }: { token: string }) {
                     </div>
                 )}
 
-                {/* Categorías */}
                 <div className="bg-darkblue rounded-2xl p-4 sm:p-6 shadow-lg shadow-darkblue/50">
                     <h3 className="font-accent uppercase text-yellow text-2xl mb-4">
                         Categories
@@ -672,7 +661,6 @@ export default function TraitsAdmin({ token }: { token: string }) {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
-                    {/* Carpetas */}
                     <div className="lg:col-span-1">
                         <div
                             data-lenis-prevent
@@ -723,14 +711,12 @@ export default function TraitsAdmin({ token }: { token: string }) {
                         </div>
                     </div>
 
-                    {/* Traits */}
                     <div className="lg:col-span-2">
                         <div className="bg-darkblue rounded-2xl p-4 sm:p-6 shadow-lg shadow-darkblue/50">
                             <h3 className="font-accent uppercase text-yellow text-2xl mb-4 sm:mb-6 break-all">
                                 {activeCategory} / {activeDirectory}
                             </h3>
 
-                            {/* Zona de subida */}
                             <div
                                 onDragOver={(event) => {
                                     event.preventDefault();
@@ -776,7 +762,6 @@ export default function TraitsAdmin({ token }: { token: string }) {
                                 </p>
                             </div>
 
-                            {/* Grilla */}
                             {loading ? (
                                 <div className="text-center py-16">
                                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow mx-auto mb-4"></div>

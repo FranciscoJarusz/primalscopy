@@ -28,7 +28,6 @@ export type Marcador = { tokenId: string; region: string; mio: boolean; x: numbe
 const DX = 110;
 const DY = 90;
 
-// --- Geometria ---------------------------------------------------------------
 
 type Poligono = number[]; // x0, y0, x1, y1, ...
 
@@ -205,7 +204,6 @@ function lugares(r: RegionPrimals) {
     return l;
 }
 
-// --- Dibujo ------------------------------------------------------------------
 
 type Sprite = { img: HTMLImageElement; listo: boolean };
 
@@ -365,7 +363,6 @@ export class CapaPrimals {
                 r: radio,
             }));
         });
-        // Los de la wallet arriba de todo.
         this.marcadores.sort((a, b) => Number(a.mio) - Number(b.mio));
         let n = 0;
         for (const m of this.marcadores) {
@@ -444,7 +441,6 @@ export class CapaPrimals {
         return c.desde + (c.hasta - c.desde) * suave(t);
     }
 
-    // Los Primals de la region saltan en ola desde donde se toco.
     saltar(region: string, x: number, y: number) {
         if (this.quieto) return;
         this.ola = { region, x, y, t0: performance.now() };
@@ -462,7 +458,6 @@ export class CapaPrimals {
         this.animar();
     }
 
-    // Donde esta un Primal, en coordenadas del SVG.
     posicion(tokenId: string) {
         const m = this.marcadores.find((x) => x.tokenId === tokenId);
         return m ? { x: m.x, y: m.y } : null;
@@ -477,7 +472,6 @@ export class CapaPrimals {
         this.animar();
     }
 
-    // El Primal bajo un punto del SVG, si hay uno.
     enPunto(x: number, y: number): Marcador | null {
         for (let i = this.marcadores.length - 1; i >= 0; i--) {
             const m = this.marcadores[i];
@@ -547,7 +541,6 @@ export class CapaPrimals {
         return this.dibujar(ahora);
     }
 
-    // Mientras haya algo animandose, un cuadro tras otro.
     private animar() {
         cancelAnimationFrame(this.cuadro);
         const paso = (t: number) => {
@@ -568,7 +561,6 @@ export class CapaPrimals {
         const { ctx, vista, w, h, dpr } = this;
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        // De coordenadas del SVG a pixeles del canvas.
         const k = vista.escala * dpr;
         ctx.setTransform(k, 0, 0, k, (w / 2 - vista.cx * vista.escala) * dpr, (h / 2 - vista.cy * vista.escala) * dpr);
         const x0 = vista.cx - w / 2 / vista.escala, x1 = vista.cx + w / 2 / vista.escala;
@@ -595,7 +587,6 @@ export class CapaPrimals {
         for (const m of orden) {
             if (m.x + m.r * 2 < x0 || m.x - m.r * 2 > x1 || m.y + m.r * 3 < y0 || m.y - m.r * 2 > y1) continue;
 
-            // Aparicion: crece desde cero con un rebote.
             let escala = 1;
             const desde = this.aparicion.get(m.tokenId);
             if (desde !== undefined && !this.quieto) {
@@ -691,7 +682,6 @@ export class CapaPrimals {
             ctx.strokeStyle = '#090050';
             ctx.stroke();
         };
-        // Los de otros primero, los de la wallet arriba.
         for (const t of [...puntos.values()].sort((a, b) => Number(a.mio) - Number(b.mio))) {
             pintarPuntos(t.mio, t.alfa, t.lista);
         }

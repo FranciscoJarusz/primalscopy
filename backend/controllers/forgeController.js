@@ -1,5 +1,3 @@
-// controllers/forgeController.js
-//
 // El Forge: rolls pagos que cambian los traits de un NFT.
 //
 // El ciclo es: se paga un roll, salen 2 opciones, y el dueño elige una o
@@ -70,8 +68,7 @@ function isAvailable(config) {
 
 // Con que variante se dibuja cada categoria si el NFT pasara a tener
 // `metadata`. Las categorias que cambian en el roll salen con una variante al
-// azar de la carpeta de su trait nuevo si se pasa `randomInt` (asi lo pidio el
-// dueño: que cada roll traiga tambien la variante), o si no con la base (la
+// azar de la carpeta de su trait nuevo si se pasa `randomInt`, o si no con la base (la
 // que se llama igual que el trait, o la primera). Nunca una de _GLOBAL: esas
 // son adornos que se eligen a mano. Las que no cambian mantienen lo que el
 // dueño ya tenia elegido en el customizer, incluidos los adornos como el cuervo.

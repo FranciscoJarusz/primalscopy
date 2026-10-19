@@ -1,4 +1,3 @@
-// lib/traitsStore.js
 // Fuente de verdad para la ubicacion de los traits en disco.
 //
 // En Railway el filesystem del contenedor es efimero: todo lo que se sube se
@@ -13,11 +12,8 @@ const path = require('path');
 
 const SEED_TRAITS_PATH = path.join(__dirname, '..', 'assets', 'traits');
 
-// El trim no es cosmetico. Pegar la ruta en el dashboard de Railway arrastraba
-// un espacio adelante, y como " /data/traits" no empieza con "/", path.resolve
-// lo tomaba como relativo y lo colgaba del cwd: "/app/ /data/traits", una
-// carpeta en disco efimero al lado del volumen real, que quedaba vacio. Todo
-// funcionaba salvo que se perdia en cada reinicio.
+// El trim no es cosmetico: con un espacio adelante (pegado desde Railway),
+// path.resolve lo toma como relativo y escribe en disco efimero.
 const RAW_TRAITS_PATH = (process.env.TRAITS_PATH || '').trim();
 const TRAITS_PATH = RAW_TRAITS_PATH
     ? path.resolve(RAW_TRAITS_PATH)
@@ -118,7 +114,6 @@ function getStorageStatus() {
     };
 }
 
-// Copia recursiva del seed al volumen. fs.cpSync existe desde Node 16.7.
 function seedTraitsIfEmpty() {
     if (!isUsingPersistentVolume()) {
         console.log(`[traits] Usando assets del repo en ${TRAITS_PATH} (sin volumen persistente).`);
@@ -130,9 +125,6 @@ function seedTraitsIfEmpty() {
     const mounted = isRealMountPoint(TRAITS_PATH);
     const previous = readMarker();
 
-    // Esto es lo que hacia que el bug fuera invisible: sin volumen real, cada
-    // reinicio encontraba el directorio vacio, volvia a sembrar, y todo lo que
-    // habian subido desde el panel desaparecia sin un solo error.
     if (hasRelativePathMistake()) {
         console.error('='.repeat(70));
         console.error('[traits] TRAITS_PATH es una ruta RELATIVA, casi seguro un error.');

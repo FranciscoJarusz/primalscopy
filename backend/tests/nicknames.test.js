@@ -1,5 +1,3 @@
-// tests/nicknames.test.js
-//
 // Prueba los apodos: que haga falta la sesion firmada y un Primal, las reglas
 // de formato y unicidad, y el borrado desde el admin.
 //

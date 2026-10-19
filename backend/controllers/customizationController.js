@@ -1,5 +1,3 @@
-// controllers/customizationController.js
-//
 // Guarda la customizacion de un NFT: compone el GIF final, lo escribe y
 // actualiza la metadata que leen las wallets y los marketplaces.
 //
@@ -198,7 +196,6 @@ async function publicarNft(nftId, { layers, applied, metadata, wallet, remoto = 
     return { updated, sizeBytes: gif.length, published: publicado, refresh };
 }
 
-// POST /api/nft/:nftId/customization
 async function saveCustomization(req, res) {
     const { nftId } = req.params;
 
@@ -264,9 +261,7 @@ async function registrarEnFeed(tokenId, wallet, primerFrame) {
 // GET /api/nft/:nftId/customization — que hay puesto hoy este token.
 //
 // Si una ruta guardada ya no existe porque el trait se renombro o se movio, se
-// lo busca por huella entre las variantes que se ofrecen ahora. Sin esto, el
-// customizer mostraria el trait original en lugar del que el NFT tiene puesto
-// de verdad, que es justo lo que confundia.
+// lo busca por huella entre las variantes que se ofrecen ahora.
 async function getCustomization(req, res) {
     try {
         await respondWithCustomization(req, res);
@@ -347,7 +342,6 @@ module.exports = {
     saveCustomization,
     getCustomization,
     LAYER_ORDER,
-    // Los usa el Forge para escribir el NFT por el mismo camino.
     tomarTurno,
     soltarTurno,
     publicarNft,

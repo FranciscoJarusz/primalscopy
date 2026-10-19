@@ -1,6 +1,3 @@
-// Soft staking con FOG (ver backend/lib/stakingStore.js). Poner a entrenar y
-// canjear piden la sesion firmada (useWalletSession); la tasa y el catalogo
-// son publicos.
 import { EVENTO_CANJE } from '@/lib/promo';
 import { BACKEND_URL } from '@/lib/backend';
 
@@ -130,7 +127,6 @@ export type MiStaking = {
     prizes: Ganado[];
 };
 
-// El bonus por cantidad para `n` Primals en staking a la vez.
 export function bonusPorCantidad(escalones: Escalon[], n: number) {
     let bonus = 0;
     for (const e of escalones) if (n >= e.min) bonus = e.bonus;
@@ -197,7 +193,6 @@ export const sacar = (token: string, tokenIds: string[]) =>
         }
     >('unstake', token, { tokenIds });
 
-// El saldo de FOG y las insignias de cada wallet, para el ranking de /stats.
 export const leerRanking = () =>
     pedir<{ wallets: Record<string, { balance: number; badges: number[] }> }>(
         'leaderboard'

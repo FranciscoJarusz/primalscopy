@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 // Antes de armar las rutas: los errores de los handlers async van a next().
 require('./lib/asyncErrors');
@@ -33,14 +32,12 @@ app.set('trust proxy', 1);
 // Prepara el volumen persistente antes de atender el primer request.
 seedTraitsIfEmpty();
 
-// CORS (permitir desde cualquier origen)
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Middleware para leer JSON
 app.use(express.json());
 
 // Los traits salen de TRAITS_PATH (volumen persistente en producción), no de
@@ -51,7 +48,6 @@ app.use('/assets/traits', express.static(TRAITS_PATH));
 // Misma ruta que en /assets/traits, con /assets/thumbs adelante.
 app.get(/^\/assets\/thumbs\/(.+)$/, servirMiniatura);
 
-// Servir el resto de assets (base_primal, empty_canvas, etc.)
 const ASSETS_PATH = path.join(__dirname, 'assets');
 app.use('/assets', express.static(ASSETS_PATH));
 
@@ -77,9 +73,7 @@ app.use('/images', express.static(assets.IMAGES_DIR, {
   immutable: true
 }));
 
-// Las miniaturas del feed de customizaciones recientes. Cada una tiene un
-// nombre unico e irrepetible y se borra cuando su entrada sale de los ultimos
-// 10, asi que se puede cachear para siempre: nadie va a ver una vieja.
+// Cada miniatura del feed tiene un nombre unico: se puede cachear para siempre.
 app.use('/feed/thumbs', express.static(feed.THUMBS_DIR, {
   maxAge: '365d',
   immutable: true
@@ -110,7 +104,6 @@ app.use('/viewer', express.static(path.join(ASSETS_PATH, 'viewer'), {
 app.use('/category', express.static(path.join(ASSETS_PATH, 'legacy', 'category'), { maxAge: '30d' }));
 app.use('/t', express.static(path.join(ASSETS_PATH, 'legacy', 't'), { maxAge: '30d' }));
 
-// Rutas de tu router
 app.use('/api/nft', nftRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
@@ -120,7 +113,7 @@ app.use('/api/promo', promoRoutes);
 app.use('/api/staking', stakingRoutes);
 
 // Lo que se escapo de una ruta (ver lib/asyncErrors.js). Se contesta un 500 y
-// el server sigue: antes una excepcion en una ruta lo tiraba entero.
+// el server sigue.
 app.use((err, req, res, next) => {
   // Los errores de Express traen su status (un JSON mal formado es un 400).
   const status = Number.isInteger(err?.status) && err.status >= 400 && err.status < 600 ? err.status : 500;
@@ -135,7 +128,6 @@ process.on('unhandledRejection', error => {
   console.error('[ERROR] Promesa rechazada sin atrapar ->', error);
 });
 
-// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
   // Las miniaturas que falten, en segundo plano. Solo con el server lanzado
@@ -144,7 +136,6 @@ app.listen(PORT, () => {
     setTimeout(() => generarTodas().catch(error => console.error('[thumbs]', error)), 3000);
     // Igual el chequeo del staking: los tests lo llaman a mano.
     startStakingJob();
-    // Las miniaturas de los Primals que estan entrenando, para el mapa.
     primalThumbs.habilitarPrecalentado();
     primalThumbs.precalentar(Object.values(stakingStore.trainingByPeriod()).flat());
   }

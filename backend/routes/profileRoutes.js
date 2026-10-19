@@ -1,5 +1,3 @@
-// routes/profileRoutes.js
-//
 // El apodo de cada wallet. Leerlos es publico (es lo que muestra /stats);
 // cambiar el propio exige la sesion firmada, porque la direccion sola no
 // prueba nada, y tener al menos un Primal.

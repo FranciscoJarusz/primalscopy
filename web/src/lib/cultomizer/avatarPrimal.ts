@@ -1,5 +1,3 @@
-// src/lib/avatarPrimal.ts
-//
 // Qué Primal usamos como foto de perfil de cada wallet.
 //
 // La búsqueda de NFTs recorre la colección y es cara, así que el header no la

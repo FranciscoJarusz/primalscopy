@@ -1,5 +1,3 @@
-// middleware/requireWallet.js
-//
 // Dos guardas que se usan encadenadas:
 //
 //   requireWallet     -> "esta request viene de alguien que probo tener esta wallet"

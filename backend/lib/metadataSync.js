@@ -1,14 +1,6 @@
-// lib/metadataSync.js
-//
-// La metadata vigente de un token, leida del hosting de la coleccion.
-//
-// El volumen guarda una copia de cada metadata que este server escribio, pero
-// esa copia no es la fuente de verdad: el dueño de la coleccion puede cambiar
-// un NFT directo en el hosting, sin pasar por aca. Paso con el #54 (octubre
-// 2026): el hosting decia Golden/Black/Blindfold y el volumen seguia con
-// Aquamarine/White/Trader. El customizer ofrecia los traits viejos y, peor,
-// guardar desde ahi habria publicado la metadata vieja encima del cambio del
-// dueño.
+// La copia del volumen no es la fuente de verdad: el dueño de la coleccion
+// puede cambiar un NFT directo en el hosting, y guardar con la copia vieja
+// pisaria su cambio.
 //
 // Por eso se consulta el hosting cada vez. Si los traits o la imagen cambiaron
 // por afuera, se pone al dia la copia del volumen y la seleccion guardada se

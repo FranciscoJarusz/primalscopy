@@ -1,5 +1,3 @@
-// routes/adminRoutes.js
-
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -24,7 +22,6 @@ const {
 
 const router = express.Router();
 
-// Los GIFs de traits son de 2000x2000 y pesan bastante; 25 MB da margen.
 const ALLOWED_EXTENSIONS = ['.png', '.gif', '.bmp', '.webp'];
 
 const upload = multer({
@@ -65,7 +62,6 @@ const uploadIcon = multer({
 // Todo lo que cuelga de acá requiere el token de admin.
 router.use(adminAuth);
 
-// Sirve para que el panel valide el token antes de mostrar la UI.
 router.get('/session', (req, res) => res.json({ ok: true }));
 
 // Diagnostico de almacenamiento: dice si TRAITS_PATH es un volumen de verdad y
@@ -166,7 +162,6 @@ router.delete('/staking/icon/:id', (req, res) => {
     if (result.error) return res.status(result.status).json({ error: result.error });
     res.json(result.config);
 });
-// Las ruletas de la tienda: premios, imagenes, vault y entregas.
 router.get('/staking/wheels', (req, res) => res.json(wheels.adminWheels()));
 router.put('/staking/wheels/:item', (req, res) => {
     const result = wheels.updateWheel(req.params.item, req.body || {});

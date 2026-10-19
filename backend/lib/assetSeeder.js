@@ -1,5 +1,3 @@
-// lib/assetSeeder.js
-//
 // Trae al volumen los 2712 archivos de la coleccion desde el servidor donde
 // viven hoy.
 //

@@ -1,5 +1,3 @@
-// controllers/feedController.js
-//
 // Lectura publica del feed de customizaciones recientes.
 //
 // No expone nada privado: el token y la wallet que lo customizo ya son publicos

@@ -1,7 +1,3 @@
-// Pantalla /staking: el mapa es toda la pagina. Tocar una zona abre el panel
-// para mandar Primals a entrenar ahi; el FOG, la tienda y las reglas flotan
-// encima. Las reglas viven en el backend (lib/stakingStore.js); aca solo se
-// muestran.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { EVENTO_CANJE } from '@/lib/promo';
@@ -77,7 +73,6 @@ export default function Staking() {
     const [mio, setMio] = useState<MiStaking | null>(null);
     const [panel, setPanel] = useState<Panel>(null);
 
-    // Los Primals entrenando en cada region, de todas las wallets.
     const [poblacion, setPoblacion] = useState<Record<string, string[]>>({});
 
     // La config y quien esta en el mapa van juntas: cambian al mandar
@@ -181,7 +176,6 @@ export default function Staking() {
         setFoco(j);
         setPanel({ tipo: 'zona', dias: misEnMapa[j].dias });
     };
-    // Cerrar el panel o elegir otra region a mano deja de mirar al Primal.
     useEffect(() => {
         if (foco === null) return;
         if (panel?.tipo !== 'zona' || panel.dias !== misEnMapa[foco]?.dias)
@@ -286,7 +280,6 @@ export default function Staking() {
                 </div>
                 <div className="flex flex-wrap justify-end items-center gap-2">
                     {paraVolver.length > 0 && (
-                        // En el celular va abajo, como barra (ver mas abajo).
                         <button
                             onClick={() =>
                                 setPanel(
@@ -513,8 +506,6 @@ const corto = (n: number) =>
 const porcentaje = (n: number, total = TOTAL_PRIMALS) =>
     `${((n / total) * 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}%`;
 
-// Los Primals que terminaron su periodo: se vuelven a mandar a la misma region,
-// todos juntos o de a uno.
 function PanelVolver({
     config,
     session,
@@ -784,7 +775,6 @@ function PanelZona({
         const s = porToken.get(n.tokenId);
         return s && !s.finished && s.days === dias;
     });
-    // Los que se pueden mandar: no estan entrenando, o ya terminaron.
     const libres = ordenados.filter((n) => {
         const s = porToken.get(n.tokenId);
         return !s || s.finished;
@@ -891,7 +881,6 @@ function PanelZona({
         setOcupado(false);
     };
 
-    // El texto del segundo clic: cuanto bonus se pierde, si hay.
     const avisoSacar = (ids: string[]) => {
         const pierde = bonusEnJuego(ids);
         return pierde > 0

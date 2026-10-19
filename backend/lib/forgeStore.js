@@ -1,5 +1,3 @@
-// lib/forgeStore.js
-//
 // Estado del Forge en el volumen: el roll pendiente de cada NFT, los pagos y el
 // historial.
 //

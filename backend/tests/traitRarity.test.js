@@ -1,5 +1,3 @@
-// tests/traitRarity.test.js
-//
 // Prueba el sorteo que usan los rolls del Forge: que los comunes salgan en
 // proporcion a cuantos NFTs los tienen, que los raros salgan con las odds que
 // fijo el dueño (ROLL_ODDS), que se respeten las exclusiones, y que la foto de

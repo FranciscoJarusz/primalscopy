@@ -1,5 +1,3 @@
-// tests/forgePayments.test.js
-//
 // Prueba el cobro del Forge contra una cadena de verdad: levanta su propio
 // anvil, hace transferencias reales al treasury y comprueba que el backend
 // acepte solo pagos validos, que cada pago valga un roll y nada mas, y que un

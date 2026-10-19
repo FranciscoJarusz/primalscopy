@@ -1,5 +1,3 @@
-// routes/stakingRoutes.js
-//
 // El soft staking (ver lib/stakingStore.js). Poner a entrenar y canjear piden
 // la sesion firmada; la tasa y el catalogo son publicos.
 

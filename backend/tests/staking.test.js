@@ -1,5 +1,3 @@
-// tests/staking.test.js
-//
 // Prueba el soft staking: la configuracion desde el admin, poner a entrenar
 // (dueño, listados, periodos), los dias que se acreditan solo hasta la ultima
 // verificacion, lo que pasa al vender, listar, sacarlo o terminar el periodo,

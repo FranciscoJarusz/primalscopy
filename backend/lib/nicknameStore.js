@@ -1,5 +1,3 @@
-// lib/nicknameStore.js
-//
 // El apodo de cada wallet, para mostrarlo en el top de holders de /stats.
 //
 // Vive en el volumen, en un solo JSON chico: son a lo sumo unos cientos de

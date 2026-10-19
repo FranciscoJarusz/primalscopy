@@ -1,5 +1,3 @@
-// lib/walletAuth.js
-//
 // Autenticacion por firma de wallet.
 //
 // La idea central: conocer una direccion no prueba nada. Las direcciones son
@@ -48,18 +46,8 @@ function isWalletAuthEnabled() {
     return JWT_SECRET.length > 0;
 }
 
-// ---------------------------------------------------------------------------
-// Nonces pendientes
-//
-// En memoria. Alcanza mientras el backend corra en una sola instancia: un
-// nonce vive 5 minutos y lo unico que se pierde en un reinicio es que el
-// usuario tenga que volver a firmar.
-//
-// Cuando agreguemos Postgres para guardar las customizaciones, esto se mueve
-// ahi. Si Railway escala a mas de una instancia antes de eso, un nonce emitido
-// por una no lo va a encontrar la otra y los logins van a fallar de forma
-// intermitente.
-// ---------------------------------------------------------------------------
+// Nonces en memoria: alcanza con una sola instancia. Con mas de una, un nonce
+// emitido por una no lo encuentra la otra y los logins fallan a veces.
 const pendingNonces = new Map();
 
 function purgeExpiredNonces() {
@@ -81,7 +69,6 @@ function buildSignInMessage({ address, nonce, issuedAt }) {
     ].join('\n');
 }
 
-// Emite el nonce y el mensaje a firmar para una direccion.
 function createNonce(rawAddress) {
     if (!isAddress(rawAddress)) {
         throw new Error('Invalid wallet address.');
