@@ -197,6 +197,21 @@ async function main() {
     check('si el roll falla, vuelve', forge.availablePayments(w, 33139).length === 2);
     check('el gratis vale en cualquier red', forge.availablePayments(w, 1).length === 1);
 
+    console.log('\nExiled');
+    const exiledIds = (await (await fetch(`${BASE}/api/exiled`)).json()).tokenIds;
+    check('son los 20 del contrato', exiledIds.length === 20 && exiledIds[0] === '1382' && exiledIds[19] === '1401');
+    const probar = async code => (await (await post(`${BASE}/api/exiled/code`, { code })).json()).valid;
+    check('el codigo de ejemplo vale, sin importar mayusculas', await probar(' corebeacon '));
+    check('otro no', (await probar('nope')) === false);
+    const cambiar = masterCode => fetch(`${BASE}/api/admin/exiled`, { method: 'PUT', headers: admin, body: JSON.stringify({ masterCode }) });
+    check('sin token no se cambia', (await fetch(`${BASE}/api/admin/exiled`, { method: 'PUT', body: '{}' })).status === 401);
+    check('uno muy corto se rechaza', (await cambiar('ab')).status === 400);
+    check('el admin lo cambia', (await cambiar('the lock remains')).ok
+        && (await (await fetch(`${BASE}/api/admin/exiled`, { headers: admin })).json()).masterCode === 'THE LOCK REMAINS');
+    check('y vale el nuevo, no el viejo', await probar('The Lock  Remains') && !(await probar('corebeacon')));
+    for (let i = 0; i < 12; i++) await probar('wrong');
+    check('muchos intentos fallidos cortan', (await post(`${BASE}/api/exiled/code`, { code: 'the lock remains' })).status === 429);
+
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });
     process.exit(fail ? 1 : 0);

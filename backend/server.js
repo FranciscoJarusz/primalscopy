@@ -8,6 +8,7 @@ const authRoutes = require('./routes/authRoutes');
 const forgeRoutes = require('./routes/forgeRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const promoRoutes = require('./routes/promoRoutes');
+const exiledRoutes = require('./routes/exiledRoutes');
 const stakingRoutes = require('./routes/stakingRoutes');
 const { startStakingJob } = require('./lib/stakingJob');
 const stakingStore = require('./lib/stakingStore');
@@ -110,6 +111,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/forge', forgeRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/promo', promoRoutes);
+app.use('/api/exiled', exiledRoutes);
 app.use('/api/staking', stakingRoutes);
 
 // Lo que se escapo de una ruta (ver lib/asyncErrors.js). Se contesta un 500 y

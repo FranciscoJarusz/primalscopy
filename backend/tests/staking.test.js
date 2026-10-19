@@ -468,6 +468,35 @@ async function main() {
     check('y la wallet lo ve enviado', d.status === 'sent' && d.note === '0xabc');
     check('sin token de admin no se tocan las ruletas', (await send('PUT', `${BASE}/api/admin/staking/wheels/lowkey`, { prizes: [] })).status === 401);
 
+    console.log('\nPremios nuevos de la tienda');
+    check('un tipo que no existe se rechaza', (await configurar({ addCatalog: { kind: 'raffle', label: 'X', price: 10 } })).status === 400);
+    check('APE sin cantidad se rechaza', (await configurar({ addCatalog: { kind: 'ape', label: '5 APE', price: 10 } })).status === 400);
+    let nuevos = await (await configurar({ addCatalog: { kind: 'key', label: 'Mega Key', price: 10 } })).json();
+    const mega = nuevos.catalog.find(i => i.label === 'Mega Key');
+    check('se crea una key con su id', mega?.id === 'mega-key' && mega.kind === 'key' && mega.stock === null, JSON.stringify(mega));
+    check('y tiene su ruleta en el admin', Boolean((await (await fetch(`${BASE}/api/admin/staking/wheels`, { headers: admin })).json()).wheels['mega-key']));
+    check('el mismo nombre no pisa el id', (await (await configurar({ addCatalog: { kind: 'key', label: 'Mega Key', price: 10 } })).json())
+        .catalog.some(i => i.id === 'mega-key-2'));
+    nuevos = await (await configurar({ addCatalog: { kind: 'nft', label: 'Bored Ape', price: 10 } })).json();
+    check('un NFT arranca sin stock', nuevos.catalog.find(i => i.id === 'bored-ape').stock === 0);
+    await configurar({ addCatalog: { kind: 'ape', label: '5 APE', price: 10, amount: 5 } });
+    await configurar({ catalog: [{ id: 'bored-ape', stock: 2 }] });
+    cfg = await (await fetch(`${BASE}/api/staking/config`)).json();
+    check('la tienda los muestra, la key como ruleta', cfg.catalog.find(i => i.id === 'mega-key')?.wheel === true
+        && cfg.catalog.find(i => i.id === 'bored-ape')?.redeemable === true && cfg.catalog.find(i => i.id === '5-ape')?.amount === 5);
+    require('../lib/stakingStore').grantFog(T, 100, 'test');
+    d = await (await canjear(tT, 'bored-ape')).json();
+    check('comprar el NFT deja una entrega pendiente', d.delivery?.prize.kind === 'nft' && d.delivery.status === 'pending', JSON.stringify(d));
+    check('y baja el stock', (await (await fetch(`${BASE}/api/staking/config`)).json()).catalog.find(i => i.id === 'bored-ape').stock === 1);
+    const tipos = require('../lib/promoStore').rewardTypes().map(t => t.id);
+    check('los codigos ofrecen los premios nuevos', ['mega-key', 'bored-ape', '5-ape', 'lowkey'].every(id => tipos.includes(id)), tipos.join());
+    d = require('../lib/stakingStore').giveItem(O, 'bored-ape', 'promo:TEST');
+    check('regalarlo por codigo tambien lo entrega y baja el stock', d.delivery?.prize.kind === 'nft'
+        && (await (await fetch(`${BASE}/api/staking/config`)).json()).catalog.find(i => i.id === 'bored-ape').stock === 0);
+    check('sin stock no se regala', Boolean(require('../lib/stakingStore').giveItem(O, 'bored-ape', 'promo:TEST').error));
+    await configurar({ removeCatalog: 'mega-key-2' });
+    check('un premio creado se puede borrar', !(await (await fetch(`${BASE}/api/staking/config`)).json()).catalog.some(i => i.id === 'mega-key-2'));
+
     console.log('\nBoost');
     await configurar({ quantityTiers: [{ min: 1, bonus: 0 }] });
     owners.set('42', O);

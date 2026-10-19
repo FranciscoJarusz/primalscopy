@@ -14,14 +14,6 @@ import {
 } from '@/lib/staking';
 import { BACKEND_URL } from '@/lib/backend';
 
-// Las ruletas, en orden. El nombre que se muestra es el del catalogo (lo que
-// se edita en Rewards); estos son solo el respaldo si todavia no cargo.
-const RULETAS = [
-    { id: 'lowkey', nombre: 'Low key' },
-    { id: 'highkey', nombre: 'High key' },
-    { id: 'fogkey', nombre: 'Fog key' },
-    { id: 'summon-shard', nombre: 'Primal key' },
-];
 const TIPOS = [
     { id: 'nft', nombre: 'NFT' },
     { id: 'ape', nombre: 'APE' },
@@ -104,17 +96,20 @@ const aBorrador = (prizes: Premio[]): Borrador =>
 
 export default function StakingWheelsAdmin({
     token,
+    ruletas,
     nombres = {},
+    version = 0,
 }: {
     token: string;
+    ruletas: string[];
     // El nombre de cada premio en el catalogo, por id.
     nombres?: Record<string, string>;
+    version?: number;
 }) {
-    const nombreDe = (id: string) =>
-        nombres[id] ?? RULETAS.find((r) => r.id === id)?.nombre ?? id;
+    const nombreDe = (id: string) => nombres[id] ?? id;
     const apodos = useApodos();
     const [datos, setDatos] = useState<Datos | null>(null);
-    const [elegida, setElegida] = useState('lowkey');
+    const [elegida, setElegida] = useState(ruletas[0] ?? 'lowkey');
     const [borrador, setBorrador] = useState<Borrador>([]);
     const [pesoVault, setPesoVault] = useState('');
     const [direccion, setDireccion] = useState('');
@@ -147,8 +142,8 @@ export default function StakingWheelsAdmin({
         (d: Datos, pisar = true) => {
             setDatos(d);
             if (pisar) {
-                setBorrador(aBorrador(d.wheels[elegida].prizes));
-                setPesoVault(String(d.wheels['summon-shard'].vaultWeight ?? ''));
+                setBorrador(aBorrador(d.wheels[elegida]?.prizes ?? []));
+                setPesoVault(String(d.wheels['summon-shard']?.vaultWeight ?? ''));
                 setDireccion(d.vault.address ?? '');
             }
         },
@@ -159,7 +154,7 @@ export default function StakingWheelsAdmin({
         pedir('wheels')
             .then((d) => aplicar(d))
             .catch((e) => setError(e.message));
-    }, [pedir, aplicar]);
+    }, [pedir, aplicar, version]);
 
     const correr = async (fn: () => Promise<Datos>, pisar = true) => {
         setOcupado(true);
@@ -212,7 +207,7 @@ export default function StakingWheelsAdmin({
         ).then(() =>
             // Solo la imagen: lo demas que se este editando no se pisa.
             pedir('wheels').then((d) => {
-                const img = d.wheels[elegida].prizes.find((p) => p.id === prizeId)?.image ?? null;
+                const img = d.wheels[elegida]?.prizes.find((p) => p.id === prizeId)?.image ?? null;
                 setBorrador((b) => b.map((p) => (p.id === prizeId ? { ...p, image: img } : p)));
             })
         );
@@ -232,7 +227,7 @@ export default function StakingWheelsAdmin({
     );
     const delVault =
         elegida === 'summon-shard'
-            ? (datos.wheels['summon-shard'].vaultAvailable ?? 0) * (Number(pesoVault) || 0)
+            ? (datos.wheels['summon-shard']?.vaultAvailable ?? 0) * (Number(pesoVault) || 0)
             : 0;
     const total = enJuego.reduce((n, p) => n + Number(p.weight), 0) + delVault;
     const chance = (p: Borrador[number]) =>
@@ -255,22 +250,22 @@ export default function StakingWheelsAdmin({
                     credited on their own; the rest show up below as deliveries.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                    {RULETAS.map((r) => (
+                    {ruletas.filter((id) => datos.wheels[id]).map((id) => (
                         <button
-                            key={r.id}
+                            key={id}
                             type="button"
                             onClick={() => {
-                                setElegida(r.id);
-                                setBorrador(aBorrador(datos.wheels[r.id].prizes));
+                                setElegida(id);
+                                setBorrador(aBorrador(datos.wheels[id].prizes));
                                 setGuardado(false);
                             }}
                             className={`font-accent uppercase text-sm rounded-md px-3 pb-1 cursor-pointer transition-all duration-300 ${
-                                elegida === r.id
+                                elegida === id
                                     ? 'bg-yellow text-darkblue'
                                     : 'bg-blue text-lightblue hover:text-yellow'
                             }`}
                         >
-                            {nombreDe(r.id)}
+                            {nombreDe(id)}
                         </button>
                     ))}
                 </div>
@@ -320,7 +315,7 @@ export default function StakingWheelsAdmin({
                         </div>
                         <div className="text-sm text-lightblue/80">
                             {datos.vault.address
-                                ? `${datos.vault.count} Primals in the vault, ${datos.wheels['summon-shard'].vaultAvailable ?? 0} available${
+                                ? `${datos.vault.count} Primals in the vault, ${datos.wheels['summon-shard']?.vaultAvailable ?? 0} available${
                                       datos.vault.at ? ` · read ${fecha(datos.vault.at)}` : ''
                                   }`
                                 : 'No vault yet.'}
@@ -507,7 +502,7 @@ export default function StakingWheelsAdmin({
                                     <div className="flex-1 min-w-48 leading-tight">
                                         <div className="text-white">
                                             {w.prize.label}
-                                            <span className="text-lightblue/60"> · {RULETAS.some((r) => r.id === w.item) ? nombreDe(w.item) : 'Shop'}</span>
+                                            <span className="text-lightblue/60"> · {datos.wheels[w.item] ? nombreDe(w.item) : 'Shop'}</span>
                                         </div>
                                         <div className="text-lightblue/60 text-xs">
                                             {fecha(w.at)}

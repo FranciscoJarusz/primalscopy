@@ -23,6 +23,8 @@ export type Premio = {
     wheel?: boolean;
     // El icono subido desde el admin, si hay uno (ver iconoPremio).
     icon?: string;
+    kind?: 'key' | 'ape' | 'nft' | 'forge-roll' | 'raffle';
+    amount?: number;
 };
 
 // Un premio de una ruleta. `chance` va de 0 a 1.
@@ -234,9 +236,12 @@ const ICONOS: Record<string, string> = {
     'ape-100': '100ape',
 };
 
-export function iconoPremio(premio: { id: string; icon?: string }) {
+export function iconoPremio(premio: { id: string; icon?: string; kind?: string; amount?: number }) {
     if (premio.icon) return `${BACKEND_URL}/staking/icons/${premio.icon}`;
-    const base = ICONOS[premio.id];
+    const n = premio.amount ?? 0;
+    const base =
+        ICONOS[premio.id] ??
+        (premio.kind === 'key' ? 'low_key' : premio.kind === 'ape' ? (n >= 100 ? '100ape' : n >= 50 ? '50ape' : '10ape') : null);
     return base ? `/images/staking/icons/${base}.webp` : null;
 }
 
@@ -269,7 +274,8 @@ export function imagenPremio(p: PremioRuleta, catalogo?: { id: string; icon?: st
         const id = n >= 100 ? 'ape-100' : n >= 50 ? 'ape-50' : 'ape-10';
         return iconoPremio(catalogo?.find((i) => i.id === id) ?? { id });
     }
-    return null;
+    const delCatalogo = catalogo?.find((i) => i.id === p.id);
+    return delCatalogo ? iconoPremio(delCatalogo) : null;
 }
 
 // El color del borde de cada carta, por lo raro que es: como en la ruleta de

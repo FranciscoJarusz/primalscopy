@@ -1,6 +1,6 @@
 ---
 const initialStats = [
-    { value: '2,712', label: 'Primals' },
+    { value: '2,712', label: 'Primals', id: 'primals-count' },
     { value: '987.12', label: '$APE burned', id: 'ape-burned' },
     { value: '+600', label: 'Cultists' },
 ];
@@ -12,7 +12,13 @@ const initialStats = [
     aria-label="Primal Cult stats"
 >
     {initialStats.map((stat) => (
-        <div class="flex flex-col items-center justify-center gap-2 lg:gap-3 rounded-2xl sm:rounded-3xl bg-darkblue px-6 lg:px-12 pt-1 pb-4 text-center text-yellow shadow-lg shadow-darkblue/50">
+        <div
+            data-exiled={stat.id === 'primals-count' ? '' : undefined}
+            class:list={[
+                'flex flex-col items-center justify-center gap-2 lg:gap-3 rounded-2xl sm:rounded-3xl bg-darkblue px-6 lg:px-12 pt-1 pb-4 text-center text-yellow shadow-lg shadow-darkblue/50',
+                stat.id === 'primals-count' && 'select-none',
+            ]}
+        >
             <p id={stat.id} class="font-accent text-5xl sm:text-4xl lg:text-6xl">
                 {stat.value}
             </p>

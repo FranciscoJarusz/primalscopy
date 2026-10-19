@@ -6,20 +6,22 @@
 // o el boton de atras siguen llevando a la seccion correcta. Cada seccion se
 // monta la primera vez que se abre y despues queda viva aunque se cambie de
 // pestaña: volver es instantaneo y no se pierde lo que se estaba editando.
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FiLogOut } from 'react-icons/fi';
-import { ADMIN_SECCIONES } from '@/lib/admin';
+import { ADMIN_SECCIONES, alRegalar } from '@/lib/admin';
 import { AdminLogin, useAdminToken } from './Acceso';
 import TraitsAdmin from './TraitsAdmin';
 import NicknamesAdmin from './NicknamesAdmin';
 import PromoAdmin from './PromoAdmin';
 import StakingAdmin from './StakingAdmin';
+import ShopAdmin from './ShopAdmin';
 
 const PANELES: Record<string, (props: { token: string }) => ReactNode> = {
     traits: TraitsAdmin,
     nicknames: NicknamesAdmin,
     promo: PromoAdmin,
     staking: StakingAdmin,
+    shop: ShopAdmin,
 };
 
 function seccionDeLaUrl() {
@@ -44,6 +46,10 @@ export default function AdminApp() {
         mostrar(id);
         window.scrollTo({ top: 0 });
     };
+
+    const irRef = useRef(ir);
+    irRef.current = ir;
+    useEffect(() => alRegalar(() => irRef.current('promo')), []);
 
     // Atras y adelante del navegador.
     useEffect(() => {

@@ -12,8 +12,9 @@ const IMAGES_DIR = path.join(DIR, 'prizes');
 const IMAGE_FILE_REGEX = /^[a-z0-9-]{1,60}-\d{13}\.webp$/;
 const IMAGE_SIZE = 384;
 
-// Los premios del catalogo que son ruletas. El resto se canjea directo.
-const WHEEL_ITEMS = ['lowkey', 'highkey', 'fogkey', 'summon-shard'];
+let fuenteRuletas = () => ['lowkey', 'highkey', 'fogkey', 'summon-shard'];
+const usarRuletas = fn => { fuenteRuletas = fn; };
+const ruletas = () => fuenteRuletas();
 const KINDS = ['fog', 'ape', 'nft'];
 const ADDRESS_REGEX = /^0x[0-9a-fA-F]{40}$/;
 
@@ -23,7 +24,7 @@ const CONSUELO = { id: 'fog-1000', label: '1,000 FOG', kind: 'fog', amount: 1000
 function readWheels() {
     const saved = readJson(WHEELS_PATH, {});
     const wheels = {};
-    for (const id of WHEEL_ITEMS) {
+    for (const id of ruletas()) {
         const w = saved.wheels?.[id];
         wheels[id] = {
             prizes: w?.prizes ?? [{ ...CONSUELO }],
@@ -112,7 +113,7 @@ function addDelivery(wallet, itemId, prize, id) {
 // consuelo de FOG (lo que toca casi siempre): solo lo que da ganas de abrir.
 function recentWins(limit = 20) {
     return readWins()
-        .filter(w => WHEEL_ITEMS.includes(w.item) && !(w.prize.kind === 'fog' && w.chance >= 0.2))
+        .filter(w => ruletas().includes(w.item) && !(w.prize.kind === 'fog' && w.chance >= 0.2))
         .slice(-limit)
         .reverse()
         .map(w => ({ id: w.id, wallet: w.wallet, item: w.item, prize: w.prize, chance: w.chance, at: w.at }));
@@ -121,7 +122,7 @@ function recentWins(limit = 20) {
 // Lo que ve la pagina: cada premio con su probabilidad, del mas comun al mas
 // raro.
 function publicWheel(itemId) {
-    if (!WHEEL_ITEMS.includes(itemId)) return null;
+    if (!ruletas().includes(itemId)) return null;
     const premios = pool(itemId);
     const total = premios.reduce((n, p) => n + p.weight, 0);
     return {
@@ -203,18 +204,18 @@ function adminWheels() {
     const data = readWheels();
     const wins = readWins();
     const vault = readVault();
-    const ruletas = {};
-    for (const id of WHEEL_ITEMS) {
+    const porRuleta = {};
+    for (const id of ruletas()) {
         const premios = pool(id, data, wins);
         const total = premios.reduce((n, p) => n + p.weight, 0);
-        ruletas[id] = {
+        porRuleta[id] = {
             ...data.wheels[id],
             chances: Object.fromEntries(premios.map(p => [p.id, total ? p.weight / total : 0])),
             ...(id === 'summon-shard' ? { vaultAvailable: vaultPrizes(data.wheels[id], wins).length } : {})
         };
     }
     return {
-        wheels: ruletas,
+        wheels: porRuleta,
         vault: { address: data.vault, at: vault.at, count: vault.tokenIds.length },
         wins: wins.slice().reverse().slice(0, 200)
     };
@@ -323,7 +324,7 @@ async function setPrizeImage(itemId, prizeId, buffer) {
 }
 
 module.exports = {
-    WHEEL_ITEMS,
+    usarRuletas,
     isAvailable,
     hasPrizes,
     addDelivery,

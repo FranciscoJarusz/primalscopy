@@ -9,6 +9,7 @@ const { startSeeding, getSeedProgress, ORIGIN_URL, LAST_TOKEN } = require('../li
 const remote = require('../lib/remotePublisher');
 const nicknames = require('../lib/nicknameStore');
 const promo = require('../lib/promoStore');
+const exiled = require('../lib/exiledStore');
 const staking = require('../lib/stakingStore');
 const { verifyStakes, refreshVaultNow } = require('../lib/stakingJob');
 const wheels = require('../lib/stakingWheels');
@@ -139,6 +140,12 @@ router.patch('/promo/:code', (req, res) => {
         : promo.setActive(req.params.code, body.active);
     if (result.error) return res.status(result.status).json({ error: result.error });
     res.json(result.code);
+});
+router.get('/exiled', (req, res) => res.json({ masterCode: exiled.masterCode() }));
+router.put('/exiled', (req, res) => {
+    const result = exiled.setMasterCode(req.body?.masterCode);
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json(result);
 });
 
 // Staking: la tasa, los periodos y el catalogo se cambian desde aca para

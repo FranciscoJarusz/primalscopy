@@ -10,6 +10,7 @@ import StakingSec from "@/components/landing/StakingSec.astro";
 import Caves from "@/components/landing/Caves.astro";
 import IpRights from "@/components/landing/IpRights.astro";
 import TeamSec from "@/components/landing/TeamSec.astro";
+import Exiled from "@/components/landing/Exiled";
 ---
 
 <LandingLayout title="Primal Cult | Glitch Art on ApeChain" activo="home">
@@ -27,4 +28,6 @@ import TeamSec from "@/components/landing/TeamSec.astro";
     <TeamSec />
     <IpRights />
   </div>
+  <Exiled client:idle />
+
 </LandingLayout>

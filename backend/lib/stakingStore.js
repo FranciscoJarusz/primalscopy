@@ -49,19 +49,26 @@ const DEFAULT_CONFIG = {
         { min: 20, bonus: 20 }
     ],
     catalog: [
-        { id: 'lowkey', label: 'LOW KEY', description: 'NFT drop on ApeChain, floor 1-30 APE', price: 50000, enabled: true },
-        { id: 'highkey', label: 'HIGH KEY', description: 'NFT drop on ApeChain, floor 30-90 APE', price: 500000, enabled: true },
-        { id: 'fogkey', label: 'FOG KEY', description: 'NFT drop on ApeChain, floor 90-200 APE', price: 1000000, enabled: true },
-        { id: 'raffle-ticket', label: 'RAFFLE TICKET', description: 'One entry to a Primal raffle', price: 5000, enabled: true },
-        { id: 'forge-roll', label: 'REROLL TICKET', description: 'One roll in the Forge', price: 20000, enabled: true },
-        { id: 'summon-shard', label: 'PRIMAL KEY', description: 'Win a Primal from the vault', price: 500000, enabled: true },
+        { id: 'lowkey', kind: 'key', label: 'LOW KEY', description: 'NFT drop on ApeChain, floor 1-30 APE', price: 50000, enabled: true },
+        { id: 'highkey', kind: 'key', label: 'HIGH KEY', description: 'NFT drop on ApeChain, floor 30-90 APE', price: 500000, enabled: true },
+        { id: 'fogkey', kind: 'key', label: 'FOG KEY', description: 'NFT drop on ApeChain, floor 90-200 APE', price: 1000000, enabled: true },
+        { id: 'raffle-ticket', kind: 'raffle', label: 'RAFFLE TICKET', description: 'One entry to a Primal raffle', price: 5000, enabled: true },
+        { id: 'forge-roll', kind: 'forge-roll', label: 'REROLL TICKET', description: 'One roll in the Forge', price: 20000, enabled: true },
+        { id: 'summon-shard', kind: 'key', label: 'PRIMAL KEY', description: 'Win a Primal from the vault', price: 500000, enabled: true },
         // Los APE salen de la wallet del proyecto: arrancan sin stock y no se
         // venden hasta que el admin carga cuantos hay para dar.
-        { id: 'ape-10', label: '10 APE', description: 'Sent to your wallet', price: 100000, enabled: true, stock: 0 },
-        { id: 'ape-50', label: '50 APE', description: 'Sent to your wallet', price: 500000, enabled: true, stock: 0 },
-        { id: 'ape-100', label: '100 APE', description: 'Sent to your wallet', price: 1000000, enabled: true, stock: 0 }
+        { id: 'ape-10', kind: 'ape', amount: 10, label: '10 APE', description: 'Sent to your wallet', price: 100000, enabled: true, stock: 0 },
+        { id: 'ape-50', kind: 'ape', amount: 50, label: '50 APE', description: 'Sent to your wallet', price: 500000, enabled: true, stock: 0 },
+        { id: 'ape-100', kind: 'ape', amount: 100, label: '100 APE', description: 'Sent to your wallet', price: 1000000, enabled: true, stock: 0 }
     ]
 };
+
+const KINDS_NUEVOS = {
+    key: { description: 'Open it to win a prize', stock: null },
+    ape: { description: 'Sent to your wallet', stock: 0 },
+    nft: { description: 'Sent to your wallet', stock: 0 }
+};
+const IDS_RESERVADOS = ['fog'];
 
 // Los premios que se entregan solos al canjear. El resto del catalogo se
 // muestra pero todavia no se puede canjear: hay que mandar APE o NFTs reales,
@@ -72,32 +79,41 @@ const DEFAULT_CONFIG = {
 // Los APE quedan como entrega pendiente, igual que un premio de ruleta: el
 // admin los manda y los marca como enviados.
 const wheels = require('./stakingWheels');
-const APE_ITEMS = { 'ape-10': 10, 'ape-50': 50, 'ape-100': 100 };
-const GRANTS = {
-    'forge-roll': {
-        available: () => Boolean(require('./forgePayments').paymentConfig()),
-        grant: (wallet, redemptionId) => require('./forgeStore').addFogCredit(wallet, redemptionId)
-    },
-    ...Object.fromEntries(wheels.WHEEL_ITEMS.map(id => [id, {
-        available: () => wheels.isAvailable(id),
-        // Tiene premios cargados aunque hoy esten todos agotados: "Sold out",
-        // no "Soon".
-        configured: () => wheels.hasPrizes(id),
-        grant: (wallet, redemptionId) => wheels.spin(wallet, id, redemptionId)
-    }])),
-    ...Object.fromEntries(Object.entries(APE_ITEMS).map(([id, amount]) => [id, {
-        available: () => true,
-        grant: (wallet, redemptionId, item) => ({
-            delivery: wheels.addDelivery(wallet, id, { kind: 'ape', amount, label: item.label }, redemptionId)
-        })
-    }]))
-};
+wheels.usarRuletas(() => getConfig().catalog.filter(i => i.kind === 'key').map(i => i.id));
+
+function grantDe(item) {
+    if (item.kind === 'forge-roll') {
+        return {
+            available: () => Boolean(require('./forgePayments').paymentConfig()),
+            grant: (wallet, redemptionId) => require('./forgeStore').addFogCredit(wallet, redemptionId)
+        };
+    }
+    if (item.kind === 'key') {
+        return {
+            available: () => wheels.isAvailable(item.id),
+            // Tiene premios cargados aunque hoy esten todos agotados: "Sold out",
+            // no "Soon".
+            configured: () => wheels.hasPrizes(item.id),
+            grant: (wallet, redemptionId) => wheels.spin(wallet, item.id, redemptionId)
+        };
+    }
+    if (item.kind === 'ape' || item.kind === 'nft') {
+        return {
+            available: () => true,
+            grant: (wallet, redemptionId) => ({
+                delivery: wheels.addDelivery(wallet, item.id,
+                    { kind: item.kind, amount: item.amount ?? null, label: item.label }, redemptionId)
+            })
+        };
+    }
+    return null;
+}
 
 // Como se ve cada premio en la tienda: 'available', 'sold-out' (no queda
 // stock, o la ruleta se quedo sin premios) o 'soon' (todavia no se puede).
 function statusOf(item) {
     if (item.stock === 0) return 'sold-out';
-    const grant = GRANTS[item.id];
+    const grant = grantDe(item);
     if (!grant) return 'soon';
     if (grant.available()) return 'available';
     return grant.configured?.() ? 'sold-out' : 'soon';
@@ -217,9 +233,11 @@ function getConfig() {
         periods: saved.periods ?? DEFAULT_CONFIG.periods,
         quantityTiers: saved.quantityTiers ?? DEFAULT_CONFIG.quantityTiers,
         boosts: saved.boosts ?? [],
-        catalog: DEFAULT_CONFIG.catalog
+        catalog: [
+            ...DEFAULT_CONFIG.catalog.map(item => ({ ...item, ...sinTextosViejos(savedItems.get(item.id)), kind: item.kind })),
+            ...(saved.catalog || []).filter(item => item.custom)
+        ]
             .filter(item => !removed.includes(item.id))
-            .map(item => ({ ...item, ...sinTextosViejos(savedItems.get(item.id)) }))
             // sort es estable: los que no estan en `order` quedan en su orden de siempre.
             .sort((a, b) => posicion(a.id) - posicion(b.id)),
         removed,
@@ -334,6 +352,37 @@ function updateConfig(changes = {}) {
                 }
             }
         }
+    }
+
+    if ('addCatalog' in changes) {
+        const nuevo = changes.addCatalog || {};
+        const base = KINDS_NUEVOS[nuevo.kind];
+        if (!base) return { error: 'A new reward is a key, APE or an NFT.' };
+        const label = String(nuevo.label || '').trim().slice(0, 40);
+        if (!label) return { error: 'A reward needs a name.' };
+        const price = intEntre(nuevo.price, 1, 1000000000);
+        if (price === null) return { error: 'The price must be a whole number of FOG.' };
+        let amount;
+        if (nuevo.kind === 'ape') {
+            amount = intEntre(nuevo.amount, 1, 1000000);
+            if (amount === null) return { error: 'How much APE does it send? A whole number.' };
+        }
+        const usados = new Set([...config.catalog.map(i => i.id), ...config.removed, ...IDS_RESERVADOS]);
+        const raiz = label.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || nuevo.kind;
+        let id = raiz;
+        for (let n = 2; usados.has(id); n++) id = `${raiz}-${n}`;
+        config.catalog.push({
+            id,
+            kind: nuevo.kind,
+            ...(amount ? { amount } : {}),
+            label,
+            description: String(nuevo.description || '').trim().slice(0, 120) || base.description,
+            price,
+            enabled: true,
+            stock: base.stock,
+            custom: true
+        });
+        if (config.order.length) config.order = [...config.order, id];
     }
 
     if ('order' in changes) {
@@ -462,7 +511,7 @@ function publicConfig() {
             .filter(item => item.enabled)
             .map(item => {
                 const status = statusOf(item);
-                return { ...item, status, redeemable: status === 'available', wheel: wheels.WHEEL_ITEMS.includes(item.id) };
+                return { ...item, status, redeemable: status === 'available', wheel: item.kind === 'key' };
             }),
         totals: globalTotals(active, now),
         collectionSize: require('./collectionSupply').conocido(),
@@ -903,7 +952,7 @@ function redeem(wallet, itemId) {
     const config = getConfig();
     const item = config.catalog.find(i => i.id === itemId && i.enabled);
     if (!item) return { error: 'That reward does not exist.', reason: 'invalid', status: 404 };
-    const grant = GRANTS[item.id];
+    const grant = grantDe(item);
     if (item.stock === 0) return { error: `${item.label} is sold out.`, reason: 'sold-out', status: 409 };
     if (!grant || !grant.available()) {
         return { error: `${item.label} can't be redeemed yet.`, reason: 'not-redeemable', status: 409 };
@@ -954,15 +1003,28 @@ function grantFog(wallet, amount, reason) {
     return { fog: amount };
 }
 
-function spinWheel(wallet, itemId, reason) {
+function giveItem(wallet, itemId, reason) {
     const key = wallet.toLowerCase();
-    if (!wheels.isAvailable(itemId)) return { error: 'That reward is sold out right now.' };
-    const result = wheels.spin(key, itemId, crypto.randomUUID());
-    if (result.error) return result;
-    if (result.fog) grantFog(key, result.fog, `${reason}:${itemId}`);
-    else appendHistory({ event: 'grant', wallet: key, prize: result.win.prize, reason: `${reason}:${itemId}` });
-    const item = getConfig().catalog.find(i => i.id === itemId);
-    return { win: result.win, item: { id: itemId, label: item?.label ?? itemId, icon: item?.icon } };
+    const config = getConfig();
+    const item = config.catalog.find(i => i.id === itemId);
+    if (!item) return { error: 'That reward does not exist anymore.' };
+    if (item.kind === 'key') {
+        if (!wheels.isAvailable(itemId)) return { error: 'That reward is sold out right now.' };
+        const result = wheels.spin(key, itemId, crypto.randomUUID());
+        if (result.error) return result;
+        if (result.fog) grantFog(key, result.fog, `${reason}:${itemId}`);
+        else appendHistory({ event: 'grant', wallet: key, prize: result.win.prize, reason: `${reason}:${itemId}` });
+        return { win: result.win, item: { id: itemId, label: item.label, icon: item.icon, kind: item.kind, amount: item.amount } };
+    }
+    if (item.kind !== 'ape' && item.kind !== 'nft') return { error: "That reward can't be given away." };
+    if (item.stock === 0) return { error: `${item.label} is sold out.` };
+    const { delivery } = grantDe(item).grant(key, crypto.randomUUID());
+    if (Number.isInteger(item.stock)) {
+        item.stock -= 1;
+        guardar(CONFIG_PATH, config);
+    }
+    appendHistory({ event: 'grant', wallet: key, prize: delivery.prize, reason: `${reason}:${itemId}` });
+    return { delivery, item: { id: itemId, label: item.label, icon: item.icon, kind: item.kind, amount: item.amount } };
 }
 
 
@@ -1014,7 +1076,7 @@ module.exports = {
     streaksByWallet,
     redeem,
     grantFog,
-    spinWheel,
+    giveItem,
     adminSummary,
     isValidTokenId
 };

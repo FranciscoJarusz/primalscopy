@@ -44,7 +44,9 @@ export async function canjearCodigo(token: string, code: string): Promise<Canje>
     return datos as Canje;
 }
 
-// Como se lee el premio: "2 Forge rolls", "5,000 FOG".
+export const sufijoPlural = (label: string) => (/[a-z]/.test(label) ? 's' : 'S');
+
+// Como se lee el premio: "2 REROLL TICKETS", "5,000 FOG".
 export function textoPremio({ label, amount, plural = true }: Pick<Canje, 'label' | 'amount' | 'plural'>) {
-    return `${amount.toLocaleString('en-US')} ${label}${plural && amount !== 1 ? 's' : ''}`;
+    return `${amount.toLocaleString('en-US')} ${label}${plural && amount !== 1 ? sufijoPlural(label) : ''}`;
 }

@@ -1,36 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-    FiChevronDown,
-    FiChevronUp,
-    FiImage,
-    FiTrash2,
-    FiX,
-} from 'react-icons/fi';
-import { iconoPremio } from '@/lib/staking';
-import StakingWheelsAdmin from './StakingWheelsAdmin';
+import { FiX } from 'react-icons/fi';
 import BoostAdmin, { type BoostGuardado } from './BoostAdmin';
-import { useApodos, walletCorta } from '@/lib/nicknames';
 import { BACKEND_URL } from '@/lib/backend';
-import { APECHAIN } from '@/lib/cultomizer/contracts';
+import {
+    botonChico,
+    botonGuardar,
+    campo,
+    etiqueta,
+    fecha,
+    fog,
+    lista,
+    panel,
+    titulo,
+    useQuien,
+} from './comun';
 
 type Periodo = { days: number; bonus: number };
 type Escalon = { min: number; bonus: number };
-type Premio = {
-    id: string;
-    label: string;
-    description: string;
-    price: number;
-    enabled: boolean;
-    icon?: string;
-    // Cuantos quedan para vender; null, sin limite.
-    stock?: number | null;
-};
 type Config = {
     enabled: boolean;
     dailyRate: number;
     periods: Periodo[];
     quantityTiers: Escalon[];
-    catalog: Premio[];
     boosts?: BoostGuardado[];
 };
 type Resumen = {
@@ -44,14 +35,6 @@ type Resumen = {
         earned: number;
         spent: number;
         training: number;
-    }[];
-    redemptions: {
-        id: string;
-        wallet: string;
-        item: string;
-        label: string;
-        price: number;
-        at: string;
     }[];
     endings: {
         tokenId: string;
@@ -68,29 +51,8 @@ type Borrador = {
     dailyRate: string;
     periods: { days: string; bonus: string }[];
     quantityTiers: { min: string; bonus: string }[];
-    catalog: (Omit<Premio, 'price' | 'stock'> & { price: string; stock: string })[];
 };
 
-const campo =
-    'w-full bg-lightblue text-darkblue placeholder-darkblue/50 font-medium text-base leading-normal! rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-yellow';
-const etiqueta = 'flex flex-col gap-1 text-sm text-lightblue/80';
-const botonChico =
-    'bg-lightblue text-darkblue font-accent uppercase text-sm rounded-md px-3 pb-1 cursor-pointer hover:bg-yellow active:scale-97 transition-all duration-300 disabled:opacity-40';
-const panel =
-    'flex flex-col gap-4 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50';
-const titulo = 'font-accent uppercase text-yellow text-2xl';
-// Las listas que la usan llevan data-lenis-prevent: sin eso Lenis se queda con
-// la rueda y no bajan.
-const lista = 'max-h-96 overflow-y-auto overscroll-contain pr-2';
-
-const fog = (n: number) => n.toLocaleString('en-US');
-const fecha = (iso: string) =>
-    new Date(iso).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
 const MOTIVOS: Record<string, string> = {
     transferred: 'Sold or transferred',
     listed: 'Listed for sale',
@@ -107,37 +69,10 @@ const aBorrador = (c: Config): Borrador => ({
         min: String(t.min),
         bonus: String(t.bonus),
     })),
-    catalog: c.catalog.map((i) => ({
-        ...i,
-        price: String(i.price),
-        stock: i.stock === null || i.stock === undefined ? '' : String(i.stock),
-    })),
 });
 
 export default function StakingAdmin({ token }: { token: string }) {
-    const apodos = useApodos();
-    // El apodo (si tiene) y la wallet corta al lado.
-    const quien = (w: string) => {
-        const link = (
-            <a
-                href={`${APECHAIN.explorador}/address/${w}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="View on ApeScan"
-                className="hover:text-yellow underline-offset-4 hover:underline transition-all duration-300"
-            >
-                {walletCorta(w)}
-            </a>
-        );
-        return apodos[w.toLowerCase()] ? (
-            <>
-                <b className="text-white font-semibold">{apodos[w.toLowerCase()]}</b>{' '}
-                <span className="text-lightblue/60">· {link}</span>
-            </>
-        ) : (
-            link
-        );
-    };
+    const quien = useQuien();
 
     const [resumen, setResumen] = useState<Resumen | null>(null);
     const [borrador, setBorrador] = useState<Borrador | null>(null);
@@ -146,10 +81,6 @@ export default function StakingAdmin({ token }: { token: string }) {
     const [guardado, setGuardado] = useState(false);
     const [verificando, setVerificando] = useState(false);
     const [verificacion, setVerificacion] = useState<string | null>(null);
-    const [confirmarBorrado, setConfirmarBorrado] = useState<string | null>(
-        null
-    );
-    const [subiendoIcono, setSubiendoIcono] = useState<string | null>(null);
 
     const auth = useCallback(
         (extra: HeadersInit = {}) => ({
@@ -221,15 +152,6 @@ export default function StakingAdmin({ token }: { token: string }) {
                     min: Number(t.min),
                     bonus: Number(t.bonus),
                 })),
-                catalog: borrador.catalog.map((i) => ({
-                    id: i.id,
-                    label: i.label,
-                    description: i.description,
-                    price: Number(i.price),
-                    stock: i.stock.trim() === '' ? null : Number(i.stock),
-                    enabled: i.enabled,
-                })),
-                order: borrador.catalog.map((i) => i.id),
             });
             await cargar();
             setGuardado(true);
@@ -292,98 +214,6 @@ export default function StakingAdmin({ token }: { token: string }) {
             ...borrador,
             periods: borrador.periods.map((p, j) =>
                 j === i ? { ...p, ...cambio } : p
-            ),
-        });
-
-    // Borrar va directo al server, sin esperar a "Save changes": pide un
-    // segundo clic para confirmar. Lo demas que se este editando no se pierde.
-    const borrarPremio = async (id: string) => {
-        if (confirmarBorrado !== id) {
-            setConfirmarBorrado(id);
-            return;
-        }
-        setConfirmarBorrado(null);
-        setError(null);
-        try {
-            const config = await enviar({ removeCatalog: id });
-            setResumen((r) => (r ? { ...r, config } : r));
-            setBorrador((b) =>
-                b ? { ...b, catalog: b.catalog.filter((p) => p.id !== id) } : b
-            );
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Couldn't delete it.");
-        }
-    };
-
-    // El icono va directo al server, como borrar: no espera a "Save changes" y
-    // no pisa lo demas que se este editando. Sin archivo, vuelve al de siempre.
-    const cambiarIcono = async (id: string, archivo: File | null) => {
-        setSubiendoIcono(id);
-        setError(null);
-        try {
-            let respuesta: Response;
-            if (archivo) {
-                const datos = new FormData();
-                datos.append('file', archivo);
-                respuesta = await fetch(
-                    `${BACKEND_URL}/admin/staking/icon/${id}`,
-                    { method: 'POST', headers: auth(), body: datos }
-                );
-            } else {
-                respuesta = await fetch(
-                    `${BACKEND_URL}/admin/staking/icon/${id}`,
-                    { method: 'DELETE', headers: auth() }
-                );
-            }
-            const datos = await respuesta.json().catch(() => ({}));
-            if (!respuesta.ok) {
-                throw new Error(datos.error || "Couldn't change the icon.");
-            }
-            const config = datos as Config;
-            const icon = config.catalog.find((p) => p.id === id)?.icon;
-            setResumen((r) => (r ? { ...r, config } : r));
-            setBorrador((b) =>
-                b
-                    ? {
-                          ...b,
-                          catalog: b.catalog.map((p) =>
-                              p.id === id ? { ...p, icon } : p
-                          ),
-                      }
-                    : b
-            );
-        } catch (err) {
-            setError(
-                err instanceof Error ? err.message : "Couldn't change the icon."
-            );
-        }
-        setSubiendoIcono(null);
-    };
-
-    // Sube o baja un premio en la lista. Se guarda con "Save changes", y la
-    // pagina de staking los muestra en este mismo orden.
-    const moverPremio = (i: number, paso: -1 | 1) =>
-        borrador &&
-        setBorrador({
-            ...borrador,
-            catalog: borrador.catalog.map((p, j) =>
-                j === i
-                    ? borrador.catalog[i + paso]
-                    : j === i + paso
-                      ? borrador.catalog[i]
-                      : p
-            ),
-        });
-
-    const editarPremio = (
-        id: string,
-        cambio: Partial<Borrador['catalog'][number]>
-    ) =>
-        borrador &&
-        setBorrador({
-            ...borrador,
-            catalog: borrador.catalog.map((p) =>
-                p.id === id ? { ...p, ...cambio } : p
             ),
         });
 
@@ -665,187 +495,11 @@ export default function StakingAdmin({ token }: { token: string }) {
                         </div>
                     </div>
 
-                    <h2 className={`${titulo} mt-4`}>Rewards</h2>
-                    <p className="text-lightblue/70 text-sm -mt-2">
-                        The Reroll ticket is delivered automatically, every key
-                        opens a prize wheel, and APE is
-                        sent by hand (it shows up under Deliveries). Stock is
-                        how many are left to sell: empty is unlimited, 0 shows
-                        &quot;Sold out&quot;. APE starts at 0 so it isn&apos;t
-                        sold by accident. The rest show a &quot;Soon&quot;
-                        label. Hide a reward to take it off the
-                        page for a while, or delete it to remove it for good.
-                        Click an icon to upload a new one (PNG, JPG, GIF or
-                        WebP); it changes right away.
-                    </p>
-                    <div className="flex flex-col gap-3">
-                        {borrador.catalog.map((item, i) => (
-                            <div
-                                key={item.id}
-                                className={`grid gap-3 sm:grid-cols-[auto_auto_minmax(0,1fr)_minmax(0,2fr)_8rem_6rem_auto_auto] items-end ${
-                                    item.enabled ? '' : 'opacity-50'
-                                }`}
-                            >
-                                <div className="h-9 flex sm:flex-col items-center sm:justify-center gap-1 sm:gap-0">
-                                    <button
-                                        type="button"
-                                        aria-label={`Move ${item.label} up`}
-                                        disabled={i === 0}
-                                        onClick={() => moverPremio(i, -1)}
-                                        className="text-lightblue/60 hover:text-yellow cursor-pointer transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-lightblue/60"
-                                    >
-                                        <FiChevronUp className="w-4.5 h-4.5" />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        aria-label={`Move ${item.label} down`}
-                                        disabled={i === borrador.catalog.length - 1}
-                                        onClick={() => moverPremio(i, 1)}
-                                        className="text-lightblue/60 hover:text-yellow cursor-pointer transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-lightblue/60"
-                                    >
-                                        <FiChevronDown className="w-4.5 h-4.5" />
-                                    </button>
-                                </div>
-                                <div className="flex items-end gap-2">
-                                    <label
-                                        title="Upload a new icon"
-                                        className={`relative size-16 shrink-0 grid place-items-center rounded-xl bg-blue cursor-pointer hover:ring-2 hover:ring-yellow transition-all duration-300 ${
-                                            subiendoIcono === item.id
-                                                ? 'opacity-50 pointer-events-none'
-                                                : ''
-                                        }`}
-                                    >
-                                        {iconoPremio(item) ? (
-                                            <img
-                                                src={iconoPremio(item)!}
-                                                alt=""
-                                                className="size-14 object-contain"
-                                            />
-                                        ) : (
-                                            <FiImage className="w-6 h-6 text-lightblue/60" />
-                                        )}
-                                        <input
-                                            type="file"
-                                            accept=".png,.jpg,.jpeg,.gif,.webp"
-                                            className="sr-only"
-                                            onChange={(e) => {
-                                                const archivo =
-                                                    e.target.files?.[0];
-                                                e.target.value = '';
-                                                if (archivo)
-                                                    cambiarIcono(item.id, archivo);
-                                            }}
-                                        />
-                                    </label>
-                                    {item.icon && (
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                cambiarIcono(item.id, null)
-                                            }
-                                            disabled={subiendoIcono === item.id}
-                                            title="Go back to the default icon"
-                                            className="text-xs text-lightblue/60 hover:text-yellow underline underline-offset-4 cursor-pointer transition-all duration-300"
-                                        >
-                                            Default
-                                        </button>
-                                    )}
-                                </div>
-                                <label className={etiqueta}>
-                                    Name
-                                    <input
-                                        value={item.label}
-                                        maxLength={40}
-                                        onChange={(e) =>
-                                            editarPremio(item.id, {
-                                                label: e.target.value,
-                                            })
-                                        }
-                                        className={campo}
-                                    />
-                                </label>
-                                <label className={etiqueta}>
-                                    Description
-                                    <input
-                                        value={item.description}
-                                        maxLength={120}
-                                        onChange={(e) =>
-                                            editarPremio(item.id, {
-                                                description: e.target.value,
-                                            })
-                                        }
-                                        className={campo}
-                                    />
-                                </label>
-                                <label className={etiqueta}>
-                                    Price (FOG)
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        value={item.price}
-                                        onChange={(e) =>
-                                            editarPremio(item.id, {
-                                                price: e.target.value,
-                                            })
-                                        }
-                                        className={campo}
-                                    />
-                                </label>
-                                <label className={etiqueta} title="How many are left to sell. Empty means unlimited.">
-                                    Stock
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        value={item.stock}
-                                        placeholder="∞"
-                                        onChange={(e) =>
-                                            editarPremio(item.id, {
-                                                stock: e.target.value,
-                                            })
-                                        }
-                                        className={campo}
-                                    />
-                                </label>
-                                <label className="h-9 flex items-center gap-2 text-sm text-lightblue cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={item.enabled}
-                                        onChange={(e) =>
-                                            editarPremio(item.id, {
-                                                enabled: e.target.checked,
-                                            })
-                                        }
-                                        className="w-4 h-4 accent-yellow"
-                                    />
-                                    Shown
-                                </label>
-                                <button
-                                    type="button"
-                                    onClick={() => borrarPremio(item.id)}
-                                    onBlur={() =>
-                                        setConfirmarBorrado((c) =>
-                                            c === item.id ? null : c
-                                        )
-                                    }
-                                    aria-label={`Delete ${item.label}`}
-                                    className={`justify-self-start h-9 inline-flex items-center gap-1.5 rounded-md px-2 text-sm cursor-pointer transition-all duration-300 ${
-                                        confirmarBorrado === item.id
-                                            ? 'bg-red-400/20 text-red-300'
-                                            : 'text-lightblue/60 hover:text-red-300'
-                                    }`}
-                                >
-                                    <FiTrash2 className="w-4 h-4" />
-                                    {confirmarBorrado === item.id && 'Delete?'}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-
                     <div className="flex items-center gap-3 mt-2">
                         <button
                             type="submit"
                             disabled={guardando}
-                            className="bg-yellow text-darkblue font-accent uppercase rounded-md px-6 pb-1.5 cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300 disabled:opacity-40"
+                            className={botonGuardar}
                         >
                             {guardando ? 'Saving...' : 'Save changes'}
                         </button>
@@ -856,15 +510,6 @@ export default function StakingAdmin({ token }: { token: string }) {
                         )}
                     </div>
                 </form>
-            )}
-
-            {resumen && (
-                <StakingWheelsAdmin
-                    token={token}
-                    nombres={Object.fromEntries(
-                        resumen.config.catalog.map((i) => [i.id, i.label])
-                    )}
-                />
             )}
 
             {resumen && (
@@ -920,34 +565,6 @@ export default function StakingAdmin({ token }: { token: string }) {
                         )}
                     </div>
                     <div className="flex flex-col gap-5 sm:gap-8">
-                        <div className={panel}>
-                            <h2 className={titulo}>Redemptions</h2>
-                            {resumen.redemptions.length === 0 ? (
-                                <p className="text-lightblue/70">
-                                    No redemptions yet.
-                                </p>
-                            ) : (
-                                <ul data-lenis-prevent className={`${lista} text-sm text-lightblue flex flex-col gap-1.5`}>
-                                    {resumen.redemptions.map((r) => (
-                                        <li key={r.id} className="flex gap-3">
-                                            <span className="text-lightblue/60 w-32 shrink-0 whitespace-nowrap">
-                                                {fecha(r.at)}
-                                            </span>
-                                            <span className="font-mono">
-                                                {quien(r.wallet)}
-                                            </span>
-                                            <span className="flex-1 text-right">
-                                                {/* El nombre de hoy: si el premio se renombro, el viejo confunde. */}
-                                                <b className="text-white font-semibold">
-                                                    {resumen.config.catalog.find((i) => i.id === r.item)?.label ?? r.label}
-                                                </b>{' '}
-                                                · <span className="text-yellow">{fog(r.price)} FOG</span>
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
                         <div className={panel}>
                             <h2 className={titulo}>Stopped early</h2>
                             {resumen.endings.length === 0 ? (
