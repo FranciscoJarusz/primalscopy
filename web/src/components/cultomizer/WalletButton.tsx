@@ -23,7 +23,6 @@ import {
     walletCorta,
 } from '@/lib/nicknames';
 
-
 // Cada pagina del sitio es una carga nueva: wagmi tarda unos cientos de ms en
 // reconectarse y el saldo se vuelve a pedir a la cadena. Mientras tanto se
 // muestra la ultima wallet conocida, en vez de "Connect Wallet" y "—".
@@ -71,10 +70,7 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                 (estado) => estado.status,
                 (actual, antes) => {
                     if (actual === 'connected') setResuelta(true);
-                    if (
-                        actual === 'disconnected' &&
-                        antes !== 'disconnected'
-                    ) {
+                    if (actual === 'disconnected' && antes !== 'disconnected') {
                         setResuelta(true);
                         setRecordada(null);
                         guardarRecordada(null);
@@ -124,11 +120,38 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
     });
 
     const session = useWalletSession();
-    const [nickname, setNickname] = useState<string | null | undefined>(undefined);
+    const [nickname, setNickname] = useState<string | null | undefined>(
+        undefined
+    );
     const [modal, setModal] = useState(false);
     const [canje, setCanje] = useState(false);
     const [menu, setMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+    const porHover = useRef(false);
+    const espera = useRef<number | undefined>(undefined);
+    const alEntrar = (e: React.PointerEvent) => {
+        if (e.pointerType !== 'mouse') return;
+        clearTimeout(espera.current);
+        if (!menu) {
+            porHover.current = true;
+            setMenu(true);
+        }
+    };
+    const alSalir = (e: React.PointerEvent) => {
+        if (e.pointerType !== 'mouse') return;
+        espera.current = window.setTimeout(() => setMenu(false), 150);
+    };
+    const alTocar = () => {
+        if (porHover.current) {
+            porHover.current = false;
+            return;
+        }
+        setMenu((m) => !m);
+    };
+    useEffect(() => {
+        if (!menu) porHover.current = false;
+    }, [menu]);
+    useEffect(() => () => clearTimeout(espera.current), []);
     const holder = primals !== undefined && primals > 0n;
 
     useEffect(() => {
@@ -144,7 +167,12 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
     }, [address]);
 
     useEffect(() => {
-        if (address && holder && nickname === null && !nicknameSalteado(address)) {
+        if (
+            address &&
+            holder &&
+            nickname === null &&
+            !nicknameSalteado(address)
+        ) {
             setModal(true);
         }
     }, [address, holder, nickname]);
@@ -154,7 +182,8 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
         const fuera = (e: MouseEvent) => {
             if (!menuRef.current?.contains(e.target as Node)) setMenu(false);
         };
-        const tecla = (e: KeyboardEvent) => e.key === 'Escape' && setMenu(false);
+        const tecla = (e: KeyboardEvent) =>
+            e.key === 'Escape' && setMenu(false);
         document.addEventListener('click', fuera);
         window.addEventListener('keydown', tecla);
         return () => {
@@ -209,10 +238,14 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                 {/* Los dos textos en la misma celda: el boton mide siempre lo
                     del mas largo y no empuja al resto del header al cambiar. */}
                 <span className="grid">
-                    <span className={`col-start-1 row-start-1 ${montado && isConnecting ? 'invisible' : ''}`}>
+                    <span
+                        className={`col-start-1 row-start-1 ${montado && isConnecting ? 'invisible' : ''}`}
+                    >
                         Connect<span className="hidden sm:inline"> Wallet</span>
                     </span>
-                    <span className={`col-start-1 row-start-1 ${montado && isConnecting ? '' : 'invisible'}`}>
+                    <span
+                        className={`col-start-1 row-start-1 ${montado && isConnecting ? '' : 'invisible'}`}
+                    >
                         Connecting...
                     </span>
                 </span>
@@ -222,74 +255,94 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
 
     return (
         <div className="flex items-center gap-2 sm:gap-3">
-            <div ref={menuRef} className="relative">
-            <button
-                onClick={() => setMenu((m) => !m)}
-                aria-expanded={menu}
-                aria-haspopup="menu"
-                title={direccion}
-                aria-label={`Wallet ${walletCorta(direccion)}, ${valor} ${unidad}`}
-                className="group flex items-center gap-2 bg-darkblue rounded-full p-1 pr-3 cursor-pointer ring-yellow hover:ring-2 transition-all duration-300"
+            <div
+                ref={menuRef}
+                className="relative"
+                onPointerEnter={alEntrar}
+                onPointerLeave={alSalir}
             >
-                <AvatarWallet direccion={direccion} size={32} redondo />
-                <span className="font-accent uppercase text-lightblue group-hover:text-yellow tabular-nums pb-1.5 transition-all duration-300">
-                    {valor}
-                    <span className="hidden sm:inline"> {unidad}</span>
-                </span>
-                <FiChevronDown
-                    aria-hidden="true"
-                    className={`w-4 h-4 -ml-1 text-lightblue group-hover:text-yellow transition-all duration-300 ${menu ? 'rotate-180' : ''}`}
-                    strokeWidth={3}
-                />
-            </button>
-
-            {menu && (
-                <div
-                    role="menu"
-                    className="absolute right-0 top-full mt-3 z-40 min-w-56 bg-darkblue rounded-2xl p-2 shadow-lg shadow-darkblue/50 ring-1 ring-lightblue/15 flex flex-col font-accent uppercase text-lg"
+                <button
+                    onClick={alTocar}
+                    aria-expanded={menu}
+                    aria-haspopup="menu"
+                    title={direccion}
+                    aria-label={`Wallet ${walletCorta(direccion)}, ${valor} ${unidad}`}
+                    className="group flex items-center gap-2 bg-darkblue rounded-full p-1 pr-3 cursor-pointer ring-yellow hover:ring-2 transition-all duration-300"
                 >
-                    {nickname && (
-                        <span className="px-3 pt-1 pb-2 mb-1 border-b border-lightblue/15 text-yellow normal-case truncate">
-                            {nickname}
-                        </span>
-                    )}
-                    {holder && (
+                    <AvatarWallet direccion={direccion} size={32} redondo />
+                    <span className="font-accent uppercase text-lightblue group-hover:text-yellow tabular-nums pb-1.5 transition-all duration-300">
+                        {valor}
+                        <span className="hidden sm:inline"> {unidad}</span>
+                    </span>
+                    <FiChevronDown
+                        aria-hidden="true"
+                        className={`w-4 h-4 -ml-1 text-lightblue group-hover:text-yellow transition-all duration-300 ${menu ? 'rotate-180' : ''}`}
+                        strokeWidth={3}
+                    />
+                </button>
+
+                <div
+                    inert={!menu}
+                    className={`absolute right-0 top-full pt-4 z-40 transition-all duration-300 ease-out motion-reduce:transition-none ${menu ? '' : 'invisible opacity-0 -translate-y-1'}`}
+                >
+                    <div
+                        role="menu"
+                        className="min-w-56 bg-darkblue rounded-2xl p-2 shadow-lg shadow-darkblue/50 flex flex-col font-accent uppercase text-sm"
+                    >
+                        {nickname && (
+                            <span className="px-3 pt-1 pb-2 mb-1 border-b border-lightblue/15 text-yellow normal-case truncate">
+                                {nickname}
+                            </span>
+                        )}
+                        {holder && (
+                            <button
+                                role="menuitem"
+                                onClick={() => {
+                                    setMenu(false);
+                                    setModal(true);
+                                }}
+                                className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left uppercase text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
+                            >
+                                <FiEdit2
+                                    aria-hidden="true"
+                                    className="mt-1 size-4 shrink-0"
+                                    strokeWidth={2.5}
+                                />
+                                {nickname ? 'Edit nickname' : 'Set nickname'}
+                            </button>
+                        )}
                         <button
                             role="menuitem"
                             onClick={() => {
                                 setMenu(false);
-                                setModal(true);
+                                setCanje(true);
                             }}
-                            className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
+                            className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left uppercase text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
                         >
-                            <FiEdit2 aria-hidden="true" className="mt-1 w-4 h-4" strokeWidth={2.5} />
-                            {nickname ? 'Edit nickname' : 'Set nickname'}
+                            <FiGift
+                                aria-hidden="true"
+                                className="mt-1 size-4 shrink-0"
+                                strokeWidth={2.5}
+                            />
+                            Redeem code
                         </button>
-                    )}
-                    <button
-                        role="menuitem"
-                        onClick={() => {
-                            setMenu(false);
-                            setCanje(true);
-                        }}
-                        className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
-                    >
-                        <FiGift aria-hidden="true" className="mt-1 w-4 h-4" strokeWidth={2.5} />
-                        Redeem code
-                    </button>
-                    <button
-                        role="menuitem"
-                        onClick={() => {
-                            setMenu(false);
-                            open();
-                        }}
-                        className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
-                    >
-                        <FiCreditCard aria-hidden="true" className="mt-1 w-4 h-4" strokeWidth={2.5} />
-                        Wallet
-                    </button>
+                        <button
+                            role="menuitem"
+                            onClick={() => {
+                                setMenu(false);
+                                open();
+                            }}
+                            className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left uppercase text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
+                        >
+                            <FiCreditCard
+                                aria-hidden="true"
+                                className="mt-1 size-4 shrink-0"
+                                strokeWidth={2.5}
+                            />
+                            Wallet
+                        </button>
+                    </div>
                 </div>
-            )}
             </div>
 
             {modal && address && (
@@ -314,7 +367,10 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                 />
             )}
 
-            <span aria-hidden="true" className="hidden lg:block w-px h-6 bg-lightblue/20" />
+            <span
+                aria-hidden="true"
+                className="hidden lg:block w-px h-6 bg-lightblue/20"
+            />
 
             <button
                 onClick={() => disconnect()}
