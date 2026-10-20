@@ -10,12 +10,13 @@ export type Seccion = {
     oculta?: boolean;
 };
 
-export const SECCIONES: Seccion[] = [
-    { id: 'home', nombre: 'Home', href: '/' },
+export const SECCIONES: Seccion[] = [{ id: 'home', nombre: 'Home', href: '/' }];
+
+export const HUB: Seccion[] = [
     { id: 'cultomizer', nombre: 'Cultomizer', href: '/cultomizer' },
     { id: 'forge', nombre: 'Forge', href: '/forge' },
     { id: 'raffles', nombre: 'Raffles', href: '/raffles', oculta: true },
-    { id: 'staking', nombre: 'Staking', href: '/staking', oculta: true },
+    { id: 'staking', nombre: 'Staking', href: '/staking' },
 ];
 
 export const COMMUNITY: Seccion[] = [
@@ -24,12 +25,20 @@ export const COMMUNITY: Seccion[] = [
 
 interface Props {
     activo?: string;
-    secciones?: Seccion[];
 }
 
-const { activo = 'home', secciones: todas = SECCIONES } = Astro.props;
-const secciones = todas.filter((s) => !s.oculta);
-const communityActivo = COMMUNITY.some((s) => s.id === activo);
+const { activo = 'home' } = Astro.props;
+const visibles = (lista: Seccion[]) => lista.filter((s) => !s.oculta);
+const secciones = visibles(SECCIONES);
+const desplegables = [
+    { id: 'hub', nombre: 'Primal Hub', items: visibles(HUB), redes: false },
+    {
+        id: 'community',
+        nombre: 'Community',
+        items: visibles(COMMUNITY),
+        redes: true,
+    },
+];
 
 const clase = (id: string) =>
     id === activo
@@ -74,72 +83,77 @@ const clase = (id: string) =>
             </a>
         ))}
 
-        <div class="relative" data-desplegable>
-            <button
-                type="button"
-                aria-expanded="false"
-                aria-controls="menu-community"
-                data-desplegable-boton
-                class:list={[
-                    'flex items-center gap-1.5 uppercase cursor-pointer',
-                    communityActivo
-                        ? 'text-yellow'
-                        : 'hover:text-yellow aria-expanded:text-yellow transition-all duration-300',
-                ]}
-            >
-                Community
-                <span
-                    aria-hidden="true"
-                    data-desplegable-flecha
-                    class="mt-1 flex transition-all duration-300 motion-reduce:transition-none"
+        {desplegables.map((d) => (
+            <div class="relative" data-desplegable>
+                <button
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls={`menu-${d.id}`}
+                    data-desplegable-boton
+                    class:list={[
+                        'flex items-center gap-1.5 uppercase cursor-pointer',
+                        d.items.some((s) => s.id === activo)
+                            ? 'text-yellow'
+                            : 'hover:text-yellow aria-expanded:text-yellow transition-all duration-300',
+                    ]}
                 >
-                    <FiChevronDown size={18} />
-                </span>
-            </button>
+                    {d.nombre}
+                    <span
+                        aria-hidden="true"
+                        data-desplegable-flecha
+                        class="mt-1 flex transition-all duration-300 motion-reduce:transition-none"
+                    >
+                        <FiChevronDown size={18} />
+                    </span>
+                </button>
 
-            <div
-                id="menu-community"
-                data-desplegable-panel
-                class="absolute left-1/2 top-full -translate-x-1/2 pt-6 invisible opacity-0 -translate-y-1 transition-all duration-300 ease-out motion-reduce:transition-none"
-            >
-                <div class="min-w-56 bg-darkblue rounded-2xl shadow-lg shadow-darkblue/50 p-2 flex flex-col text-lg">
-                    {COMMUNITY.map((s) => (
-                        <a
-                            href={s.href}
-                            tabindex="-1"
-                            class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
-                        >
-                            {s.nombre}
-                        </a>
-                    ))}
-
-                    <div class="my-1 mx-3 border-t border-lightblue/15"></div>
-
-                    {REDES.map((red) => (
-                        <a
-                            href={red.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            tabindex="-1"
-                            class="group flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-lightblue hover:text-yellow transition-all duration-300"
-                        >
-                            <span
-                                aria-hidden="true"
-                                class="mt-1 size-5 shrink-0 bg-current"
-                                style={`mask: url(${red.img}) center / contain no-repeat`}
-                            ></span>
-                            <span class="flex-1">{red.nombre}</span>
-                            <span
-                                aria-hidden="true"
-                                class="flex mt-1 opacity-50 group-hover:opacity-100 transition-all duration-300"
+                <div
+                    id={`menu-${d.id}`}
+                    data-desplegable-panel
+                    class="absolute left-1/2 top-full -translate-x-1/2 pt-6 invisible opacity-0 -translate-y-1 transition-all duration-300 ease-out motion-reduce:transition-none"
+                >
+                    <div class="min-w-56 bg-darkblue rounded-2xl shadow-lg shadow-darkblue/50 p-2 flex flex-col text-lg">
+                        {d.items.map((s) => (
+                            <a
+                                href={s.href}
+                                tabindex="-1"
+                                class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
                             >
-                                <FiArrowUpRight size={16} />
-                            </span>
-                        </a>
-                    ))}
+                                {s.nombre}
+                            </a>
+                        ))}
+
+                        {d.redes && (
+                            <div class="my-1 mx-3 border-t border-lightblue/15"></div>
+                        )}
+
+                        {d.redes &&
+                            REDES.map((red) => (
+                                <a
+                                    href={red.href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    tabindex="-1"
+                                    class="group flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-lightblue hover:text-yellow transition-all duration-300"
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        class="mt-1 size-5 shrink-0 bg-current"
+                                        style={`mask: url(${red.img}) center / contain no-repeat`}
+                                    ></span>
+                                    <span class="flex-1">{red.nombre}</span>
+                                    <span
+                                        aria-hidden="true"
+                                        class="flex mt-1 opacity-50 group-hover:opacity-100 transition-all duration-300"
+                                    >
+                                        <FiArrowUpRight size={16} />
+                                    </span>
+                                </a>
+                            ))}
+                    </div>
                 </div>
             </div>
-        </div>
+        ))}
     </nav>
 
     <!--
@@ -225,18 +239,22 @@ const clase = (id: string) =>
                     </a>
                 ))}
 
-                <p class="mt-1 border-t border-lightblue/15 px-3 pt-3 pb-1 text-sm text-lightblue/50">
-                    Community
-                </p>
+                {desplegables.map((d) => (
+                    <>
+                        <p class="mt-1 border-t border-lightblue/15 px-3 pt-3 pb-1 text-sm text-lightblue/50">
+                            {d.nombre}
+                        </p>
 
-                {COMMUNITY.map((s) => (
-                    <a
-                        href={s.href}
-                        tabindex="-1"
-                        class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
-                    >
-                        {s.nombre}
-                    </a>
+                        {d.items.map((s) => (
+                            <a
+                                href={s.href}
+                                tabindex="-1"
+                                class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
+                            >
+                                {s.nombre}
+                            </a>
+                        ))}
+                    </>
                 ))}
 
                 {REDES.map((red) => (
@@ -401,76 +419,81 @@ const clase = (id: string) =>
             }
         });
 
-        const desplegable =
-            header.querySelector<HTMLElement>('[data-desplegable]');
-        const dBoton = desplegable?.querySelector<HTMLButtonElement>(
-            '[data-desplegable-boton]'
-        );
-        const dPanel = desplegable?.querySelector<HTMLElement>(
-            '[data-desplegable-panel]'
-        );
-        const dFlecha = desplegable?.querySelector<HTMLElement>(
-            '[data-desplegable-flecha]'
-        );
+        header
+            .querySelectorAll<HTMLElement>('[data-desplegable]')
+            .forEach((desplegable) => {
+                const dBoton = desplegable.querySelector<HTMLButtonElement>(
+                    '[data-desplegable-boton]'
+                );
+                const dPanel = desplegable.querySelector<HTMLElement>(
+                    '[data-desplegable-panel]'
+                );
+                const dFlecha = desplegable.querySelector<HTMLElement>(
+                    '[data-desplegable-flecha]'
+                );
 
-        if (desplegable && dBoton && dPanel) {
-            let dAbierto = false;
-            let porHover = false;
-            let espera: number | undefined;
+                if (dBoton && dPanel) {
+                    let dAbierto = false;
+                    let porHover = false;
+                    let espera: number | undefined;
 
-            const dPintar = (valor: boolean) => {
-                dAbierto = valor;
-                if (!valor) porHover = false;
-                dBoton.setAttribute('aria-expanded', String(valor));
-                dPanel.classList.toggle('invisible', !valor);
-                dPanel.classList.toggle('opacity-0', !valor);
-                dPanel.classList.toggle('-translate-y-1', !valor);
-                dFlecha?.classList.toggle('rotate-180', valor);
-                dPanel.querySelectorAll('a').forEach((a) => {
-                    a.tabIndex = valor ? 0 : -1;
-                });
-            };
+                    const dPintar = (valor: boolean) => {
+                        dAbierto = valor;
+                        if (!valor) porHover = false;
+                        dBoton.setAttribute('aria-expanded', String(valor));
+                        dPanel.classList.toggle('invisible', !valor);
+                        dPanel.classList.toggle('opacity-0', !valor);
+                        dPanel.classList.toggle('-translate-y-1', !valor);
+                        dFlecha?.classList.toggle('rotate-180', valor);
+                        dPanel.querySelectorAll('a').forEach((a) => {
+                            a.tabIndex = valor ? 0 : -1;
+                        });
+                    };
 
-            desplegable.addEventListener('pointerenter', (e) => {
-                if (e.pointerType !== 'mouse') return;
-                clearTimeout(espera);
-                if (!dAbierto) {
-                    porHover = true;
-                    dPintar(true);
+                    desplegable.addEventListener('pointerenter', (e) => {
+                        if (e.pointerType !== 'mouse') return;
+                        clearTimeout(espera);
+                        if (!dAbierto) {
+                            porHover = true;
+                            dPintar(true);
+                        }
+                    });
+
+                    desplegable.addEventListener('pointerleave', (e) => {
+                        if (e.pointerType !== 'mouse') return;
+                        espera = window.setTimeout(() => dPintar(false), 150);
+                    });
+
+                    dBoton.addEventListener('click', () => {
+                        if (porHover) {
+                            porHover = false;
+                            return;
+                        }
+                        dPintar(!dAbierto);
+                    });
+
+                    desplegable.addEventListener('focusout', (e) => {
+                        if (!desplegable.contains(e.relatedTarget as Node)) {
+                            dPintar(false);
+                        }
+                    });
+
+                    document.addEventListener('click', (e) => {
+                        if (
+                            dAbierto &&
+                            !desplegable.contains(e.target as Node)
+                        ) {
+                            dPintar(false);
+                        }
+                    });
+
+                    desplegable.addEventListener('keydown', (e) => {
+                        if (e.key === 'Escape' && dAbierto) {
+                            dPintar(false);
+                            dBoton.focus();
+                        }
+                    });
                 }
             });
-
-            desplegable.addEventListener('pointerleave', (e) => {
-                if (e.pointerType !== 'mouse') return;
-                espera = window.setTimeout(() => dPintar(false), 150);
-            });
-
-            dBoton.addEventListener('click', () => {
-                if (porHover) {
-                    porHover = false;
-                    return;
-                }
-                dPintar(!dAbierto);
-            });
-
-            desplegable.addEventListener('focusout', (e) => {
-                if (!desplegable.contains(e.relatedTarget as Node)) {
-                    dPintar(false);
-                }
-            });
-
-            document.addEventListener('click', (e) => {
-                if (dAbierto && !desplegable.contains(e.target as Node)) {
-                    dPintar(false);
-                }
-            });
-
-            desplegable.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && dAbierto) {
-                    dPintar(false);
-                    dBoton.focus();
-                }
-            });
-        }
     }
 </script>
