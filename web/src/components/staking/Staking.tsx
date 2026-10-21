@@ -738,6 +738,18 @@ function Saldo({
                     {fog(mio.balance)}
                 </span>
                 <span className="text-lightblue/70 text-xs">FOG</span>
+                {mio.dailyFog > 0 && (
+                    <span
+                        title={`Your ${mio.quantity.count} staked Primal${mio.quantity.count === 1 ? ' is' : 's are'} generating ${fog(mio.dailyFog)} FOG per day.`}
+                        className="flex items-baseline gap-1.5 border-l border-lightblue/20 pl-2 ml-0.5 text-xs text-lightblue"
+                    >
+                        <span className="hidden sm:inline">{mio.quantity.count} staked ·</span>
+                        <span className="font-accent text-green-300 text-sm leading-none">
+                            +{fog(mio.dailyFog)}
+                        </span>
+                        FOG/day
+                    </span>
+                )}
             </div>
         );
     }
@@ -948,7 +960,7 @@ function PanelZona({
                     {periodo.bonus > 0 && ` · +${periodo.bonus}% bonus`}
                 </div>
                 <div className="text-yellow text-sm">
-                    {fog(periodo.perDay * dias)} FOG per Primal
+                    {fog(fogDelPeriodo(periodo.perDay, dias, config.boost))} FOG per Primal after {dias} days
                 </div>
                 <div className="text-lightblue/60 text-xs mt-0.5">
                     {entrenando

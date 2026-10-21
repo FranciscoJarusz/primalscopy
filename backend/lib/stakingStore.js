@@ -690,6 +690,15 @@ function creditedFog(stake, cuenta, boosts = boostsLectura()) {
     return total;
 }
 
+// Lo que paga hoy un entrenamiento por dia, con el bonus de la region, el
+// escalon por cantidad y el boost de este momento. 0 si ya termino.
+function fogPorDiaAhora(stake, cuenta, boosts, now) {
+    if (isFinished(stake, now)) return 0;
+    const boost = boostCentesimos(boosts, now);
+    if (!stake.tiers?.length) return Math.floor(stake.perDay * boost / 100);
+    return Math.floor(baseRateOf(stake) * (100 + stake.bonus + tierBonus(stake.tiers, cuenta(stake.wallet, now))) * boost / 10000);
+}
+
 // El FOG por dia sin el bonus de la region. Los entrenamientos de antes de
 // guardar `baseRate` lo sacan de perDay y el bonus.
 function baseRateOf(stake) {
@@ -935,6 +944,7 @@ function publicStake(stake, now = Date.now(), cuenta) {
         endsAt: stake.endsAt,
         creditedDays: days,
         earned: creditedFog(stake, cuenta),
+        perDayNow: fogPorDiaAhora(stake, cuenta ?? contador(), boostsLectura(), now),
         finished: isFinished(stake, now)
     };
 }
@@ -950,6 +960,7 @@ function walletSummary(wallet) {
         .filter(s => s.wallet === key)
         .map(s => publicStake(s, now, cuenta))
         .sort((a, b) => Number(a.tokenId) - Number(b.tokenId));
+    const dailyFog = stakes.reduce((n, s) => n + s.perDayNow, 0);
     // Los que tiene en staking ahora y el escalon que les toca (con los
     // escalones de hoy: los entrenamientos viejos usan los suyos).
     const count = stakes.filter(s => !s.finished).length;
@@ -973,6 +984,7 @@ function walletSummary(wallet) {
         restake: [...restake.values()].sort((a, b) => Number(a.tokenId) - Number(b.tokenId)),
         badges: badgesOf(streaksByWallet(history, active, now)[key], now),
         quantity: { count, bonus: tierBonus(getConfig().quantityTiers, count) },
+        dailyFog,
         prizes: wheels.winsOf(key),
         purchases: Object.values(readPurchases())
             .filter(c => c.wallet === key)

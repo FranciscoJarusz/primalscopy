@@ -535,6 +535,27 @@ async function main() {
     d = await sacar(tO, ['42']);
     check('sacarlo antes de tiempo pierde el boost', d.unstaked[0].earned === 3 * 30 && d.unstaked[0].bonusLost === 60, JSON.stringify(d.unstaked));
 
+    console.log('\n--- FOG por dia de ahora ---');
+    for (const [nombre, token] of [['holder', tH], ['otro', tO], ['tercero', tT]]) {
+        const yoAhora = await yo(token);
+        const suma = yoAhora.stakes.reduce((n, s) => n + s.perDayNow, 0);
+        const terminados = yoAhora.stakes.filter(s => s.finished).every(s => s.perDayNow === 0);
+        check(`${nombre}: dailyFog es la suma de lo que paga cada uno hoy (${yoAhora.dailyFog})`,
+            Number.isInteger(yoAhora.dailyFog) && yoAhora.dailyFog === suma && terminados);
+    }
+    const conStakes = await yo(tH);
+    const vivos = conStakes.stakes.filter(s => !s.finished);
+    check('con Primals entrenando, genera FOG por dia', vivos.length > 0 && conStakes.dailyFog > 0, JSON.stringify(vivos.map(s => s.perDayNow)));
+    await configurar({ boost: { multiplier: 2, days: 3, title: 'Evento de prueba' } });
+    const conEvento = await yo(tH);
+    const esperado = conEvento.stakes.filter(s => !s.finished)
+        .reduce((n, s) => n + s.perDayNow, 0);
+    check('un evento x2 duplica el FOG por dia', conEvento.dailyFog === esperado
+        && conEvento.dailyFog >= 2 * conStakes.dailyFog - vivos.length && conEvento.dailyFog <= 2 * conStakes.dailyFog,
+        `(sin evento ${conStakes.dailyFog}, con evento ${conEvento.dailyFog})`);
+    await configurar({ boost: { end: true } });
+    check('al terminar el evento vuelve', (await yo(tH)).dailyFog === conStakes.dailyFog);
+
     console.log('\n--- Fondos de la Shop ---');
     r = await configurar({ catalog: [{ id: 'lowkey', background: { from: '#FF0000', to: '#00ff00' } }] });
     cfg = await (await fetch(`${BASE}/api/staking/config`)).json();

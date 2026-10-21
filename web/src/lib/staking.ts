@@ -135,6 +135,8 @@ export type Entrenamiento = {
     endsAt: string;
     creditedDays: number;
     earned: number;
+    // Lo que paga hoy por dia, con bonus y evento; 0 si ya termino.
+    perDayNow: number;
     finished: boolean;
 };
 export type Insignias = {
@@ -156,6 +158,8 @@ export type MiStaking = {
     badges: Insignias;
     // Cuantos tiene en staking ahora y el bonus por cantidad que les toca.
     quantity: { count: number; bonus: number };
+    // El FOG por dia que generan ahora todos sus Primals, eventos incluidos.
+    dailyFog: number;
     // Lo que gano en las ruletas, del ultimo al primero.
     prizes: Ganado[];
     // Las compras de FOG con APE, de la ultima a la primera.
