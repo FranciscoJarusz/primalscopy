@@ -52,6 +52,7 @@ export default function Ruleta({
     ganado,
     onCerrar,
     titulo = 'Purchase complete!',
+    prueba,
 }: {
     // La key: alcanza con su nombre e icono (puede venir de un codigo).
     premio: Pick<Premio, 'id' | 'label' | 'icon'>;
@@ -59,9 +60,10 @@ export default function Ruleta({
     onCerrar: () => void;
     // Lo que dice el primer paso: la compra o el codigo canjeado.
     titulo?: string;
+    prueba?: PremioRuleta[];
 }) {
-    const [etapa, setEtapa] = useState<Etapa>('comprado');
-    const [pozo, setPozo] = useState<PremioRuleta[] | null>(null);
+    const [etapa, setEtapa] = useState<Etapa>(prueba ? 'girando' : 'comprado');
+    const [pozo, setPozo] = useState<PremioRuleta[] | null>(prueba ?? null);
     const [sonido, setSonido] = useState(() => {
         try {
             return localStorage.getItem(CLAVE_SONIDO) !== 'no';
@@ -75,6 +77,7 @@ export default function Ruleta({
     // Los premios para rellenar la cinta. Se precargan sus imagenes mientras
     // se muestra "Purchase complete": si no, la cinta arranca con huecos.
     useEffect(() => {
+        if (prueba) return;
         leerRuleta(premio.id)
             .then((r) => {
                 for (const p of [...r.prizes, ganado.prize]) {
@@ -84,7 +87,7 @@ export default function Ruleta({
                 setPozo(r.prizes);
             })
             .catch(() => setPozo([]));
-    }, [premio.id, ganado.prize]);
+    }, [premio.id, ganado.prize, prueba]);
 
     useEffect(() => {
         const alTeclado = (e: KeyboardEvent) => {
@@ -190,6 +193,7 @@ export default function Ruleta({
                         ganado={ganado}
                         llave={premio.label}
                         sonido={sonido}
+                        prueba={!!prueba}
                         onCerrar={onCerrar}
                     />
                 )}
@@ -444,6 +448,7 @@ function Revelacion({
     ganado,
     llave,
     sonido,
+    prueba,
     onCerrar,
 }: {
     premio: PremioRuleta;
@@ -451,6 +456,7 @@ function Revelacion({
     // El nombre de la key que se abrio ("LOWKEY"), para el tweet.
     llave: string;
     sonido: boolean;
+    prueba: boolean;
     onCerrar: () => void;
 }) {
     const color = colorRareza(premio.chance ?? 1);
@@ -541,12 +547,14 @@ function Revelacion({
             </div>
             <div className="ruleta-pop flex flex-col items-center gap-3" style={{ animationDelay: '.25s' }}>
                 <p className="text-lightblue text-sm max-w-md">
-                    {ganado.status === 'credited'
+                    {prueba
+                        ? 'Test opening: nothing was charged, credited or saved.'
+                        : ganado.status === 'credited'
                         ? `${premio.label} added to your FOG balance.`
                         : "It's yours! We'll send it to your wallet soon. You can follow it in the shop, under Your prizes."}
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
-                    {vale(premio) && (
+                    {!prueba && vale(premio) && (
                         <a
                             href={tweet.href}
                             onClick={compartir}

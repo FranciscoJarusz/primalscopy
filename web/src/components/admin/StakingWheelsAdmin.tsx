@@ -6,10 +6,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { FiCheck, FiCopy, FiImage, FiX } from 'react-icons/fi';
 import { getAddress } from 'viem';
 import { useApodos } from '@/lib/nicknames';
+import Ruleta from '@/components/staking/Ruleta';
 import {
     colorRareza,
     imagenPremio,
     miniaturaPrimal,
+    type Ganado,
     type PremioRuleta,
 } from '@/lib/staking';
 import { BACKEND_URL } from '@/lib/backend';
@@ -86,6 +88,14 @@ const fecha = (iso: string) =>
 const pct = (n: number) =>
     `${(n * 100).toLocaleString('en-US', { maximumFractionDigits: n < 0.01 ? 2 : 1 })}%`;
 
+type Simulacion = {
+    abiertas: number;
+    pedidas: number;
+    filas: { id: string; label: string; veces: number; esperado: number }[];
+    fog: number;
+    ape: number;
+};
+
 const aBorrador = (prizes: Premio[]): Borrador =>
     prizes.map((p) => ({
         ...p,
@@ -119,6 +129,8 @@ export default function StakingWheelsAdmin({
     const [verEnviados, setVerEnviados] = useState(false);
     const [notas, setNotas] = useState<Record<string, string>>({});
     const [copiada, setCopiada] = useState<string | null>(null);
+    const [simulacion, setSimulacion] = useState<Simulacion | null>(null);
+    const [tirada, setTirada] = useState<{ ganado: Ganado; pozo: PremioRuleta[] } | null>(null);
 
     const pedir = useCallback(
         async (ruta: string, init: RequestInit = {}) => {
@@ -233,6 +245,75 @@ export default function StakingWheelsAdmin({
     const chance = (p: Borrador[number]) =>
         total && enJuego.includes(p) ? Number(p.weight) / total : 0;
 
+    const simular = (n: number) => {
+        const pozo = borrador
+            .filter((p) => Number(p.weight) > 0)
+            .map((p, i) => ({
+                id: p.id || `nuevo-${i}`,
+                label: p.label || 'Unnamed prize',
+                kind: p.kind,
+                amount: Number(p.amount) || 0,
+                image: p.image,
+                peso: Number(p.weight),
+                esperado: 0,
+                veces: 0,
+            }));
+        if (delVault > 0) {
+            pozo.push({
+                id: 'vault',
+                label: 'A vault Primal',
+                kind: 'nft',
+                amount: 0,
+                image: null,
+                peso: delVault,
+                esperado: 0,
+                veces: 0,
+            });
+        }
+        const suma = pozo.reduce((s, p) => s + p.peso, 0);
+        for (const p of pozo) p.esperado = suma ? p.peso / suma : 0;
+        const sortear = () => {
+            let r = Math.random() * suma;
+            return pozo.find((p) => (r -= p.peso) < 0) ?? pozo[pozo.length - 1];
+        };
+        if (n === 1 && suma > 0) {
+            const aCarta = (p: (typeof pozo)[number]): PremioRuleta => ({
+                id: p.id,
+                label: p.label,
+                kind: p.kind,
+                amount: p.kind === 'nft' ? null : p.amount,
+                tokenId: null,
+                image: p.image,
+                chance: p.esperado,
+            });
+            const sale = sortear();
+            setTirada({
+                pozo: pozo.map(aCarta),
+                ganado: {
+                    id: 'prueba',
+                    item: elegida,
+                    prize: aCarta(sale),
+                    chance: sale.esperado,
+                    status: sale.kind === 'fog' ? 'credited' : 'pending',
+                    at: new Date().toISOString(),
+                },
+            });
+            return;
+        }
+        let abiertas = 0;
+        while (abiertas < n && suma > 0) {
+            sortear().veces++;
+            abiertas++;
+        }
+        setSimulacion({
+            abiertas,
+            pedidas: n,
+            filas: pozo,
+            fog: pozo.reduce((s, p) => s + (p.kind === 'fog' ? p.veces * p.amount : 0), 0),
+            ape: pozo.reduce((s, p) => s + (p.kind === 'ape' ? p.veces * p.amount : 0), 0),
+        });
+    };
+
     const entregas = datos.wins.filter((w) =>
         verEnviados ? w.status === 'sent' : w.status === 'pending'
     );
@@ -258,6 +339,7 @@ export default function StakingWheelsAdmin({
                                 setElegida(id);
                                 setBorrador(aBorrador(datos.wheels[id].prizes));
                                 setGuardado(false);
+                                setSimulacion(null);
                             }}
                             className={`font-accent uppercase text-sm rounded-md px-3 pb-1 cursor-pointer transition-all duration-300 ${
                                 elegida === id
@@ -347,7 +429,7 @@ export default function StakingWheelsAdmin({
                         >
                             <label
                                 title={p.id ? 'Upload an image' : 'Save the wheel first, then add the image'}
-                                className={`order-1 lg:order-none relative size-16 grid place-items-center rounded-xl bg-blue border-2 overflow-hidden ${p.id ? 'cursor-pointer hover:ring-2 hover:ring-yellow' : 'opacity-50 cursor-not-allowed'} transition-all duration-300`}
+                                className={`order-1 lg:order-0 relative size-16 grid place-items-center rounded-xl bg-blue border-2 overflow-hidden ${p.id ? 'cursor-pointer hover:ring-2 hover:ring-yellow' : 'opacity-50 cursor-not-allowed'} transition-all duration-300`}
                                 style={{ borderColor: colorRareza(chance(p) || 1) }}
                             >
                                 {p.image || p.kind !== 'nft' ? (
@@ -371,7 +453,7 @@ export default function StakingWheelsAdmin({
                                     }}
                                 />
                             </label>
-                            <label className={`${etiqueta} order-3 lg:order-none col-span-2 sm:col-span-4 lg:col-span-1`}>
+                            <label className={`${etiqueta} order-3 lg:order-0 col-span-2 sm:col-span-4 lg:col-span-1`}>
                                 Name
                                 <input
                                     value={p.label}
@@ -380,7 +462,7 @@ export default function StakingWheelsAdmin({
                                     className={campo}
                                 />
                             </label>
-                            <label className={`${etiqueta} order-4 lg:order-none`}>
+                            <label className={`${etiqueta} order-4 lg:order-0`}>
                                 Kind
                                 <select
                                     value={p.kind}
@@ -394,7 +476,7 @@ export default function StakingWheelsAdmin({
                                     ))}
                                 </select>
                             </label>
-                            <label className={`${etiqueta} order-4 lg:order-none`}>
+                            <label className={`${etiqueta} order-4 lg:order-0`}>
                                 Amount
                                 <input
                                     type="number"
@@ -406,7 +488,7 @@ export default function StakingWheelsAdmin({
                                     className={`${campo} disabled:opacity-40`}
                                 />
                             </label>
-                            <label className={`${etiqueta} order-4 lg:order-none`}>
+                            <label className={`${etiqueta} order-4 lg:order-0`}>
                                 Weight
                                 <input
                                     type="number"
@@ -416,7 +498,7 @@ export default function StakingWheelsAdmin({
                                     className={campo}
                                 />
                             </label>
-                            <label className={`${etiqueta} order-4 lg:order-none`}>
+                            <label className={`${etiqueta} order-4 lg:order-0`}>
                                 Stock
                                 <input
                                     type="number"
@@ -427,7 +509,7 @@ export default function StakingWheelsAdmin({
                                     className={campo}
                                 />
                             </label>
-                            <div className="order-2 lg:order-none sm:col-span-3 self-start lg:self-auto flex items-center justify-end gap-3 lg:contents">
+                            <div className="order-2 lg:order-0 sm:col-span-3 self-start lg:self-auto flex items-center justify-end gap-3 lg:contents">
                             <div className="h-9 flex items-center text-sm text-lightblue">
                                 {pct(chance(p))}
                             </div>
@@ -466,6 +548,61 @@ export default function StakingWheelsAdmin({
                     </button>
                     {guardado && <span className="text-green-300 text-sm">Saved.</span>}
                     {error && <span className="text-red-300 text-sm">{error}</span>}
+                </div>
+
+                <div className="flex flex-col gap-3 bg-blue rounded-xl p-4">
+                    <div className="text-sm text-lightblue">
+                        Simulator: opens test keys with the prizes above, saved or
+                        not. Stock is ignored, so every prize with weight can come
+                        out as many times as it is drawn. Nothing is charged,
+                        credited or saved.
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {[1, 10, 100, 1000, 10000].map((n) => (
+                            <button key={n} type="button" onClick={() => simular(n)} className={botonChico}>
+                                Open {n.toLocaleString('en-US')}
+                            </button>
+                        ))}
+                    </div>
+                    {tirada && (
+                        <Ruleta
+                            premio={{ id: elegida, label: nombreDe(elegida) }}
+                            ganado={tirada.ganado}
+                            prueba={tirada.pozo}
+                            onCerrar={() => setTirada(null)}
+                        />
+                    )}
+                    {simulacion && (
+                        <div className="flex flex-col gap-2 text-sm text-lightblue">
+                            <div className="text-white">
+                                {simulacion.abiertas.toLocaleString('en-US')} keys opened
+                            </div>
+                            {simulacion.abiertas === 0 ? (
+                                <div className="text-red-300">This wheel has no prize with weight.</div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-4 gap-y-1">
+                                        <span className="text-lightblue/60">Prize</span>
+                                        <span className="text-lightblue/60 text-right">Times</span>
+                                        <span className="text-lightblue/60 text-right">Got</span>
+                                        <span className="text-lightblue/60 text-right">Expected</span>
+                                        {simulacion.filas.map((f) => (
+                                            <div key={f.id} className="contents">
+                                                <span className="truncate">{f.label}</span>
+                                                <span className="text-right">{f.veces.toLocaleString('en-US')}</span>
+                                                <span className="text-right">{pct(f.veces / simulacion.abiertas)}</span>
+                                                <span className="text-right text-lightblue/60">{pct(f.esperado)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="text-lightblue/80">
+                                        Paid out: {simulacion.fog.toLocaleString('en-US')} FOG
+                                        {simulacion.ape > 0 && ` · ${simulacion.ape.toLocaleString('en-US')} APE`}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
