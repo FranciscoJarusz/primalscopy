@@ -32,6 +32,7 @@ import Tienda from './Tienda';
 import Recientes from './Recientes';
 import Boost from './Boost';
 import Mensaje, { type Aviso } from './Mensaje';
+import StakeCompartir, { type Stakeado } from './StakeCompartir';
 
 const DIA = 24 * 60 * 60 * 1000;
 
@@ -71,6 +72,19 @@ export default function Staking() {
 
     const [config, setConfig] = useState<ConfigStaking | null>(null);
     const [mio, setMio] = useState<MiStaking | null>(null);
+    const [stakeado, setStakeado] = useState<Stakeado | null>(null);
+    // Se mira el resumen de antes de mandarlos: si nunca tuvo ninguno, es la
+    // bienvenida.
+    const alStakear = (info: Omit<Stakeado, 'primera'>) =>
+        setStakeado({
+            ...info,
+            primera:
+                !mio ||
+                (mio.stakes.length === 0 &&
+                    mio.restake.length === 0 &&
+                    mio.badges.streakDays === 0 &&
+                    mio.badges.earned.length === 0),
+        });
     const [panel, setPanel] = useState<Panel>(null);
 
     const [poblacion, setPoblacion] = useState<Record<string, string[]>>({});
@@ -449,6 +463,7 @@ export default function Staking() {
                                     setMio(r);
                                     cargarConfig();
                                 }}
+                                alStakear={alStakear}
                             />
                         )}
                         {panel.tipo === 'volver' && (
@@ -460,6 +475,7 @@ export default function Staking() {
                                     setMio(r);
                                     cargarConfig();
                                 }}
+                                alStakear={alStakear}
                             />
                         )}
                         {panel.tipo === 'tienda' && (
@@ -470,6 +486,7 @@ export default function Staking() {
                                 token={session.token}
                                 ganados={mio?.prizes}
                                 alCanjear={recargar}
+                                comprarFog={config.fogSale?.enabled}
                             />
                         )}
                         {panel.tipo === 'reglas' && (
@@ -477,6 +494,9 @@ export default function Staking() {
                         )}
                     </div>
                 </aside>
+            )}
+            {stakeado && (
+                <StakeCompartir {...stakeado} onCerrar={() => setStakeado(null)} />
             )}
         </main>
     );
@@ -511,11 +531,13 @@ function PanelVolver({
     session,
     pendientes,
     alEntrenar,
+    alStakear,
 }: {
     config: ConfigStaking;
     session: ReturnType<typeof useWalletSession>;
     pendientes: MiStaking['restake'];
     alEntrenar: (r: MiStaking) => void;
+    alStakear: (info: Omit<Stakeado, 'primera'>) => void;
 }) {
     const [ocupado, setOcupado] = useState<string | null>(null);
     const [aviso, setAviso] = useState<Aviso | null>(null);
@@ -539,11 +561,15 @@ function PanelVolver({
         }
         let empezados = 0;
         const partes: string[] = [];
+        const salieron: string[] = [];
+        const periodos = new Set<number>();
         try {
             for (const [dias, ids] of porDias) {
                 const r = await entrenar(token, ids, dias);
                 alEntrenar(r);
                 empezados += r.started.length;
+                salieron.push(...r.started);
+                if (r.started.length) periodos.add(dias);
                 for (const { tokenId, reason } of r.rejected) {
                     partes.push(
                         `#${tokenId} ${MOTIVOS[reason] ?? "couldn't start"}.`
@@ -554,6 +580,12 @@ function PanelVolver({
                 partes.unshift(
                     `${empezados} Primal${empezados === 1 ? ' is' : 's are'} staking again.`
                 );
+                const [unico] = periodos;
+                alStakear({
+                    tokenIds: salieron,
+                    dias: Math.max(...periodos),
+                    zona: periodos.size === 1 ? (ZONAS.find((z) => z.days === unico)?.nombre ?? null) : null,
+                });
             }
             setAviso({ ok: empezados > 0, texto: partes.join(' ') });
         } catch (err) {
@@ -743,6 +775,7 @@ function PanelZona({
     porToken,
     enStaking,
     alEntrenar,
+    alStakear,
 }: {
     config: ConfigStaking;
     dias: number;
@@ -756,6 +789,7 @@ function PanelZona({
     // con los elegidos define el bonus por cantidad.
     enStaking: number;
     alEntrenar: (r: MiStaking) => void;
+    alStakear: (info: Omit<Stakeado, 'primera'>) => void;
 }) {
     const { isConnected } = useAccount();
     const [elegidos, setElegidos] = useState<Set<string>>(new Set());
@@ -800,6 +834,9 @@ function PanelZona({
         try {
             const r = await entrenar(token, [...elegidos], dias);
             alEntrenar(r);
+            if (r.started.length) {
+                alStakear({ tokenIds: r.started, dias, zona: zona.nombre });
+            }
             setElegidos(new Set());
             const partes = [];
             if (r.started.length) {
