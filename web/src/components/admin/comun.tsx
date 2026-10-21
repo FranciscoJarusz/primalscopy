@@ -1,3 +1,5 @@
+import { useState, type ReactNode } from 'react';
+import { FiChevronDown } from 'react-icons/fi';
 import { useApodos, walletCorta } from '@/lib/nicknames';
 import { APECHAIN } from '@/lib/cultomizer/contracts';
 
@@ -47,4 +49,54 @@ export function useQuien() {
             link
         );
     };
+}
+
+// Una lista larga que arranca cerrada: el titulo y el resumen se ven siempre,
+// y abierta conserva su propio scroll (ver `lista`).
+export function Desplegable({
+    nombre,
+    resumen,
+    grande = false,
+    children,
+}: {
+    nombre: string;
+    resumen?: ReactNode;
+    grande?: boolean;
+    children: ReactNode;
+}) {
+    const [abierto, setAbierto] = useState(false);
+    return (
+        <div className="flex flex-col">
+            <button
+                type="button"
+                onClick={() => setAbierto((a) => !a)}
+                aria-expanded={abierto}
+                className="group flex items-center justify-between gap-3 text-left cursor-pointer"
+            >
+                <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span
+                        className={
+                            grande
+                                ? titulo
+                                : 'font-accent uppercase text-yellow text-xl leading-none pb-1'
+                        }
+                    >
+                        {nombre}
+                    </span>
+                    {resumen && <span className="text-lightblue/70 text-sm">{resumen}</span>}
+                </span>
+                <FiChevronDown
+                    aria-hidden="true"
+                    className={`w-5 h-5 shrink-0 text-lightblue group-hover:text-yellow transition-all duration-300 ${abierto ? 'rotate-180' : ''}`}
+                />
+            </button>
+            <div
+                className={`grid transition-all duration-300 ease-out ${abierto ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0'}`}
+            >
+                <div className="min-h-0 overflow-hidden" inert={!abierto}>
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
 }

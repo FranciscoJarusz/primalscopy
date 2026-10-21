@@ -52,6 +52,7 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'primal-forge-pay-'));
 process.env.TRAITS_PATH = TMP;
 process.env.WALLET_JWT_SECRET = 'secreto-solo-para-tests';
 process.env.PORT = String(PORT);
+process.env.ADMIN_TOKEN = 'admin-solo-para-tests';
 process.env.PUBLIC_ASSETS_URL = BASE;
 // Modo de prueba para que nada se publique, pero con cobro: los rolls se pagan.
 process.env.FORGE_TEST_MODE = 'true';
@@ -261,6 +262,76 @@ async function main() {
     check('el pago queda registrado como usado por ese roll',
         registro?.status === 'used' && registro.rollId === roll.rollId && registro.tokenId === rolled,
         JSON.stringify(registro));
+
+    console.log('\n--- Comprar FOG con APE ---');
+    const admin = { 'content-type': 'application/json', authorization: 'Bearer admin-solo-para-tests' };
+    const fogDe = async token => (await getAuth(`${BASE}/api/staking/me`, token)).balance;
+    const antesDeAbrir = await pay(owner, TREASURY, '2'); await mine(); await mine();
+    r = await post(`${BASE}/api/staking/buy-fog`, { txHash: antesDeAbrir }, ownerToken);
+    body = await r.json();
+    check('con la venta cerrada -> 409 closed', r.status === 409 && body.code === 'closed', `(dio ${r.status} ${body.code})`);
+    let config = await (await fetch(`${BASE}/api/staking/config`)).json();
+    check('cerrada, la pagina no ve el treasury', config.fogSale.enabled === false && !config.fogSale.treasury);
+
+    await new Promise(res => setTimeout(res, 1100));
+    r = await fetch(`${BASE}/api/admin/staking/config`, { method: 'PATCH', headers: admin, body: JSON.stringify({ fogSale: { enabled: true } }) });
+    check('el admin abre la venta', r.ok, `(dio ${r.status})`);
+    config = await (await fetch(`${BASE}/api/staking/config`)).json();
+    check('abierta, la pagina ve tasa, minimo y treasury',
+        config.fogSale.enabled && config.fogSale.fogPerApe === 10000 && config.fogSale.minApe === 1
+        && config.fogSale.treasury.toLowerCase() === TREASURY.toLowerCase(), JSON.stringify(config.fogSale));
+
+    r = await post(`${BASE}/api/staking/buy-fog`, { txHash: antesDeAbrir }, ownerToken);
+    body = await r.json();
+    check('un pago de antes de abrir -> 422 too-old', r.status === 422 && body.code === 'too-old', `(dio ${r.status} ${body.code})`);
+
+    const poco = await pay(owner, TREASURY, '0.5'); await mine(); await mine();
+    r = await post(`${BASE}/api/staking/buy-fog`, { txHash: poco }, ownerToken);
+    body = await r.json();
+    check('menos de 1 APE -> 422 underpaid', r.status === 422 && body.code === 'underpaid', `(dio ${r.status} ${body.code})`);
+
+    const saldoAntes = await fogDe(ownerToken);
+    const compra = await pay(owner, TREASURY, '3.5');
+    r = await post(`${BASE}/api/staking/buy-fog`, { txHash: compra }, ownerToken);
+    body = await r.json();
+    check('sin confirmaciones -> 409 not-confirmed', r.status === 409 && body.code === 'not-confirmed', `(dio ${r.status} ${body.code})`);
+    await mine(); await mine();
+    r = await post(`${BASE}/api/staking/buy-fog`, { txHash: compra }, ownerToken);
+    body = await r.json();
+    check('3,5 APE -> 35.000 FOG', r.status === 201 && body.purchase.fog === 35000, `(dio ${r.status} ${JSON.stringify(body)})`);
+    check('el saldo sube 35.000', (await fogDe(ownerToken)) === saldoAntes + 35000);
+    const mias = (await getAuth(`${BASE}/api/staking/me`, ownerToken)).purchases;
+    check('la compra aparece en el historial de la wallet', mias?.length === 1 && mias[0].fog === 35000 && mias[0].txHash === compra.toLowerCase(), JSON.stringify(mias));
+    check('...y no en el de otra', (await getAuth(`${BASE}/api/staking/me`, strangerToken)).purchases?.length === 0);
+    r = await post(`${BASE}/api/staking/buy-fog`, { txHash: compra }, ownerToken);
+    check('informarlo otra vez no suma', r.status === 200 && (await fogDe(ownerToken)) === saldoAntes + 35000, `(dio ${r.status})`);
+    r = await post(`${BASE}/api/staking/buy-fog`, { txHash: compra }, strangerToken);
+    check('otra wallet no lo puede usar', r.status === 403, `(dio ${r.status})`);
+
+    r = await post(`${BASE}/api/forge/payments`, { txHash: compra }, ownerToken);
+    body = await r.json();
+    check('un pago usado para FOG no vale como roll', r.status === 409 && body.code === 'already-used', `(dio ${r.status} ${body.code})`);
+    const deRoll = await pay(owner, TREASURY, '1.5'); await mine(); await mine();
+    r = await post(`${BASE}/api/forge/payments`, { txHash: deRoll }, ownerToken);
+    check('un pago de roll entra en el Forge', r.status === 201, `(dio ${r.status})`);
+    r = await post(`${BASE}/api/staking/buy-fog`, { txHash: deRoll }, ownerToken);
+    body = await r.json();
+    check('...y despues no vale para FOG', r.status === 409 && body.code === 'already-used', `(dio ${r.status} ${body.code})`);
+
+    const ranking = await (await fetch(`${BASE}/api/staking/leaderboard`)).json();
+    check('el FOG comprado cuenta en el ranking', ranking.wallets[owner.address.toLowerCase()]?.balance === saldoAntes + 35000);
+    config = await (await fetch(`${BASE}/api/staking/config`)).json();
+    check('pero no en el FOG ganado de la coleccion', config.totals.earned === 0, `(${config.totals.earned})`);
+    const resumen = await (await fetch(`${BASE}/api/admin/staking`, { headers: admin })).json();
+    check('el admin ve la compra y el total', resumen.fogSale.count === 1 && resumen.fogSale.fog === 35000
+        && resumen.fogSale.apeWei === parseEther('3.5').toString(), JSON.stringify(resumen.fogSale));
+
+    await fetch(`${BASE}/api/admin/staking/config`, { method: 'PATCH', headers: admin, body: JSON.stringify({ fogSale: { enabled: false } }) });
+    await new Promise(res => setTimeout(res, 2100));
+    const tarde = await pay(owner, TREASURY, '1'); await mine(); await mine();
+    r = await post(`${BASE}/api/staking/buy-fog`, { txHash: tarde }, ownerToken);
+    body = await r.json();
+    check('un pago de despues de cerrar -> 409 closed', r.status === 409 && body.code === 'closed', `(dio ${r.status} ${body.code})`);
 
     console.log('\n--- Pagos viejos ---');
     const viejo = await pay(owner, TREASURY, '1.5'); await mine(); await mine();

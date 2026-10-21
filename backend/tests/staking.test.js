@@ -535,6 +535,21 @@ async function main() {
     d = await sacar(tO, ['42']);
     check('sacarlo antes de tiempo pierde el boost', d.unstaked[0].earned === 3 * 30 && d.unstaked[0].bonusLost === 60, JSON.stringify(d.unstaked));
 
+    console.log('\n--- Fondos de la Shop ---');
+    r = await configurar({ catalog: [{ id: 'lowkey', background: { from: '#FF0000', to: '#00ff00' } }] });
+    cfg = await (await fetch(`${BASE}/api/staking/config`)).json();
+    check('un premio guarda su fondo', r.ok && JSON.stringify(cfg.catalog.find(i => i.id === 'lowkey').background) === '{"from":"#ff0000","to":"#00ff00"}');
+    check('un color mal escrito se rechaza', (await configurar({ catalog: [{ id: 'lowkey', background: { from: 'red', to: '#00ff00' } }] })).status === 400);
+    await configurar({ catalog: [{ id: 'lowkey', background: null }] });
+    cfg = await (await fetch(`${BASE}/api/staking/config`)).json();
+    check('null vuelve al fondo por precio', cfg.catalog.find(i => i.id === 'lowkey').background === undefined);
+    r = await configurar({ fogSale: { packs: [{ ape: 20, from: '#111111', to: '#222222' }, { ape: 3, from: '#333333', to: '#444444' }] } });
+    const packs = (await r.json()).fogSale.packs;
+    check('los paquetes se guardan ordenados por precio', r.ok && packs.map(p => p.ape).join() === '3,20', JSON.stringify(packs));
+    check('dos paquetes del mismo precio se rechazan',
+        (await configurar({ fogSale: { packs: [{ ape: 5, from: '#111111', to: '#222222' }, { ape: 5, from: '#333333', to: '#444444' }] } })).status === 400);
+    check('sin paquetes se rechaza', (await configurar({ fogSale: { packs: [] } })).status === 400);
+
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });
     process.exit(fail ? 1 : 0);

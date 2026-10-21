@@ -13,6 +13,8 @@ const ACTIVE_PATH = path.join(STAKING_DIR, 'active.json');
 // entrenamientos en curso - spent.
 const WALLETS_PATH = path.join(STAKING_DIR, 'wallets.json');
 const HISTORY_PATH = path.join(STAKING_DIR, 'history.jsonl');
+// Compras de FOG con APE en la Store, por hash de la transaccion.
+const PURCHASES_PATH = path.join(STAKING_DIR, 'purchases.json');
 // Los iconos que se suben desde el admin para cada premio. Sin uno subido, la
 // pagina usa el que viene con el sitio (web/public/images/staking/icons). El
 // nombre lleva la hora de subida: cambia con cada icono nuevo, asi se puede
@@ -29,6 +31,18 @@ const BADGES = [90, 180, 365];
 const GRACE_MS = 3 * DAY_MS;
 const LOSES_BONUS = new Set(['unstaked', 'listed']);
 const TOKEN_ID_REGEX = /^\d{1,10}$/;
+
+// openedAt/closedAt: solo se aceptan pagos de mientras estuvo abierta.
+// Los paquetes de la Shop: cuantos APE y los dos colores del fondo (arriba y abajo).
+const DEFAULT_PACKS = [
+    { ape: 5, from: '#00d492', to: '#008236' },
+    { ape: 10, from: '#00bcff', to: '#1447e6' },
+    { ape: 50, from: '#e12afb', to: '#5d0ec0' },
+    { ape: 100, from: '#ffb900', to: '#f54900' }
+];
+const DEFAULT_FOG_SALE = { enabled: false, fogPerApe: 10000, openedAt: null, closedAt: null, packs: DEFAULT_PACKS };
+const COLOR_REGEX = /^#[0-9a-f]{6}$/i;
+const esFondo = f => f && COLOR_REGEX.test(f.from) && COLOR_REGEX.test(f.to);
 
 const DEFAULT_CONFIG = {
     enabled: false,
@@ -233,6 +247,7 @@ function getConfig() {
         periods: saved.periods ?? DEFAULT_CONFIG.periods,
         quantityTiers: saved.quantityTiers ?? DEFAULT_CONFIG.quantityTiers,
         boosts: saved.boosts ?? [],
+        fogSale: { ...DEFAULT_FOG_SALE, ...saved.fogSale },
         catalog: [
             ...DEFAULT_CONFIG.catalog.map(item => ({ ...item, ...sinTextosViejos(savedItems.get(item.id)), kind: item.kind })),
             ...(saved.catalog || []).filter(item => item.custom)
@@ -250,6 +265,38 @@ function updateConfig(changes = {}) {
     const config = getConfig();
 
     if ('enabled' in changes) config.enabled = Boolean(changes.enabled);
+
+    if ('fogSale' in changes) {
+        const venta = changes.fogSale || {};
+        if ('fogPerApe' in venta) {
+            const tasa = intEntre(venta.fogPerApe, 1, 100000000);
+            if (tasa === null) return { error: 'FOG per APE must be a whole number between 1 and 100,000,000.' };
+            config.fogSale.fogPerApe = tasa;
+        }
+        if ('packs' in venta) {
+            if (!Array.isArray(venta.packs) || venta.packs.length === 0 || venta.packs.length > 6) {
+                return { error: 'There must be between 1 and 6 packs.' };
+            }
+            const packs = [];
+            for (const pack of venta.packs) {
+                const ape = intEntre(pack?.ape, 1, 100000);
+                if (ape === null) return { error: 'Each pack costs a whole number of APE, 1 or more.' };
+                if (!esFondo(pack)) return { error: 'Each pack needs two colors like #12ab34.' };
+                packs.push({ ape, from: pack.from.toLowerCase(), to: pack.to.toLowerCase() });
+            }
+            if (new Set(packs.map(p => p.ape)).size !== packs.length) return { error: 'Two packs cost the same.' };
+            config.fogSale.packs = packs.sort((a, b) => a.ape - b.ape);
+        }
+        if ('enabled' in venta) {
+            const abrir = Boolean(venta.enabled);
+            if (abrir && !config.fogSale.enabled) {
+                config.fogSale.openedAt ??= new Date().toISOString();
+                config.fogSale.closedAt = null;
+            }
+            if (!abrir && config.fogSale.enabled) config.fogSale.closedAt = new Date().toISOString();
+            config.fogSale.enabled = abrir;
+        }
+    }
 
     if ('dailyRate' in changes) {
         const rate = intEntre(changes.dailyRate, 0, 1000000);
@@ -343,6 +390,12 @@ function updateConfig(changes = {}) {
             }
             if ('description' in change) item.description = String(change.description || '').trim().slice(0, 120);
             if ('enabled' in change) item.enabled = Boolean(change.enabled);
+            if ('background' in change) {
+                if (change.background === null) delete item.background;
+                else if (esFondo(change.background)) {
+                    item.background = { from: change.background.from.toLowerCase(), to: change.background.to.toLowerCase() };
+                } else return { error: `The background of ${item.label} needs two colors like #12ab34.` };
+            }
             if ('stock' in change) {
                 if (change.stock === null || change.stock === '') item.stock = null;
                 else {
@@ -517,7 +570,22 @@ function publicConfig() {
         collectionSize: require('./collectionSupply').conocido(),
         badges: BADGES,
         graceDays: GRACE_MS / DAY_MS,
-        boost: publicBoost(boostActivo(config.boosts, now))
+        boost: publicBoost(boostActivo(config.boosts, now)),
+        fogSale: publicFogSale(config.fogSale)
+    };
+}
+
+function publicFogSale(venta) {
+    const treasury = require('./forgePayments').treasuryConfig();
+    if (!venta.enabled || !treasury) return { enabled: false, fogPerApe: venta.fogPerApe };
+    return {
+        enabled: true,
+        fogPerApe: venta.fogPerApe,
+        minApe: MIN_APE,
+        packs: venta.packs,
+        treasury: treasury.treasury,
+        chainId: treasury.chainId,
+        confirmations: treasury.confirmations
     };
 }
 
@@ -905,7 +973,12 @@ function walletSummary(wallet) {
         restake: [...restake.values()].sort((a, b) => Number(a.tokenId) - Number(b.tokenId)),
         badges: badgesOf(streaksByWallet(history, active, now)[key], now),
         quantity: { count, bonus: tierBonus(getConfig().quantityTiers, count) },
-        prizes: wheels.winsOf(key)
+        prizes: wheels.winsOf(key),
+        purchases: Object.values(readPurchases())
+            .filter(c => c.wallet === key)
+            .sort((a, b) => b.at.localeCompare(a.at))
+            .slice(0, 50)
+            .map(({ txHash, valueWei, fog, at }) => ({ txHash, valueWei, fog, at }))
     };
 }
 
@@ -939,7 +1012,7 @@ function globalTotals(active, now) {
         const cuenta = contador();
         return {
             staking: enCurso.filter(s => !isFinished(s, now)).length,
-            earned: Object.values(readWallets()).reduce((n, w) => n + w.earned, 0)
+            earned: Object.values(readWallets()).reduce((n, w) => n + w.earned - (w.bought ?? 0), 0)
                 + enCurso.reduce((n, s) => n + creditedFog(s, cuenta), 0)
         };
     });
@@ -1003,6 +1076,62 @@ function grantFog(wallet, amount, reason) {
     return { fog: amount };
 }
 
+const MIN_APE = 1;
+const WEI = 10n ** 18n;
+
+function readPurchases() {
+    return readJson(PURCHASES_PATH, {});
+}
+
+const isPurchase = txHash => Boolean(readPurchases()[String(txHash).toLowerCase()]);
+
+// Desde y hasta cuando valen los pagos (ms), o null si la venta nunca abrio.
+// Redondeado a segundos: es lo que guarda un bloque.
+function fogSaleWindow() {
+    const { fogSale } = getConfig();
+    if (!fogSale.openedAt) return null;
+    return {
+        from: Math.floor(Date.parse(fogSale.openedAt) / 1000) * 1000,
+        until: fogSale.enabled || !fogSale.closedAt ? Infinity : Math.ceil(Date.parse(fogSale.closedAt) / 1000) * 1000
+    };
+}
+
+// `payment` es lo que devuelve verifyPayment. El FOG sale del monto pagado con
+// la tasa de hoy. Devuelve { purchase, balance } o { error, code, status }.
+function buyFog(wallet, payment) {
+    const key = wallet.toLowerCase();
+    const hash = payment.txHash.toLowerCase();
+    const purchases = readPurchases();
+    if (purchases[hash]) {
+        if (purchases[hash].wallet !== key) return { error: 'That payment was made by another wallet.', code: 'wrong-sender', status: 403 };
+        return { purchase: purchases[hash], balance: balanceOf(key).balance };
+    }
+    if (require('./forgeStore').getPayment(hash)) {
+        return { error: 'That payment was already used in the Forge.', code: 'already-used', status: 409 };
+    }
+
+    const { fogPerApe } = getConfig().fogSale;
+    const fog = Number(BigInt(payment.valueWei) * BigInt(fogPerApe) / WEI);
+    const purchase = {
+        txHash: hash,
+        wallet: key,
+        valueWei: payment.valueWei,
+        fogPerApe,
+        fog,
+        blockNumber: payment.blockNumber,
+        at: new Date().toISOString()
+    };
+    purchases[hash] = purchase;
+    guardar(PURCHASES_PATH, purchases);
+
+    const wallets = readWallets();
+    const totals = wallets[key] || { earned: 0, spent: 0 };
+    wallets[key] = { ...totals, earned: totals.earned + fog, bought: (totals.bought ?? 0) + fog };
+    guardar(WALLETS_PATH, wallets);
+    appendHistory({ event: 'purchase', ...purchase });
+    return { purchase, balance: balanceOf(key).balance };
+}
+
 function giveItem(wallet, itemId, reason) {
     const key = wallet.toLowerCase();
     const config = getConfig();
@@ -1048,7 +1177,18 @@ function adminSummary() {
         },
         topWallets: balances.sort((a, b) => b.balance - a.balance).slice(0, 50),
         redemptions: history.filter(h => h.event === 'redeem').reverse().slice(0, 100),
+        fogSale: ventasDeFog(),
         endings: history.filter(h => h.event === 'end' && h.reason !== 'completed').reverse().slice(0, 50)
+    };
+}
+
+function ventasDeFog() {
+    const compras = Object.values(readPurchases());
+    return {
+        count: compras.length,
+        apeWei: compras.reduce((n, c) => n + BigInt(c.valueWei), 0n).toString(),
+        fog: compras.reduce((n, c) => n + c.fog, 0),
+        purchases: compras.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 100)
     };
 }
 
@@ -1057,6 +1197,10 @@ function isValidTokenId(tokenId) {
 }
 
 module.exports = {
+    buyFog,
+    isPurchase,
+    fogSaleWindow,
+    MIN_APE,
     STAKING_DIR,
     DAY_MS,
     getConfig,

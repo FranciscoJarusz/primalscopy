@@ -2,7 +2,9 @@
 // de canje; las keys y el Summon shard se abren con una ruleta (Ruleta.tsx),
 // con sus premios y probabilidades a la vista; el resto se muestra con su
 // precio hasta que se pueda.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { formatEther } from 'viem';
+import { FiX } from 'react-icons/fi';
 import { card, tituloCard, botonClaro } from '@/components/forge/estilos';
 import {
     canjear,
@@ -12,6 +14,9 @@ import {
     imagenPremio,
     leerRuleta,
     ICONO_FOG_CHICO,
+    degradado,
+    fondoDe,
+    type Compra,
     type Ganado,
     type Premio,
     type Ruleta as DatosRuleta,
@@ -39,7 +44,19 @@ export default function Tienda({
     token,
     ganados = [],
     alCanjear,
+    comprarFog = false,
+    vitrina = false,
+    seccion = 'items',
+    compras = [],
 }: {
+    // Las compras de FOG: en la Store van en el historial junto a los premios.
+    compras?: Compra[];
+    // En la Store cada pestaña muestra una parte: los premios o lo ganado.
+    seccion?: 'items' | 'premios';
+    // Link a la Store, si la venta de FOG esta abierta.
+    comprarFog?: boolean;
+    // En la Store: mosaicos grandes, como una tienda de juego.
+    vitrina?: boolean;
     // En el panel lateral del mapa: una sola columna.
     compacto?: boolean;
     catalogo: Premio[];
@@ -50,13 +67,30 @@ export default function Tienda({
     alCanjear: () => void;
 }) {
     const [canjeando, setCanjeando] = useState<string | null>(null);
-    const [aviso, setAviso] = useState<(Aviso & { item?: string }) | null>(null);
+    const [aviso, setAviso] = useState<(Aviso & { item?: string }) | null>(
+        null
+    );
     // La ruleta abierta: la key comprada y lo que toco.
-    const [abierta, setAbierta] = useState<{ premio: Premio; ganado: Ganado } | null>(null);
+    const [abierta, setAbierta] = useState<{
+        premio: Premio;
+        ganado: Ganado;
+    } | null>(null);
     // Un premio que se entrega a mano (APE): el popup que lo explica.
     const [entregado, setEntregado] = useState<Premio | null>(null);
     // Los premios de la ruleta que se esta mirando ("Prizes").
-    const [viendo, setViendo] = useState<{ id: string; ruleta: DatosRuleta | null } | null>(null);
+    const [viendo, setViendo] = useState<{
+        id: string;
+        ruleta: DatosRuleta | null;
+    } | null>(null);
+    // El popup de premios se desvanece antes de desmontarse.
+    const [cerrandoPremios, setCerrandoPremios] = useState(false);
+    const cerrarPremios = () => {
+        setCerrandoPremios(true);
+        setTimeout(() => {
+            setViendo(null);
+            setCerrandoPremios(false);
+        }, 300);
+    };
 
     const pedir = async (premio: Premio) => {
         if (!token) return;
@@ -66,12 +100,18 @@ export default function Tienda({
             const r = await canjear(token, premio.id);
             if (r.win) setAbierta({ premio, ganado: r.win });
             else if (r.delivery) setEntregado(premio);
-            else setAviso({ ok: true, texto: `${premio.label} redeemed.`, item: premio.id });
+            else
+                setAviso({
+                    ok: true,
+                    texto: `${premio.label} redeemed.`,
+                    item: premio.id,
+                });
             alCanjear();
         } catch (err) {
             setAviso({
                 ok: false,
-                texto: err instanceof Error ? err.message : "Couldn't redeem it.",
+                texto:
+                    err instanceof Error ? err.message : "Couldn't redeem it.",
             });
         }
         setCanjeando(null);
@@ -81,137 +121,277 @@ export default function Tienda({
         if (viendo?.id === id) return setViendo(null);
         setViendo({ id, ruleta: null });
         leerRuleta(id)
-            .then((ruleta) => setViendo((v) => (v?.id === id ? { id, ruleta } : v)))
+            .then((ruleta) =>
+                setViendo((v) => (v?.id === id ? { id, ruleta } : v))
+            )
             .catch(() => setViendo(null));
     };
 
+    useEffect(() => {
+        if (!vitrina || !viendo) return;
+        const tecla = (e: KeyboardEvent) =>
+            e.key === 'Escape' && cerrarPremios();
+        window.addEventListener('keydown', tecla);
+        return () => window.removeEventListener('keydown', tecla);
+    }, [vitrina, viendo]);
+
     const destino = aviso?.ok && aviso.item ? DESTINOS[aviso.item] : null;
 
+    const historial = [
+        ...ganados.map((g) => ({ tipo: 'premio' as const, at: g.at, g })),
+        ...(vitrina ? compras.map((c) => ({ tipo: 'compra' as const, at: c.at, c })) : []),
+    ].sort((a, b) => b.at.localeCompare(a.at));
+
     return (
-        <section className="flex flex-col gap-4">
-            <div>
-                <h2 className={tituloCard}>Spend your FOG</h2>
-                {aviso && (
-                    <div className="flex flex-wrap items-center gap-x-3 mt-1">
-                        <Mensaje ok={aviso.ok} texto={aviso.texto} />
-                        {destino && (
+        <div
+            className={
+                vitrina ? 'flex flex-col gap-6 sm:gap-8' : 'flex flex-col gap-4'
+            }
+        >
+            {!(vitrina && seccion === 'premios') && (
+            <section className="flex flex-col gap-4">
+                <div>
+                    <div className="flex items-baseline justify-between gap-3">
+                        {!vitrina && (
+                            <h2 className={tituloCard}>Spend your FOG</h2>
+                        )}
+                        {comprarFog && (
                             <a
-                                href={destino.href}
-                                className="text-lightblue hover:text-yellow text-sm underline underline-offset-4 transition-all duration-300"
+                                href="/shop"
+                                className="shrink-0 text-lightblue hover:text-yellow text-sm underline underline-offset-4 transition-all duration-300"
                             >
-                                {destino.texto}
+                                Buy FOG
                             </a>
                         )}
                     </div>
-                )}
-            </div>
-            <div
-                className={
-                    compacto
-                        ? 'flex flex-col gap-2'
-                        : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4'
-                }
-            >
-                {catalogo.map((premio) => {
-                    const alcanza = saldo !== null && saldo >= premio.price;
-                    const icono = iconoPremio(premio);
-                    return (
-                        <div
-                            key={premio.id}
-                            className={`${compacto ? 'bg-blue/40 rounded-xl p-3' : card} flex flex-col gap-2`}
-                        >
-                            <div className="flex items-center gap-3">
-                                {icono && (
-                                    <img
-                                        src={icono}
-                                        alt=""
-                                        loading="lazy"
-                                        className={`${compacto ? 'size-14' : 'size-20'} shrink-0 object-contain drop-shadow-lg`}
-                                    />
-                                )}
-                                <div className="flex-1 min-w-0">
-                                    <div className="font-accent uppercase text-yellow text-lg leading-tight">
-                                        {premio.label}
-                                    </div>
-                                    {premio.description && (
-                                        <div className="text-lightblue/70 text-sm">
-                                            {premio.description}
-                                        </div>
-                                    )}
-                                    <div className="text-lightblue text-sm mt-1 flex flex-wrap items-center gap-x-3">
-                                        <span className="inline-flex items-center gap-1">
-                                            <img src={ICONO_FOG_CHICO} alt="" className="size-4" />
-                                            {fog(premio.price)} FOG
-                                        </span>
-                                        {premio.redeemable && typeof premio.stock === 'number' && (
-                                            <span className="text-xs text-yellow/80">
-                                                {premio.stock} left
-                                            </span>
-                                        )}
-                                        {premio.wheel && premio.redeemable && (
-                                            <button
-                                                onClick={() => verPremios(premio.id)}
-                                                aria-expanded={viendo?.id === premio.id}
-                                                className="text-xs text-lightblue/80 hover:text-yellow underline underline-offset-4 cursor-pointer transition-all duration-300"
-                                            >
-                                                {viendo?.id === premio.id ? 'Hide prizes' : 'Prizes'}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                                {premio.redeemable ? (
-                                    <button
-                                        onClick={() => pedir(premio)}
-                                        disabled={!token || !alcanza || canjeando !== null}
-                                        title={
-                                            !token
-                                                ? 'Verify your wallet first'
-                                                : !alcanza
-                                                  ? 'Not enough FOG'
-                                                  : undefined
-                                        }
-                                        className={`shrink-0 text-sm ${botonClaro}`}
-                                    >
-                                        {canjeando === premio.id
-                                            ? premio.wheel
-                                                ? 'Buying...'
-                                                : 'Redeeming...'
-                                            : premio.wheel
-                                              ? 'Buy'
-                                              : 'Redeem'}
-                                    </button>
-                                ) : (
-                                    <span
-                                        className={`shrink-0 text-xs uppercase tracking-wide ${premio.status === 'sold-out' ? 'text-red-300/80' : 'text-lightblue/50'}`}
-                                    >
-                                        {premio.status === 'sold-out' ? 'Sold out' : 'Soon'}
-                                    </span>
-                                )}
-                            </div>
-                            {viendo?.id === premio.id && (
-                                <ListaPremios ruleta={viendo.ruleta} catalogo={catalogo} />
+                    {aviso && (
+                        <div className="flex flex-wrap items-center gap-x-3 mt-1">
+                            <Mensaje ok={aviso.ok} texto={aviso.texto} />
+                            {destino && (
+                                <a
+                                    href={destino.href}
+                                    className="text-lightblue hover:text-yellow text-sm underline underline-offset-4 transition-all duration-300"
+                                >
+                                    {destino.texto}
+                                </a>
                             )}
                         </div>
-                    );
-                })}
-            </div>
+                    )}
+                </div>
+                {vitrina ? (
+                    <Mosaicos
+                        catalogo={catalogo}
+                        saldo={saldo}
+                        token={token}
+                        canjeando={canjeando}
+                        pedir={pedir}
+                        verPremios={(id) => {
+                            setViendo({ id, ruleta: null });
+                            leerRuleta(id)
+                                .then((ruleta) =>
+                                    setViendo((v) =>
+                                        v?.id === id ? { id, ruleta } : v
+                                    )
+                                )
+                                .catch(() => setViendo(null));
+                        }}
+                    />
+                ) : (
+                    <div
+                        className={
+                            compacto
+                                ? 'flex flex-col gap-2'
+                                : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4'
+                        }
+                    >
+                        {catalogo.map((premio) => {
+                            const alcanza =
+                                saldo !== null && saldo >= premio.price;
+                            const icono = iconoPremio(premio);
+                            return (
+                                <div
+                                    key={premio.id}
+                                    className={`${compacto ? 'bg-blue/40 rounded-xl p-3' : card} flex flex-col gap-2`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {icono && (
+                                            <img
+                                                src={icono}
+                                                alt=""
+                                                loading="lazy"
+                                                className={`${compacto ? 'size-14' : 'size-20'} shrink-0 object-contain drop-shadow-lg`}
+                                            />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-accent uppercase text-yellow text-lg leading-tight">
+                                                {premio.label}
+                                            </div>
+                                            {premio.description && (
+                                                <div className="text-lightblue/70 text-sm">
+                                                    {premio.description}
+                                                </div>
+                                            )}
+                                            <div className="text-lightblue text-sm mt-1 flex flex-wrap items-center gap-x-3">
+                                                <span className="inline-flex items-center gap-1">
+                                                    <img
+                                                        src={ICONO_FOG_CHICO}
+                                                        alt=""
+                                                        className="size-4"
+                                                    />
+                                                    {fog(premio.price)} FOG
+                                                </span>
+                                                {premio.redeemable &&
+                                                    typeof premio.stock ===
+                                                        'number' && (
+                                                        <span className="text-xs text-yellow/80">
+                                                            {premio.stock} left
+                                                        </span>
+                                                    )}
+                                                {premio.wheel &&
+                                                    premio.redeemable && (
+                                                        <button
+                                                            onClick={() =>
+                                                                verPremios(
+                                                                    premio.id
+                                                                )
+                                                            }
+                                                            aria-expanded={
+                                                                viendo?.id ===
+                                                                premio.id
+                                                            }
+                                                            className="text-xs text-lightblue/80 hover:text-yellow underline underline-offset-4 cursor-pointer transition-all duration-300"
+                                                        >
+                                                            {viendo?.id ===
+                                                            premio.id
+                                                                ? 'Hide prizes'
+                                                                : 'Prizes'}
+                                                        </button>
+                                                    )}
+                                            </div>
+                                        </div>
+                                        {premio.redeemable ? (
+                                            <button
+                                                onClick={() => pedir(premio)}
+                                                disabled={
+                                                    !token ||
+                                                    !alcanza ||
+                                                    canjeando !== null
+                                                }
+                                                title={
+                                                    !token
+                                                        ? 'Verify your wallet first'
+                                                        : !alcanza
+                                                          ? 'Not enough FOG'
+                                                          : undefined
+                                                }
+                                                className={`shrink-0 text-sm ${botonClaro}`}
+                                            >
+                                                {canjeando === premio.id
+                                                    ? premio.wheel
+                                                        ? 'Buying...'
+                                                        : 'Redeeming...'
+                                                    : premio.wheel
+                                                      ? 'Buy'
+                                                      : 'Redeem'}
+                                            </button>
+                                        ) : (
+                                            <span
+                                                className={`shrink-0 text-xs uppercase tracking-wide ${premio.status === 'sold-out' ? 'text-red-300/80' : 'text-lightblue/50'}`}
+                                            >
+                                                {premio.status === 'sold-out'
+                                                    ? 'Sold out'
+                                                    : 'Soon'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {viendo?.id === premio.id && (
+                                        <ListaPremios
+                                            ruleta={viendo.ruleta}
+                                            catalogo={catalogo}
+                                        />
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
 
-            {ganados.length > 0 && (
-                <div className="flex flex-col gap-2">
-                    <h3 className="font-accent uppercase text-yellow text-xl leading-none">
-                        Your prizes
-                    </h3>
-                    {ganados.map((g) => {
+                {vitrina && viendo && (
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={
+                            catalogo.find((p) => p.id === viendo.id)?.label
+                        }
+                        onClick={cerrarPremios}
+                        className={`fixed inset-0 z-50 grid place-items-center bg-darkblue/80 p-4 transition-all duration-300 ease-out starting:opacity-0 ${cerrandoPremios ? 'opacity-0' : 'opacity-100'}`}
+                    >
+                        <div
+                            onClick={(e) => e.stopPropagation()}
+                            className={`${card} w-full max-w-lg max-h-[85vh] overflow-y-auto flex flex-col gap-3 transition-all duration-300 ease-out starting:opacity-0 starting:scale-95 starting:translate-y-4 ${cerrandoPremios ? 'opacity-0 scale-95 translate-y-4' : ''}`}
+                            data-lenis-prevent
+                        >
+                            <div className="flex items-center justify-between gap-3">
+                                <h3 className="font-accent uppercase text-yellow text-2xl leading-none pb-1.5">
+                                    {
+                                        catalogo.find((p) => p.id === viendo.id)
+                                            ?.label
+                                    }
+                                </h3>
+                                <button
+                                    onClick={cerrarPremios}
+                                    aria-label="Close"
+                                    className="text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
+                                >
+                                    <FiX size={22} />
+                                </button>
+                            </div>
+                            <ListaPremios
+                                ruleta={viendo.ruleta}
+                                catalogo={catalogo}
+                            />
+                        </div>
+                    </div>
+                )}
+            </section>
+            )}
+
+            {(vitrina ? seccion === 'premios' : ganados.length > 0) && (
+                <section className="flex flex-col gap-2">
+                    {!vitrina && (
+                        <h3 className="font-accent uppercase text-yellow text-xl leading-none">
+                            Your prizes
+                        </h3>
+                    )}
+                    {vitrina && historial.length === 0 && (
+                        <p className="text-lightblue/70">
+                            {token
+                                ? 'Nothing here yet. Buy FOG or open a key in the Item shop.'
+                                : 'Verify your wallet to see your history.'}
+                        </p>
+                    )}
+                    {historial.map((h) => {
+                        if (h.tipo === 'compra') return <FilaCompra key={h.c.txHash} compra={h.c} />;
+                        const g = h.g;
                         const imagen = imagenPremio(g.prize, catalogo);
                         const estado = ESTADOS[g.status];
                         return (
-                            <div key={g.id} className="flex items-center gap-3 text-sm">
+                            <div
+                                key={g.id}
+                                className="flex items-center gap-3 text-sm"
+                            >
                                 <div
                                     className="size-10 shrink-0 rounded-lg bg-blue/60 grid place-items-center overflow-hidden border-2"
-                                    style={{ borderColor: colorRareza(g.chance) }}
+                                    style={{
+                                        borderColor: colorRareza(g.chance),
+                                    }}
                                 >
                                     {imagen ? (
-                                        <img src={imagen} alt="" className="w-full h-full object-contain" />
+                                        <img
+                                            src={imagen}
+                                            alt=""
+                                            className="w-full h-full object-contain"
+                                        />
                                     ) : (
                                         <span className="font-accent text-yellow text-[10px] uppercase">
                                             NFT
@@ -219,36 +399,50 @@ export default function Tienda({
                                     )}
                                 </div>
                                 <div className="flex-1 min-w-0 leading-tight">
-                                    <div className="text-lightblue truncate">{g.prize.label}</div>
+                                    <div className="text-lightblue truncate">
+                                        {g.prize.label}
+                                    </div>
                                     <div className="text-lightblue/50 text-xs">
-                                        {new Date(g.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                        {/* El hash del envio, si el admin lo cargo: prueba de que llego. */}
-                                        {g.status === 'sent' && g.note && /^0x[0-9a-fA-F]{64}$/.test(g.note) && (
-                                            <>
-                                                {' · '}
-                                                <a
-                                                    href={`${APECHAIN.explorador}/tx/${g.note}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-lightblue/80 hover:text-yellow underline underline-offset-2 transition-all duration-300"
-                                                >
-                                                    View transaction
-                                                </a>
-                                            </>
+                                        {new Date(g.at).toLocaleDateString(
+                                            'en-US',
+                                            { month: 'short', day: 'numeric' }
                                         )}
+                                        {/* El hash del envio, si el admin lo cargo: prueba de que llego. */}
+                                        {g.status === 'sent' &&
+                                            g.note &&
+                                            /^0x[0-9a-fA-F]{64}$/.test(
+                                                g.note
+                                            ) && (
+                                                <>
+                                                    {' · '}
+                                                    <a
+                                                        href={`${APECHAIN.explorador}/tx/${g.note}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-lightblue/80 hover:text-yellow underline underline-offset-2 transition-all duration-300"
+                                                    >
+                                                        View transaction
+                                                    </a>
+                                                </>
+                                            )}
                                     </div>
                                 </div>
-                                <span className={`shrink-0 rounded-md px-2 text-xs uppercase ${estado.clase}`}>
+                                <span
+                                    className={`shrink-0 rounded-md px-2 text-xs uppercase ${estado.clase}`}
+                                >
                                     {estado.texto}
                                 </span>
                             </div>
                         );
                     })}
-                </div>
+                </section>
             )}
 
             {entregado && (
-                <CompraEntregada premio={entregado} onCerrar={() => setEntregado(null)} />
+                <CompraEntregada
+                    premio={entregado}
+                    onCerrar={() => setEntregado(null)}
+                />
             )}
 
             {abierta && (
@@ -258,13 +452,175 @@ export default function Tienda({
                     onCerrar={() => setAbierta(null)}
                 />
             )}
-        </section>
+        </div>
+    );
+}
+
+function Mosaicos({
+    catalogo,
+    saldo,
+    token,
+    canjeando,
+    pedir,
+    verPremios,
+}: {
+    catalogo: Premio[];
+    saldo: number | null;
+    token: string | null;
+    canjeando: string | null;
+    pedir: (premio: Premio) => void;
+    verPremios: (id: string) => void;
+}) {
+    return (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+            {catalogo.map((premio) => {
+                const alcanza = saldo !== null && saldo >= premio.price;
+                const icono = iconoPremio(premio);
+                const etiqueta = premio.redeemable
+                    ? typeof premio.stock === 'number'
+                        ? `${premio.stock} left`
+                        : null
+                    : premio.status === 'sold-out'
+                      ? 'Sold out'
+                      : 'Soon';
+                return (
+                    <div
+                        key={premio.id}
+                        className={`relative aspect-3/4 rounded-2xl overflow-hidden shadow-lg shadow-darkblue/50 flex flex-col ${premio.redeemable ? '' : 'saturate-50'}`}
+                    >
+                        <div
+                            className="relative flex-1 min-h-0"
+                            style={{ backgroundImage: degradado(fondoDe(premio)) }}
+                        >
+                            <div
+                                aria-hidden="true"
+                                className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.35),transparent_62%)]"
+                            />
+                            {icono && (
+                                <img
+                                    src={icono}
+                                    alt=""
+                                    loading="lazy"
+                                    className="absolute inset-0 w-full h-full object-contain p-7 sm:p-8 drop-shadow-xl"
+                                />
+                            )}
+                        </div>
+                        <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-2.5">
+                            {etiqueta ? (
+                                <span className="h-6 inline-flex items-center rounded-md bg-darkblue/70 px-2 font-accent uppercase text-xs leading-none pb-1 text-yellow">
+                                    {etiqueta}
+                                </span>
+                            ) : (
+                                <span />
+                            )}
+                            {premio.wheel && premio.redeemable && (
+                                <button
+                                    onClick={() => verPremios(premio.id)}
+                                    className="h-6 inline-flex items-center rounded-md bg-darkblue/70 px-2 font-accent uppercase text-xs leading-none pb-1 text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
+                                >
+                                    Prizes
+                                </button>
+                            )}
+                        </div>
+                        <div className="relative bg-darkblue px-3 pt-2.5 pb-3 flex flex-col gap-2">
+                            <div className="min-w-0">
+                                <div className="font-accent uppercase text-white text-base sm:text-lg leading-none pb-1 truncate">
+                                    {premio.label}
+                                </div>
+                                {premio.description && (
+                                    <div className="text-lightblue/70 text-xs leading-snug line-clamp-2 min-h-8">
+                                        {premio.description}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="h-8 inline-flex items-center gap-1.5 font-accent text-yellow text-base leading-none">
+                                    <img
+                                        src={ICONO_FOG_CHICO}
+                                        alt=""
+                                        className="size-5"
+                                    />
+                                    <span className="pb-1">
+                                        {fog(premio.price)}
+                                    </span>
+                                </span>
+                                {premio.redeemable && (
+                                    <button
+                                        onClick={() => pedir(premio)}
+                                        disabled={
+                                            !token ||
+                                            !alcanza ||
+                                            canjeando !== null
+                                        }
+                                        title={
+                                            !token
+                                                ? 'Verify your wallet first'
+                                                : !alcanza
+                                                  ? 'Not enough FOG'
+                                                  : undefined
+                                        }
+                                        className="h-8 inline-flex items-center rounded-md bg-yellow px-3 font-accent uppercase text-sm leading-none pb-1 text-darkblue cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
+                                    >
+                                        {canjeando === premio.id
+                                            ? '...'
+                                            : premio.wheel
+                                              ? 'Buy'
+                                              : 'Get'}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+function FilaCompra({ compra }: { compra: Compra }) {
+    const ape = Number(formatEther(BigInt(compra.valueWei))).toLocaleString('en-US', {
+        maximumFractionDigits: 4,
+    });
+    return (
+        <div className="flex items-center gap-3 text-sm">
+            <div className="size-10 shrink-0 rounded-lg bg-blue/60 grid place-items-center overflow-hidden border-2 border-lightblue/30">
+                <img src={ICONO_FOG_CHICO} alt="" className="w-full h-full object-contain p-1" />
+            </div>
+            <div className="flex-1 min-w-0 leading-tight">
+                <div className="text-lightblue truncate">Bought {fog(compra.fog)} FOG</div>
+                <div className="text-lightblue/50 text-xs">
+                    {ape} APE ·{' '}
+                    {new Date(compra.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{' '}
+                    ·{' '}
+                    <a
+                        href={`${APECHAIN.explorador}/tx/${compra.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-lightblue/80 hover:text-yellow underline underline-offset-2 transition-all duration-300"
+                    >
+                        View transaction
+                    </a>
+                </div>
+            </div>
+            <span className={`shrink-0 rounded-md px-2 text-xs uppercase ${ESTADOS.credited.clase}`}>
+                {ESTADOS.credited.texto}
+            </span>
+        </div>
     );
 }
 
 // Los premios de una ruleta con su probabilidad, para elegir con datos.
-function ListaPremios({ ruleta, catalogo }: { ruleta: DatosRuleta | null; catalogo: Premio[] }) {
-    if (!ruleta) return <div className="text-lightblue/60 text-xs">Loading prizes...</div>;
+function ListaPremios({
+    ruleta,
+    catalogo,
+}: {
+    ruleta: DatosRuleta | null;
+    catalogo: Premio[];
+}) {
+    if (!ruleta)
+        return (
+            <div className="text-lightblue/60 text-xs">Loading prizes...</div>
+        );
     return (
         <div className="grid grid-cols-3 gap-1.5">
             {ruleta.prizes.map((p) => {
@@ -280,23 +636,41 @@ function ListaPremios({ ruleta, catalogo }: { ruleta: DatosRuleta | null; catalo
                         <div className="aspect-square grid place-items-center">
                             {p.kind === 'fog' || p.kind === 'ape' ? (
                                 <span className="relative w-full h-full grid place-items-center">
-                                    <img src={imagen!} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-contain p-1" />
+                                    <img
+                                        src={imagen!}
+                                        alt=""
+                                        loading="lazy"
+                                        className="absolute inset-0 w-full h-full object-contain p-1"
+                                    />
                                     <span className="relative font-accent text-yellow text-sm [text-shadow:0_1px_0_#090050,0_0_6px_#090050]">
                                         {fog(p.amount ?? 0)}
                                     </span>
                                 </span>
                             ) : imagen ? (
-                                <img src={imagen} alt="" loading="lazy" className="w-full h-full object-contain" />
+                                <img
+                                    src={imagen}
+                                    alt=""
+                                    loading="lazy"
+                                    className="w-full h-full object-contain"
+                                />
                             ) : (
                                 // Un NFT al que todavia no le subieron imagen.
-                                <span className="font-accent uppercase text-lightblue text-sm">NFT</span>
+                                <span className="font-accent uppercase text-lightblue text-sm">
+                                    NFT
+                                </span>
                             )}
                         </div>
                         <div className="px-1 py-0.5 text-[10px] leading-tight text-lightblue truncate">
                             {p.label}
                         </div>
-                        <div className="px-1 pb-1 text-[10px] font-semibold" style={{ color }}>
-                            {(p.chance * 100).toLocaleString('en-US', { maximumFractionDigits: p.chance < 0.01 ? 2 : 1 })}%
+                        <div
+                            className="px-1 pb-1 text-[10px] font-semibold"
+                            style={{ color }}
+                        >
+                            {(p.chance * 100).toLocaleString('en-US', {
+                                maximumFractionDigits: p.chance < 0.01 ? 2 : 1,
+                            })}
+                            %
                         </div>
                     </div>
                 );

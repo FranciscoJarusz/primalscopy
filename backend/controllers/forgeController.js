@@ -438,7 +438,14 @@ async function registerPayment(req, res) {
                 throw httpError(403, 'That payment was made by another wallet.', 'wrong-sender');
             }
         } else {
+            const yaComprado = () => {
+                if (require('../lib/stakingStore').isPurchase(txHash)) {
+                    throw httpError(409, 'That payment was already used to buy FOG.', 'already-used');
+                }
+            };
+            yaComprado();
             const payment = await verifyPayment(txHash, req.walletAddress, config);
+            yaComprado();
             if (forge.addPayment(payment)) forge.appendHistory({ event: 'payment', ...payment });
         }
 

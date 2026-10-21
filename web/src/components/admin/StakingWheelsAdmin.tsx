@@ -343,11 +343,11 @@ export default function StakingWheelsAdmin({
                     {borrador.map((p, i) => (
                         <div
                             key={p.id || `nuevo-${i}`}
-                            className="grid gap-3 sm:grid-cols-[auto_minmax(0,2fr)_7rem_7rem_6rem_6rem_4rem_auto] items-end"
+                            className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-[auto_minmax(0,2fr)_7rem_7rem_6rem_6rem_4rem_auto] items-end rounded-xl bg-blue/30 p-3 lg:bg-transparent lg:p-0 lg:rounded-none"
                         >
                             <label
                                 title={p.id ? 'Upload an image' : 'Save the wheel first, then add the image'}
-                                className={`relative size-16 grid place-items-center rounded-xl bg-blue border-2 overflow-hidden ${p.id ? 'cursor-pointer hover:ring-2 hover:ring-yellow' : 'opacity-50 cursor-not-allowed'} transition-all duration-300`}
+                                className={`order-1 lg:order-none relative size-16 grid place-items-center rounded-xl bg-blue border-2 overflow-hidden ${p.id ? 'cursor-pointer hover:ring-2 hover:ring-yellow' : 'opacity-50 cursor-not-allowed'} transition-all duration-300`}
                                 style={{ borderColor: colorRareza(chance(p) || 1) }}
                             >
                                 {p.image || p.kind !== 'nft' ? (
@@ -371,7 +371,7 @@ export default function StakingWheelsAdmin({
                                     }}
                                 />
                             </label>
-                            <label className={etiqueta}>
+                            <label className={`${etiqueta} order-3 lg:order-none col-span-2 sm:col-span-4 lg:col-span-1`}>
                                 Name
                                 <input
                                     value={p.label}
@@ -380,12 +380,12 @@ export default function StakingWheelsAdmin({
                                     className={campo}
                                 />
                             </label>
-                            <label className={etiqueta}>
+                            <label className={`${etiqueta} order-4 lg:order-none`}>
                                 Kind
                                 <select
                                     value={p.kind}
                                     onChange={(e) => editar(i, { kind: e.target.value as Premio['kind'] })}
-                                    className={campo}
+                                    className={`${campo} h-9`}
                                 >
                                     {TIPOS.map((t) => (
                                         <option key={t.id} value={t.id}>
@@ -394,7 +394,7 @@ export default function StakingWheelsAdmin({
                                     ))}
                                 </select>
                             </label>
-                            <label className={etiqueta}>
+                            <label className={`${etiqueta} order-4 lg:order-none`}>
                                 Amount
                                 <input
                                     type="number"
@@ -406,7 +406,7 @@ export default function StakingWheelsAdmin({
                                     className={`${campo} disabled:opacity-40`}
                                 />
                             </label>
-                            <label className={etiqueta}>
+                            <label className={`${etiqueta} order-4 lg:order-none`}>
                                 Weight
                                 <input
                                     type="number"
@@ -416,7 +416,7 @@ export default function StakingWheelsAdmin({
                                     className={campo}
                                 />
                             </label>
-                            <label className={etiqueta}>
+                            <label className={`${etiqueta} order-4 lg:order-none`}>
                                 Stock
                                 <input
                                     type="number"
@@ -427,6 +427,7 @@ export default function StakingWheelsAdmin({
                                     className={campo}
                                 />
                             </label>
+                            <div className="order-2 lg:order-none sm:col-span-3 self-start lg:self-auto flex items-center justify-end gap-3 lg:contents">
                             <div className="h-9 flex items-center text-sm text-lightblue">
                                 {pct(chance(p))}
                             </div>
@@ -438,6 +439,7 @@ export default function StakingWheelsAdmin({
                             >
                                 <FiX className="w-5 h-5" />
                             </button>
+                            </div>
                         </div>
                     ))}
                 </div>

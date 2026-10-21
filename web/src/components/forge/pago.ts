@@ -18,21 +18,31 @@ import type { PaymentInfo } from './tipos';
 type Cobro = Extract<PaymentInfo, { required: true }>;
 type Hash = `0x${string}`;
 
-const clave = (wallet: string) => `forge:pago:${wallet.toLowerCase()}`;
+// La Store usa otro prefijo: un pago de FOG sin informar no tiene que
+// aparecer en el Forge como roll pagado, ni al reves.
+const clave = (wallet: string, prefijo: string) =>
+    `${prefijo}:${wallet.toLowerCase()}`;
 
-export function pagoSinInformar(wallet: string): Hash | null {
+export function pagoSinInformar(
+    wallet: string,
+    prefijo = 'forge:pago'
+): Hash | null {
     try {
-        const hash = localStorage.getItem(clave(wallet));
+        const hash = localStorage.getItem(clave(wallet, prefijo));
         return hash && /^0x[0-9a-fA-F]{64}$/.test(hash) ? (hash as Hash) : null;
     } catch {
         return null;
     }
 }
 
-function recordar(wallet: string, hash: Hash | null) {
+export function recordar(
+    wallet: string,
+    hash: Hash | null,
+    prefijo = 'forge:pago'
+) {
     try {
-        if (hash) localStorage.setItem(clave(wallet), hash);
-        else localStorage.removeItem(clave(wallet));
+        if (hash) localStorage.setItem(clave(wallet, prefijo), hash);
+        else localStorage.removeItem(clave(wallet, prefijo));
     } catch {
         /* storage bloqueado: el pago sigue, solo se pierde la recuperacion */
     }
@@ -42,7 +52,10 @@ export class PagoError extends Error {}
 
 // Manda la transferencia y devuelve el hash. Si la wallet esta en otra red,
 // primero le pide cambiar.
-export async function transferir(cobro: Cobro): Promise<Hash> {
+export async function transferir(
+    cobro: Cobro,
+    prefijo = 'forge:pago'
+): Promise<Hash> {
     const cuenta = getAccount(wagmiConfig);
     if (!cuenta.address) throw new PagoError('Connect your wallet first.');
 
@@ -55,7 +68,7 @@ export async function transferir(cobro: Cobro): Promise<Hash> {
             value: BigInt(cobro.priceWei),
             chainId: cobro.chainId as never,
         });
-        recordar(cuenta.address, hash);
+        recordar(cuenta.address, hash, prefijo);
         return hash;
     } catch (err) {
         if (rechazado(err)) throw new PagoError('Payment cancelled.');
@@ -74,7 +87,9 @@ export async function esperarConfirmacion(cobro: Cobro, hash: Hash) {
         confirmations: cobro.confirmations,
     });
     if (receipt.status !== 'success') {
-        throw new PagoError('The payment failed on chain. Nothing was charged.');
+        throw new PagoError(
+            'The payment failed on chain. Nothing was charged.'
+        );
     }
 }
 

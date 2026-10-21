@@ -26,23 +26,27 @@ function httpError(status, message, code) {
 
 // Se lee en cada llamada y no al cargar el modulo: asi cambiar el .env y
 // reiniciar alcanza, y los tests pueden cambiarla en caliente.
-function paymentConfig() {
+// La misma wallet cobra los rolls del Forge y la compra de FOG de la Store.
+function treasuryConfig() {
     const treasury = (process.env.FORGE_TREASURY || '').trim();
-    const price = (process.env.FORGE_ROLL_PRICE || '').trim();
-    if (!treasury || !price) return null;
-
-    const priceWei = parseEther(price);
-    if (priceWei <= 0n) throw new Error('FORGE_ROLL_PRICE tiene que ser mayor que 0.');
-
-    const chainId = Number(process.env.FORGE_CHAIN_ID || apeChain.id);
+    if (!treasury) return null;
     return {
         treasury: getAddress(treasury),
-        priceWei,
-        chainId,
+        chainId: Number(process.env.FORGE_CHAIN_ID || apeChain.id),
         rpcUrl: (process.env.FORGE_RPC_URL || '').trim() || null,
         confirmations: Math.max(1, Number(process.env.FORGE_CONFIRMATIONS || 2)),
         fromBlock: BigInt(process.env.FORGE_PAYMENTS_FROM_BLOCK || 0)
     };
+}
+
+function paymentConfig() {
+    const base = treasuryConfig();
+    const price = (process.env.FORGE_ROLL_PRICE || '').trim();
+    if (!base || !price) return null;
+
+    const priceWei = parseEther(price);
+    if (priceWei <= 0n) throw new Error('FORGE_ROLL_PRICE tiene que ser mayor que 0.');
+    return { ...base, priceWei };
 }
 
 // Lo que el front necesita para armar la transferencia. El precio va en wei
@@ -89,7 +93,13 @@ const TX_HASH_REGEX = /^0x[0-9a-fA-F]{64}$/;
 //   not-confirmed  todavia no esta en un bloque o le faltan confirmaciones.
 //                  Es el unico reintentable: el front vuelve a preguntar.
 //   failed, wrong-chain, wrong-recipient, wrong-sender, underpaid, too-old
-async function verifyPayment(txHash, wallet, config = paymentConfig()) {
+// `minWei` y `what` cambian el monto minimo y como se nombra en los errores;
+// `notBefore` (ms) rechaza los pagos de bloques anteriores a esa hora.
+async function verifyPayment(txHash, wallet, config = paymentConfig(), {
+    minWei = config?.priceWei,
+    what = 'a roll',
+    notBefore = null
+} = {}) {
     if (!config) throw httpError(503, "Forge payments aren't set up.", 'not-configured');
     if (!TX_HASH_REGEX.test(String(txHash || ''))) {
         throw httpError(400, '"txHash" is not a valid transaction hash.', 'invalid-hash');
@@ -116,16 +126,24 @@ async function verifyPayment(txHash, wallet, config = paymentConfig()) {
         throw httpError(422, 'That payment is on another network.', 'wrong-chain');
     }
     if (!tx.to || tx.to.toLowerCase() !== config.treasury.toLowerCase()) {
-        throw httpError(422, "That transaction isn't a payment to the Forge treasury.", 'wrong-recipient');
+        throw httpError(422, "That transaction isn't a payment to the Primal Cult treasury.", 'wrong-recipient');
     }
     if (tx.from.toLowerCase() !== String(wallet).toLowerCase()) {
         throw httpError(403, 'That payment was made by another wallet.', 'wrong-sender');
     }
-    if (tx.value < config.priceWei) {
-        throw httpError(422, `The payment is less than the price of a roll (${formatEther(config.priceWei)} APE).`, 'underpaid');
+    if (tx.value < minWei) {
+        throw httpError(422, `The payment is less than the price of ${what} (${formatEther(minWei)} APE).`, 'underpaid');
     }
     if (receipt.blockNumber < config.fromBlock) {
-        throw httpError(422, 'That payment is from before the Forge opened.', 'too-old');
+        throw httpError(422, 'That payment is from before payments opened.', 'too-old');
+    }
+    let blockTime = null;
+    if (notBefore !== null) {
+        const block = await client.getBlock({ blockNumber: receipt.blockNumber });
+        blockTime = Number(block.timestamp) * 1000;
+        if (blockTime < notBefore) {
+            throw httpError(422, `That payment is from before ${what} was on sale.`, 'too-old');
+        }
     }
 
     const latest = await client.getBlockNumber();
@@ -139,8 +157,9 @@ async function verifyPayment(txHash, wallet, config = paymentConfig()) {
         wallet: getAddress(tx.from),
         valueWei: tx.value.toString(),
         blockNumber: receipt.blockNumber.toString(),
+        blockTime,
         chainId: config.chainId
     };
 }
 
-module.exports = { paymentConfig, publicPaymentInfo, verifyPayment, httpError };
+module.exports = { treasuryConfig, paymentConfig, publicPaymentInfo, verifyPayment, httpError };

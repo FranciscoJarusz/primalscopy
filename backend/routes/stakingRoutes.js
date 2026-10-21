@@ -10,6 +10,8 @@ const primalThumbs = require('../lib/primalThumbs');
 const wheels = require('../lib/stakingWheels');
 const winCards = require('../lib/winCards');
 const { getNickname } = require('../lib/nicknameStore');
+const { treasuryConfig, verifyPayment } = require('../lib/forgePayments');
+const { parseEther } = require('viem');
 
 // Lo publico de un premio para compartirlo: que fue, de que key, y quien lo
 // gano (el apodo, o la wallet corta).
@@ -167,6 +169,38 @@ router.post('/redeem', requireWallet, (req, res) => {
         return res.status(status).json(body);
     }
     res.json(result);
+});
+
+// POST /api/staking/buy-fog  { txHash }
+// Acredita FOG por una transferencia de APE al treasury. El front reintenta
+// mientras responde 409 not-confirmed; llamarlo otra vez con el mismo hash no
+// suma de nuevo.
+router.post('/buy-fog', requireWallet, async (req, res) => {
+    const txHash = String(req.body?.txHash || '').toLowerCase();
+    try {
+        const config = treasuryConfig();
+        if (!config) return res.status(503).json({ error: "Payments aren't set up.", code: 'not-configured' });
+        if (!staking.isPurchase(txHash)) {
+            const ventana = staking.fogSaleWindow();
+            if (!ventana) return res.status(409).json({ error: 'The FOG sale is closed.', code: 'closed' });
+            const payment = await verifyPayment(txHash, req.walletAddress, config, {
+                minWei: parseEther(String(staking.MIN_APE)),
+                what: 'FOG',
+                notBefore: ventana.from
+            });
+            if (payment.blockTime > ventana.until) {
+                return res.status(409).json({ error: 'That payment arrived after the FOG sale closed.', code: 'closed' });
+            }
+            const result = staking.buyFog(req.walletAddress, payment);
+            if (result.error) return res.status(result.status).json({ error: result.error, code: result.code });
+            return res.status(201).json(result);
+        }
+        const result = staking.buyFog(req.walletAddress, { txHash });
+        if (result.error) return res.status(result.status).json({ error: result.error, code: result.code });
+        res.json(result);
+    } catch (error) {
+        res.status(error.status || 500).json({ error: error.status ? error.message : "Couldn't check the payment.", code: error.code });
+    }
 });
 
 // POST /api/staking/unstake  { tokenIds: ['12', ...] }

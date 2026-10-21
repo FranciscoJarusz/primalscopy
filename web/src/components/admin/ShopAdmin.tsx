@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FiChevronDown, FiChevronUp, FiGift, FiImage, FiTrash2 } from 'react-icons/fi';
-import { iconoPremio } from '@/lib/staking';
+import { degradado, fondoDe, iconoPremio, type Fondo } from '@/lib/staking';
 import { BACKEND_URL } from '@/lib/backend';
 import { regalar } from '@/lib/admin';
 import StakingWheelsAdmin from './StakingWheelsAdmin';
+import FogSaleAdmin, { type Compras, type VentaAdmin } from './FogSaleAdmin';
 import {
     botonChico,
     botonGuardar,
     campo,
+    Desplegable,
     etiqueta,
     fecha,
     fog,
@@ -28,9 +30,11 @@ type Premio = {
     enabled: boolean;
     icon?: string;
     stock?: number | null;
+    background?: Fondo;
 };
 type Resumen = {
-    config: { catalog: Premio[] };
+    config: { catalog: Premio[]; fogSale: VentaAdmin };
+    fogSale: Compras;
     redemptions: {
         id: string;
         wallet: string;
@@ -125,6 +129,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                     price: Number(i.price),
                     stock: i.stock.trim() === '' ? null : Number(i.stock),
                     enabled: i.enabled,
+                    background: i.background ?? null,
                 })),
                 order: filas.map((i) => i.id),
             });
@@ -226,12 +231,21 @@ export default function ShopAdmin({ token }: { token: string }) {
                     Shop
                 </h1>
                 <p className="text-base sm:text-lg text-lightblue mt-3 max-w-2xl">
-                    What holders can buy with FOG: the rewards, the prize wheels behind
+                    The FOG sale, what holders can buy with FOG, the prize wheels behind
                     every key, and what has to be sent by hand.
                 </p>
             </div>
 
             {error && <p className="text-red-300">{error}</p>}
+
+            {resumen && (
+                <FogSaleAdmin
+                    venta={resumen.config.fogSale}
+                    compras={resumen.fogSale}
+                    enviar={enviar}
+                    alGuardar={() => cargar(false)}
+                />
+            )}
 
             {filas && (
                 <form onSubmit={guardar} className={panel}>
@@ -248,11 +262,12 @@ export default function ShopAdmin({ token }: { token: string }) {
                         {filas.map((item, i) => (
                             <div
                                 key={item.id}
-                                className={`grid gap-3 sm:grid-cols-[1.25rem_7.5rem_minmax(0,1fr)_minmax(0,2fr)_8rem_6rem_5.5rem_5rem] items-end ${
+                                className={`grid gap-3 grid-cols-2 sm:grid-cols-4 xl:grid-cols-[1.25rem_7.5rem_minmax(0,1fr)_minmax(0,2fr)_8rem_6rem_8rem_5.5rem_5rem] items-end rounded-xl bg-blue/30 p-3 xl:bg-transparent xl:p-0 xl:rounded-none ${
                                     item.enabled ? '' : 'opacity-50'
                                 }`}
                             >
-                                <div className="h-9 flex sm:flex-col items-center sm:justify-center gap-1 sm:gap-0">
+                                <div className="order-1 xl:order-none sm:col-span-2 flex items-end gap-3 xl:contents">
+                                <div className="h-16 xl:h-9 flex flex-col items-center justify-center">
                                     <button
                                         type="button"
                                         aria-label={`Move ${item.label} up`}
@@ -310,7 +325,8 @@ export default function ShopAdmin({ token }: { token: string }) {
                                         </button>
                                     )}
                                 </div>
-                                <label className={etiqueta}>
+                                </div>
+                                <label className={`${etiqueta} order-3 xl:order-none col-span-2 xl:col-span-1`}>
                                     Name
                                     <input
                                         value={item.label}
@@ -319,7 +335,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                                         className={campo}
                                     />
                                 </label>
-                                <label className={etiqueta}>
+                                <label className={`${etiqueta} order-4 xl:order-none col-span-2 xl:col-span-1`}>
                                     Description
                                     <input
                                         value={item.description}
@@ -328,7 +344,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                                         className={campo}
                                     />
                                 </label>
-                                <label className={etiqueta}>
+                                <label className={`${etiqueta} order-5 xl:order-none`}>
                                     Price (FOG)
                                     <input
                                         type="number"
@@ -338,7 +354,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                                         className={campo}
                                     />
                                 </label>
-                                <label className={etiqueta} title="How many are left to sell. Empty means unlimited.">
+                                <label className={`${etiqueta} order-6 xl:order-none`} title="How many are left to sell. Empty means unlimited.">
                                     Stock
                                     <input
                                         type="number"
@@ -349,6 +365,44 @@ export default function ShopAdmin({ token }: { token: string }) {
                                         className={campo}
                                     />
                                 </label>
+                                <div className={`${etiqueta} order-7 xl:order-none col-span-2 xl:col-span-1`}>
+                                    Background
+                                    <div className="h-9 flex items-center gap-1.5">
+                                        {(['from', 'to'] as const).map((lado) => {
+                                            const actual = fondoDe({ price: Number(item.price) || 0, background: item.background });
+                                            return (
+                                                <input
+                                                    key={lado}
+                                                    type="color"
+                                                    value={actual[lado]}
+                                                    onChange={(e) =>
+                                                        editar(item.id, { background: { ...actual, [lado]: e.target.value } })
+                                                    }
+                                                    aria-label={`${item.label} background, ${lado === 'from' ? 'top' : 'bottom'} color`}
+                                                    title={lado === 'from' ? 'Top color' : 'Bottom color'}
+                                                    className="h-9 w-9 shrink-0 cursor-pointer rounded-md bg-lightblue p-0.5"
+                                                />
+                                            );
+                                        })}
+                                        {item.background ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => editar(item.id, { background: undefined })}
+                                                title="Back to the color of its price"
+                                                className="text-xs text-lightblue/60 hover:text-yellow underline underline-offset-4 cursor-pointer transition-all duration-300"
+                                            >
+                                                Default
+                                            </button>
+                                        ) : (
+                                            <span
+                                                aria-hidden="true"
+                                                className="h-9 flex-1 min-w-4 rounded-md"
+                                                style={{ backgroundImage: degradado(fondoDe({ price: Number(item.price) || 0 })) }}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="order-2 xl:order-none sm:col-span-2 self-start xl:self-auto flex items-center justify-end gap-2 xl:contents">
                                 <label className="h-9 flex items-center gap-2 text-sm text-lightblue cursor-pointer">
                                     <input
                                         type="checkbox"
@@ -384,6 +438,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                                         <FiTrash2 className="w-4 h-4" />
                                         {confirmarBorrado === item.id && 'Delete?'}
                                     </button>
+                                </div>
                                 </div>
                             </div>
                         ))}
@@ -472,7 +527,11 @@ export default function ShopAdmin({ token }: { token: string }) {
 
             {resumen && (
                 <div className={panel}>
-                    <h2 className={titulo}>Redemptions</h2>
+                    <Desplegable
+                        grande
+                        nombre="Redemptions"
+                        resumen={`${resumen.redemptions.length === 100 ? 'last 100' : resumen.redemptions.length} · ${fog(resumen.redemptions.reduce((n, r) => n + r.price, 0))} FOG`}
+                    >
                     {resumen.redemptions.length === 0 ? (
                         <p className="text-lightblue/70">No redemptions yet.</p>
                     ) : (
@@ -493,6 +552,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                             ))}
                         </ul>
                     )}
+                    </Desplegable>
                 </div>
             )}
         </main>

@@ -25,7 +25,26 @@ export type Premio = {
     icon?: string;
     kind?: 'key' | 'ape' | 'nft' | 'forge-roll' | 'raffle';
     amount?: number;
+    // El fondo del mosaico en la Shop; sin esto sale del precio (fondoDe).
+    background?: Fondo;
 };
+
+export type Fondo = { from: string; to: string };
+
+// Sin un fondo elegido en el admin, el color sale del precio, como las
+// rarezas de una tienda de juego: lo barato verde, lo caro naranja.
+const FONDOS_POR_PRECIO: { hasta: number; fondo: Fondo }[] = [
+    { hasta: 50000, fondo: { from: '#00d492', to: '#008236' } },
+    { hasta: 500000, fondo: { from: '#00bcff', to: '#1447e6' } },
+    { hasta: 1000000, fondo: { from: '#e12afb', to: '#5d0ec0' } },
+    { hasta: Infinity, fondo: { from: '#ffb900', to: '#f54900' } },
+];
+export const fondoPorPrecio = (precio: number) =>
+    FONDOS_POR_PRECIO.find((t) => precio < t.hasta)!.fondo;
+export const fondoDe = (p: { price: number; background?: Fondo }) =>
+    p.background ?? fondoPorPrecio(p.price);
+export const degradado = (f: Fondo) =>
+    `linear-gradient(to bottom, ${f.from}, ${f.to})`;
 
 // Un premio de una ruleta. `chance` va de 0 a 1.
 export type PremioRuleta = {
@@ -69,7 +88,19 @@ export type ConfigStaking = {
     badges: number[];
     graceDays: number;
     boost?: Boost | null;
+    fogSale: VentaFog;
 };
+export type VentaFog =
+    | { enabled: false; fogPerApe: number }
+    | {
+          enabled: true;
+          fogPerApe: number;
+          minApe: number;
+          packs: (Fondo & { ape: number })[];
+          treasury: `0x${string}`;
+          chainId: number;
+          confirmations: number;
+      };
 export type Boost = {
     multiplier: number;
     title: string;
@@ -127,7 +158,11 @@ export type MiStaking = {
     quantity: { count: number; bonus: number };
     // Lo que gano en las ruletas, del ultimo al primero.
     prizes: Ganado[];
+    // Las compras de FOG con APE, de la ultima a la primera.
+    purchases?: Compra[];
 };
+
+export type Compra = { txHash: string; valueWei: string; fog: number; at: string };
 
 export function bonusPorCantidad(escalones: Escalon[], n: number) {
     let bonus = 0;
@@ -203,6 +238,34 @@ export const leerRanking = () =>
 // El nombre corto de una insignia: 90D, 180D, 1Y.
 export const nombreInsignia = (dias: number) =>
     dias % 365 === 0 ? `${dias / 365}Y` : `${dias}D`;
+
+// Le pasa al backend el hash de una compra de FOG. Mientras no ve las
+// confirmaciones responde not-confirmed, y se reintenta.
+export async function informarCompra(token: string, txHash: string) {
+    for (let intento = 0; intento < 20; intento++) {
+        const r = await fetch(`${BACKEND_URL}/staking/buy-fog`, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+                authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ txHash }),
+        }).catch(() => null);
+        const datos = await r?.json().catch(() => ({}));
+        if (r?.ok) {
+            window.dispatchEvent(new Event(EVENTO_CANJE));
+            return datos as { purchase: { fog: number }; balance: number };
+        }
+        if (!r || datos?.code === 'not-confirmed' || r.status >= 500) {
+            await new Promise((res) => setTimeout(res, 3000));
+            continue;
+        }
+        throw Object.assign(new Error(datos?.error || 'The payment was not accepted.'), { definitivo: true });
+    }
+    throw new Error(
+        'The payment is taking long to confirm. Reload the page in a minute and your FOG will show up.'
+    );
+}
 
 // Despues de canjear un roll, el Forge escucha el mismo evento que con un
 // codigo promocional y suma el roll sin recargar.
