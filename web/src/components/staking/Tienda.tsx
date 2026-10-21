@@ -486,10 +486,10 @@ function Mosaicos({
                 return (
                     <div
                         key={premio.id}
-                        className={`relative aspect-3/4 rounded-2xl overflow-hidden shadow-lg shadow-darkblue/50 flex flex-col ${premio.redeemable ? '' : 'saturate-50'}`}
+                        className={`@container relative sm:aspect-3/4 rounded-2xl overflow-hidden shadow-lg shadow-darkblue/50 flex flex-col ${premio.redeemable ? '' : 'saturate-50'}`}
                     >
                         <div
-                            className="relative flex-1 min-h-0"
+                            className="relative h-36 sm:h-auto sm:flex-1 min-h-0"
                             style={{ backgroundImage: degradado(fondoDe(premio)) }}
                         >
                             <div
@@ -533,7 +533,7 @@ function Mosaicos({
                                     </div>
                                 )}
                             </div>
-                            <div className="flex items-center justify-between gap-2">
+                            <div className="flex flex-col items-stretch gap-2 @[13rem]:flex-row @[13rem]:items-center @[13rem]:justify-between">
                                 <span className="h-8 inline-flex items-center gap-1.5 font-accent text-yellow text-base leading-none">
                                     <img
                                         src={ICONO_FOG_CHICO}
@@ -559,7 +559,7 @@ function Mosaicos({
                                                   ? 'Not enough FOG'
                                                   : undefined
                                         }
-                                        className="h-8 inline-flex items-center rounded-md bg-yellow px-3 font-accent uppercase text-sm leading-none pb-1 text-darkblue cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
+                                        className="h-8 inline-flex items-center justify-center rounded-md bg-yellow px-3 font-accent uppercase text-sm leading-none pb-1 text-darkblue cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
                                     >
                                         {canjeando === premio.id
                                             ? '...'
