@@ -33,9 +33,28 @@ const PREFIJO = 'store:fog';
 // [izquierda %, arriba %, tamaño %] de cada moneda de la pila.
 const PILAS = [
     [[50, 52, 58]],
-    [[36, 58, 46], [64, 58, 46], [50, 36, 46]],
-    [[28, 62, 40], [50, 64, 40], [72, 62, 40], [39, 42, 40], [61, 42, 40]],
-    [[22, 66, 36], [41, 68, 36], [60, 68, 36], [79, 66, 36], [31, 48, 36], [50, 48, 36], [69, 48, 36], [50, 28, 36]],
+    [
+        [36, 58, 46],
+        [64, 58, 46],
+        [50, 36, 46],
+    ],
+    [
+        [28, 62, 40],
+        [50, 64, 40],
+        [72, 62, 40],
+        [39, 42, 40],
+        [61, 42, 40],
+    ],
+    [
+        [22, 66, 36],
+        [41, 68, 36],
+        [60, 68, 36],
+        [79, 66, 36],
+        [31, 48, 36],
+        [50, 48, 36],
+        [69, 48, 36],
+        [50, 28, 36],
+    ],
 ];
 
 type Session = ReturnType<typeof useWalletSession>;
@@ -90,7 +109,9 @@ export default function Store() {
                     The shop is unavailable right now. Try again in a moment.
                 </p>
             )}
-            {!config && !fallo && <p className="text-lightblue/70">Loading...</p>}
+            {!config && !fallo && (
+                <p className="text-lightblue/70">Loading...</p>
+            )}
 
             {config && (
                 <Pestanas
@@ -171,12 +192,17 @@ function Pestanas({
     recargar: () => void;
 }) {
     const pestanas: { id: Pestana; nombre: string }[] = [
-        ...(config.fogSale.enabled ? [{ id: 'fog' as const, nombre: 'Buy FOG' }] : []),
+        ...(config.fogSale.enabled
+            ? [{ id: 'fog' as const, nombre: 'Buy FOG' }]
+            : []),
         { id: 'items', nombre: 'Item shop' },
         { id: 'premios', nombre: 'History' },
     ];
     const [activa, setActiva] = useState<Pestana>(pestanas[0].id);
-    const indice = Math.max(0, pestanas.findIndex((p) => p.id === activa));
+    const indice = Math.max(
+        0,
+        pestanas.findIndex((p) => p.id === activa)
+    );
     const paneles = useRef<(HTMLDivElement | null)[]>([]);
     const [alto, setAlto] = useState<number | null>(null);
 
@@ -208,7 +234,9 @@ function Pestanas({
             <div
                 role="tablist"
                 className="grid gap-2 sm:gap-3"
-                style={{ gridTemplateColumns: `repeat(${pestanas.length}, minmax(0, 1fr))` }}
+                style={{
+                    gridTemplateColumns: `repeat(${pestanas.length}, minmax(0, 1fr))`,
+                }}
             >
                 {pestanas.map((p) => (
                     <button
@@ -246,7 +274,10 @@ function Pestanas({
                             className="w-full shrink-0"
                         >
                             {p.id === 'fog' && config.fogSale.enabled ? (
-                                <ComprarFog venta={config.fogSale} session={session} />
+                                <ComprarFog
+                                    venta={config.fogSale}
+                                    session={session}
+                                />
                             ) : (
                                 tienda(p.id === 'premios' ? 'premios' : 'items')
                             )}
@@ -279,14 +310,23 @@ function ComprarFog({
             try {
                 const r = await informarCompra(token, hash);
                 if (session.address) recordar(session.address, null, PREFIJO);
-                setAviso({ ok: true, texto: `${fog(r.purchase.fog)} FOG added to your wallet.` });
+                setAviso({
+                    ok: true,
+                    texto: `${fog(r.purchase.fog)} FOG added to your wallet.`,
+                });
             } catch (err) {
-                if ((err as { definitivo?: boolean }).definitivo && session.address) {
+                if (
+                    (err as { definitivo?: boolean }).definitivo &&
+                    session.address
+                ) {
                     recordar(session.address, null, PREFIJO);
                 }
                 setAviso({
                     ok: false,
-                    texto: err instanceof Error ? err.message : 'The payment was not accepted.',
+                    texto:
+                        err instanceof Error
+                            ? err.message
+                            : 'The payment was not accepted.',
                 });
             }
             setPaso('quieto');
@@ -328,7 +368,10 @@ function ComprarFog({
             setComprando(null);
             setAviso({
                 ok: false,
-                texto: err instanceof PagoError ? err.message : 'The payment could not be sent.',
+                texto:
+                    err instanceof PagoError
+                        ? err.message
+                        : 'The payment could not be sent.',
             });
             return;
         }
@@ -351,8 +394,12 @@ function ComprarFog({
             </div>
 
             <div
-                className="grid grid-cols-2 gap-3 sm:gap-4 md:[grid-template-columns:repeat(var(--paquetes),minmax(0,1fr))]"
-                style={{ '--paquetes': Math.min(4, venta.packs.length) } as React.CSSProperties}
+                className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-[repeat(var(--paquetes),minmax(0,1fr))]"
+                style={
+                    {
+                        '--paquetes': Math.min(4, venta.packs.length),
+                    } as React.CSSProperties
+                }
             >
                 {venta.packs.map(({ ape: monto, ...fondo }, i) => (
                     <button
@@ -367,7 +414,15 @@ function ComprarFog({
                             aria-hidden="true"
                             className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(255,255,255,0.4),transparent_62%)]"
                         />
-                        <PilaDeFog nivel={Math.min(PILAS.length - 1, Math.round((i * (PILAS.length - 1)) / Math.max(1, venta.packs.length - 1)))} />
+                        <PilaDeFog
+                            nivel={Math.min(
+                                PILAS.length - 1,
+                                Math.round(
+                                    (i * (PILAS.length - 1)) /
+                                        Math.max(1, venta.packs.length - 1)
+                                )
+                            )}
+                        />
                         <span className="relative flex flex-col items-center gap-0.5 px-2">
                             <span className="font-accent text-white text-2xl md:text-xl lg:text-3xl xl:text-4xl leading-none pb-1.5 tabular-nums [text-shadow:0_2px_0_rgb(9_0_80/0.35)]">
                                 {fog(monto * venta.fogPerApe)}
@@ -405,18 +460,28 @@ function ComprarFog({
                         </label>
                         <span className="h-9 inline-flex items-center gap-2 font-accent uppercase text-lg leading-none">
                             <span className="text-lightblue pb-1.5">=</span>
-                            <img src={ICONO_FOG_CHICO} alt="" className="size-5" />
+                            <img
+                                src={ICONO_FOG_CHICO}
+                                alt=""
+                                className="size-5"
+                            />
                             <span className="text-yellow tabular-nums pb-1.5">
-                                {otroValido ? fog(montoOtro * venta.fogPerApe) : '—'}
+                                {otroValido
+                                    ? fog(montoOtro * venta.fogPerApe)
+                                    : '—'}
                             </span>
                             <span className="text-lightblue pb-1.5">FOG</span>
                         </span>
                         <button
                             onClick={() => comprar(montoOtro)}
-                            disabled={!otroValido || ocupado || !session.isConnected}
+                            disabled={
+                                !otroValido || ocupado || !session.isConnected
+                            }
                             className={`h-9 ${botonClaro}`}
                         >
-                            {comprando === montoOtro && ocupado ? estado : 'Buy'}
+                            {comprando === montoOtro && ocupado
+                                ? estado
+                                : 'Buy'}
                         </button>
                     </div>
                 ) : (
@@ -434,12 +499,14 @@ function ComprarFog({
                     </p>
                 )}
                 {!session.isConnected && (
-                    <p className="text-lightblue/60 text-sm">Connect your wallet to buy FOG.</p>
+                    <p className="text-lightblue/60 text-sm">
+                        Connect your wallet to buy FOG.
+                    </p>
                 )}
                 {session.status === 'needs-signature' && (
                     <p className="text-lightblue/60 text-sm">
-                        You will sign a message to verify your wallet first. It does not authorize
-                        any transaction.
+                        You will sign a message to verify your wallet first. It
+                        does not authorize any transaction.
                     </p>
                 )}
                 {aviso && <Mensaje ok={aviso.ok} texto={aviso.texto} />}
