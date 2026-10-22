@@ -93,6 +93,7 @@ const IDS_RESERVADOS = ['fog'];
 // Los APE quedan como entrega pendiente, igual que un premio de ruleta: el
 // admin los manda y los marca como enviados.
 const wheels = require('./stakingWheels');
+const { getRarity } = require('./traitRarity');
 wheels.usarRuletas(() => getConfig().catalog.filter(i => i.kind === 'key').map(i => i.id));
 
 function grantDe(item) {
@@ -193,11 +194,24 @@ function activosLectura() {
 
 // Los boosts de la config, para creditedFog: se llama una vez por
 // entrenamiento y releer la config cada vez frenaba el ranking.
-let boostsMemo = { clave: null, datos: [] };
-function boostsLectura() {
+let boostsMemo = { clave: null, datos: [], unicos: [] };
+function leerExtras() {
     const clave = claveDe(CONFIG_PATH);
-    if (clave !== boostsMemo.clave) boostsMemo = { clave, datos: readJson(CONFIG_PATH, {}).boosts ?? [] };
-    return boostsMemo.datos;
+    if (clave !== boostsMemo.clave) {
+        const saved = readJson(CONFIG_PATH, {});
+        boostsMemo = { clave, datos: saved.boosts ?? [], unicos: saved.oneOfOneBonus ?? [] };
+    }
+    return boostsMemo;
+}
+function boostsLectura() {
+    return leerExtras().datos;
+}
+
+function bonusUnicoEn(tokenId, t, unicos = leerExtras().unicos) {
+    if (!unicos.length || !getRarity().isOneOfOne(tokenId)) return 0;
+    let bonus = 0;
+    for (const u of unicos) if (Date.parse(u.from) < t) bonus = u.bonus;
+    return bonus;
 }
 
 // Lo que depende ademas de la hora (que periodos ya terminaron, las rachas)
@@ -247,6 +261,7 @@ function getConfig() {
         periods: saved.periods ?? DEFAULT_CONFIG.periods,
         quantityTiers: saved.quantityTiers ?? DEFAULT_CONFIG.quantityTiers,
         boosts: saved.boosts ?? [],
+        oneOfOneBonus: saved.oneOfOneBonus ?? [],
         fogSale: { ...DEFAULT_FOG_SALE, ...saved.fogSale },
         catalog: [
             ...DEFAULT_CONFIG.catalog.map(item => ({ ...item, ...sinTextosViejos(savedItems.get(item.id)), kind: item.kind })),
@@ -334,6 +349,14 @@ function updateConfig(changes = {}) {
             tiers.push({ min, bonus });
         }
         config.quantityTiers = tiers.sort((a, b) => a.min - b.min);
+    }
+
+    if ('oneOfOneBonus' in changes) {
+        const bonus = intEntre(changes.oneOfOneBonus, 0, 1000);
+        if (bonus === null) return { error: 'The 1/1 bonus must be a whole percentage between 0 and 1000.' };
+        if (bonus !== bonusUnicoActual(config.oneOfOneBonus)) {
+            config.oneOfOneBonus = [...config.oneOfOneBonus, { bonus, from: new Date().toISOString() }];
+        }
     }
 
     // Un boost arranca ahora y dura `days` dias. No se puede editar ni borrar:
@@ -539,6 +562,10 @@ function boostCentesimos(boosts, t) {
     return b ? Math.round(b.multiplier * 100) : 100;
 }
 
+function bonusUnicoActual(unicos = []) {
+    return unicos.at(-1)?.bonus ?? 0;
+}
+
 function publicBoost(boost) {
     return boost && { multiplier: boost.multiplier, title: boost.title, startAt: boost.startAt, endsAt: boost.endsAt };
 }
@@ -555,6 +582,7 @@ function publicConfig() {
         enabled: config.enabled,
         dailyRate: config.dailyRate,
         quantityTiers: config.quantityTiers,
+        oneOfOne: { bonus: bonusUnicoActual(config.oneOfOneBonus), tokenIds: getRarity().oneOfOnes },
         periods: config.periods.map(p => ({
             ...p,
             perDay: perDayFor(config, p.days).perDay,
@@ -675,28 +703,31 @@ function stakingCounter(history = readHistory(), active = activosLectura()) {
 // terminan dentro de un boost se multiplican.
 function creditedFog(stake, cuenta, boosts = boostsLectura()) {
     const days = creditedDays(stake);
-    if (!stake.tiers?.length && !boosts.length) return days * stake.perDay;
+    const unicos = leerExtras().unicos;
+    const esUnico = unicos.length > 0 && getRarity().isOneOfOne(stake.tokenId);
+    if (!stake.tiers?.length && !boosts.length && !esUnico) return days * stake.perDay;
     cuenta ??= contador();
     const start = Date.parse(stake.startAt);
-    const base = baseRateOf(stake);
     let total = 0;
-    for (let i = 1; i <= days; i++) {
-        const t = start + i * DAY_MS;
-        const boost = boostCentesimos(boosts, t);
-        total += stake.tiers?.length
-            ? Math.floor(base * (100 + stake.bonus + tierBonus(stake.tiers, cuenta(stake.wallet, t))) * boost / 10000)
-            : Math.floor(stake.perDay * boost / 100);
-    }
+    for (let i = 1; i <= days; i++) total += fogDelDia(stake, cuenta, boosts, start + i * DAY_MS, unicos);
     return total;
+}
+
+function fogDelDia(stake, cuenta, boosts, t, unicos) {
+    const boost = boostCentesimos(boosts, t);
+    const unico = bonusUnicoEn(stake.tokenId, t, unicos);
+    if (stake.tiers?.length) {
+        return Math.floor(baseRateOf(stake) * (100 + stake.bonus + tierBonus(stake.tiers, cuenta(stake.wallet, t)) + unico) * boost / 10000);
+    }
+    if (unico) return Math.floor(baseRateOf(stake) * (100 + stake.bonus + unico) * boost / 10000);
+    return Math.floor(stake.perDay * boost / 100);
 }
 
 // Lo que paga hoy un entrenamiento por dia, con el bonus de la region, el
 // escalon por cantidad y el boost de este momento. 0 si ya termino.
 function fogPorDiaAhora(stake, cuenta, boosts, now) {
     if (isFinished(stake, now)) return 0;
-    const boost = boostCentesimos(boosts, now);
-    if (!stake.tiers?.length) return Math.floor(stake.perDay * boost / 100);
-    return Math.floor(baseRateOf(stake) * (100 + stake.bonus + tierBonus(stake.tiers, cuenta(stake.wallet, now))) * boost / 10000);
+    return fogDelDia(stake, cuenta, boosts, now, leerExtras().unicos);
 }
 
 // El FOG por dia sin el bonus de la region. Los entrenamientos de antes de
@@ -945,8 +976,14 @@ function publicStake(stake, now = Date.now(), cuenta) {
         creditedDays: days,
         earned: creditedFog(stake, cuenta),
         perDayNow: fogPorDiaAhora(stake, cuenta ?? contador(), boostsLectura(), now),
+        oneOfOneBonus: bonusUnicoEn(stake.tokenId, now),
         finished: isFinished(stake, now)
     };
+}
+
+function stakeOf(tokenId) {
+    const stake = activosLectura()[String(tokenId)];
+    return stake ? { ...publicStake(stake), wallet: stake.wallet } : null;
 }
 
 function walletSummary(wallet) {
@@ -1181,6 +1218,7 @@ function adminSummary() {
 
     return {
         config: getConfig(),
+        oneOfOnes: getRarity().oneOfOnes.map(tokenId => ({ tokenId, training: Boolean(active[tokenId]) })),
         training: Object.keys(active).length,
         wallets: stakers.size,
         totals: {
@@ -1227,6 +1265,7 @@ module.exports = {
     unstake,
     applyVerification,
     walletSummary,
+    stakeOf,
     leaderboard,
     badgesOf,
     streaksByWallet,

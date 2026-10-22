@@ -146,6 +146,7 @@ function createRarity(snapshot) {
     return {
         categories: Object.keys(categories),
         isOneOfOne: tokenId => oneOfOnes.has(String(tokenId)),
+        oneOfOnes: [...oneOfOnes],
         weightsFor,
         pick,
         probabilities,

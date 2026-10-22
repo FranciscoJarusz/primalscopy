@@ -22,10 +22,12 @@ type Config = {
     dailyRate: number;
     periods: Periodo[];
     quantityTiers: Escalon[];
+    oneOfOneBonus: { bonus: number; from: string }[];
     boosts?: BoostGuardado[];
 };
 type Resumen = {
     config: Config;
+    oneOfOnes: { tokenId: string; training: boolean }[];
     training: number;
     wallets: number;
     totals: { earned: number; spent: number };
@@ -51,6 +53,7 @@ type Borrador = {
     dailyRate: string;
     periods: { days: string; bonus: string }[];
     quantityTiers: { min: string; bonus: string }[];
+    oneOfOneBonus: string;
 };
 
 const MOTIVOS: Record<string, string> = {
@@ -69,6 +72,7 @@ const aBorrador = (c: Config): Borrador => ({
         min: String(t.min),
         bonus: String(t.bonus),
     })),
+    oneOfOneBonus: String(c.oneOfOneBonus.at(-1)?.bonus ?? 0),
 });
 
 export default function StakingAdmin({ token }: { token: string }) {
@@ -152,6 +156,7 @@ export default function StakingAdmin({ token }: { token: string }) {
                     min: Number(t.min),
                     bonus: Number(t.bonus),
                 })),
+                oneOfOneBonus: Number(borrador.oneOfOneBonus),
             });
             await cargar();
             setGuardado(true);
@@ -495,6 +500,58 @@ export default function StakingAdmin({ token }: { token: string }) {
                         </div>
                     </div>
 
+                    {resumen && (
+                        <div className="flex flex-col gap-2">
+                            <div className="text-sm text-lightblue/80">
+                                1/1 bonus
+                            </div>
+                            <p className="text-lightblue/70 text-sm -mt-1">
+                                Extra % for the 1/1 pieces. It adds to the
+                                region and quantity bonus, and it applies from
+                                the moment you save to every 1/1, also the ones
+                                already training. Days already earned don't
+                                change.
+                            </p>
+                            <div className="flex flex-wrap items-end gap-4">
+                                <label className={`${etiqueta} w-28`}>
+                                    Bonus %
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={1000}
+                                        value={borrador.oneOfOneBonus}
+                                        onChange={(e) =>
+                                            setBorrador({
+                                                ...borrador,
+                                                oneOfOneBonus: e.target.value,
+                                            })
+                                        }
+                                        className={campo}
+                                    />
+                                </label>
+                                <div className="flex flex-wrap gap-1.5 pb-1">
+                                    {resumen.oneOfOnes.map((u) => (
+                                        <span
+                                            key={u.tokenId}
+                                            title={
+                                                u.training
+                                                    ? 'Training now'
+                                                    : 'Not training'
+                                            }
+                                            className={`rounded-md px-2 py-0.5 text-sm ${
+                                                u.training
+                                                    ? 'bg-green-400/15 text-green-300'
+                                                    : 'bg-blue text-lightblue/60'
+                                            }`}
+                                        >
+                                            #{u.tokenId}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-3 mt-2">
                         <button
                             type="submit"
@@ -521,7 +578,7 @@ export default function StakingAdmin({ token }: { token: string }) {
                                 Nobody has trained yet.
                             </p>
                         ) : (
-                            <div className={lista} data-lenis-prevent>
+                            <div className={lista} data-scroll-propio>
                             <table className="w-full text-sm text-lightblue">
                                 <thead className="sticky top-0 bg-darkblue text-lightblue/60 text-left">
                                     <tr>
@@ -573,7 +630,7 @@ export default function StakingAdmin({ token }: { token: string }) {
                                     while training.
                                 </p>
                             ) : (
-                                <ul data-lenis-prevent className={`${lista} text-sm text-lightblue flex flex-col gap-1.5`}>
+                                <ul data-scroll-propio className={`${lista} text-sm text-lightblue flex flex-col gap-1.5`}>
                                     {resumen.endings.map((e, i) => (
                                         <li key={i} className="flex gap-3">
                                             <span className="text-lightblue/60 w-32 shrink-0 whitespace-nowrap">
