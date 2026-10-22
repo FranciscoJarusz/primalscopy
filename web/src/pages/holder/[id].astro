@@ -1,0 +1,38 @@
+---
+import LandingLayout from '@/layouts/LandingLayout.astro';
+import PerfilIsland from '@/components/explore/PerfilIsland';
+import { BACKEND_URL as BACKEND } from '@/lib/backend';
+import { walletCorta } from '@/lib/nicknames';
+import type { Perfil } from '@/lib/explore';
+
+export const prerender = false;
+
+const { id = '' } = Astro.params;
+if (!/^(0x[0-9a-fA-F]{40}|[A-Za-z0-9_]{3,20})$/.test(id)) return Astro.redirect('/explore');
+
+const local = ['localhost', '127.0.0.1', '[::1]'].includes(Astro.url.hostname);
+const origen = local ? Astro.url.origin : `https://${Astro.url.host}`;
+const backend = BACKEND.startsWith('/') ? new URL(BACKEND, origen).href : BACKEND;
+
+const respuesta = await fetch(`${backend}/explore/holder/${id}`).catch(() => null);
+if (respuesta?.status === 404) return Astro.redirect('/explore');
+const perfil: Perfil | null = respuesta?.ok ? await respuesta.json().catch(() => null) : null;
+
+const nombre = perfil ? perfil.nickname ?? walletCorta(perfil.wallet) : id;
+const descripcion = perfil
+    ? `${perfil.tokens.length} Primals · ${perfil.fog.balance.toLocaleString('en-US')} FOG · ${perfil.fog.training} training.`
+    : 'A Primal Cult holder.';
+const tarjeta = `${backend}/explore/og/holder/${perfil?.wallet ?? id}.png`;
+fetch(tarjeta).catch(() => {});
+---
+
+<LandingLayout
+  title={`${nombre} - Primal Cult`}
+  description={descripcion}
+  activo="explore"
+  image={tarjeta}
+>
+    <main class="mt-10 sm:mt-14">
+        <PerfilIsland client:only="react" id={id} inicial={perfil} />
+    </main>
+</LandingLayout>

@@ -8,7 +8,8 @@ import {
     walletCorta,
     type DetalleNickname,
 } from '@/lib/nicknames';
-import { ICONO_FOG_CHICO, leerRanking, nombreInsignia } from '@/lib/staking';
+import { ICONO_FOG_CHICO, leerRanking, miniaturaPrimal, nombreInsignia } from '@/lib/staking';
+import { leerAvatares } from '@/lib/explore';
 
 // El FOG de cada wallet y sus insignias de staking (ver lib/staking.ts).
 type Fog = Record<string, { balance: number; badges: number[] }>;
@@ -57,7 +58,7 @@ function Enlace({
             className="flex items-center gap-1.5 bg-lightblue text-darkblue font-accent uppercase text-sm rounded-md px-3 pt-1 pb-2 hover:bg-yellow active:scale-97 transition-all duration-300"
         >
             {children}
-            <FiArrowUpRight className="mt-1 w-4 h-4" strokeWidth={3} />
+            <FiArrowUpRight className="mt-1 w-4 h-4" />
         </a>
     );
 }
@@ -247,10 +248,12 @@ function TopHolders({
     stats,
     nicknames,
     fog,
+    avatares,
 }: {
     stats: Stats | null;
     nicknames: Record<string, string>;
     fog: Fog;
+    avatares: Record<string, string>;
 }) {
     const hayFog = Object.keys(fog).length > 0;
     return (
@@ -266,7 +269,7 @@ function TopHolders({
 
             <div className="relative">
                 <ol
-                    data-lenis-prevent
+                    data-scroll-propio
                     data-anim-stagger
                     className="flex flex-col gap-2 max-h-136 overflow-y-auto pr-2 pb-6"
                 >
@@ -278,9 +281,7 @@ function TopHolders({
                               return (
                                   <li key={h.address}>
                                       <a
-                                          href={`${APECHAIN.explorador}/address/${h.address}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
+                                          href={`/holder/${h.address}`}
                                           className={`group flex items-center gap-3 sm:gap-4 rounded-xl border px-3 sm:px-4 py-2.5 transition-all duration-300 hover:border-yellow/60 ${
                                               medalla?.fondo ??
                                               'border-lightblue/10 bg-lightblue/5'
@@ -295,6 +296,16 @@ function TopHolders({
                                               }}
                                           >
                                               #{i + 1}
+                                          </span>
+                                          <span className="size-10 sm:size-12 shrink-0 rounded-lg overflow-hidden bg-blue">
+                                              {avatares[h.address.toLowerCase()] && (
+                                                  <img
+                                                      src={miniaturaPrimal(avatares[h.address.toLowerCase()], 96)}
+                                                      alt=""
+                                                      loading="lazy"
+                                                      className="w-full h-full object-cover"
+                                                  />
+                                              )}
                                           </span>
                                           <span className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                                               {nicknames[h.address] ? (
@@ -384,6 +395,7 @@ export default function StatsApp() {
     const [fallo, setFallo] = useState(false);
     const [nicknames, setNicknames] = useState<Record<string, string>>({});
     const [fog, setFog] = useState<Fog>({});
+    const [avatares, setAvatares] = useState<Record<string, string>>({});
 
     useEffect(() => {
         leerNicknames().then(setNicknames);
@@ -405,6 +417,10 @@ export default function StatsApp() {
         // Si el backend no contesta, el ranking sale sin la columna de FOG.
         leerRanking()
             .then(setFog)
+            .catch(() => {});
+
+        leerAvatares()
+            .then(setAvatares)
             .catch(() => {});
 
         fetch('/api/stats/burned')
@@ -432,7 +448,7 @@ export default function StatsApp() {
                 }
             />
             <Distribucion stats={stats} />
-            <TopHolders stats={stats} nicknames={nicknames} fog={fog} />
+            <TopHolders stats={stats} nicknames={nicknames} fog={fog} avatares={avatares} />
         </div>
     );
 }

@@ -1,11 +1,11 @@
 // Pantalla "Select your NFT" (isla de React).
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { goTo } from '@/lib/navigation';
 import { FiChevronDown } from 'react-icons/fi';
 import { useAccount } from 'wagmi';
 import { useUserNFTs } from '@/hooks/cultomizer/useUserNFTs';
 import NetworkSwitcher from '@/components/cultomizer/NetworkSwitcher';
-import { rememberPrimal } from '@/lib/cultomizer/avatarPrimal';
+import CartaPrimal from '@/components/shared/CartaPrimal';
 
 /// `demo` rellena la grilla con NFTs inventados para ver el layout sin wallet.
 /// Solo llega en dev, via `?demo=N` (ver SelectorGate).
@@ -62,19 +62,6 @@ export default function SelectorPage({ demo }: { demo?: number }) {
 
         return filtered;
     }, [nfts, searchTerm, sortBy]);
-
-    // Esta es la unica pantalla que ya pago el costo de buscar los NFTs de la
-    // wallet, asi que deja el primero anotado: el header lo usa como foto de
-    // perfil sin tener que volver a buscar en cada pantalla.
-    useEffect(() => {
-        const primero = nfts[0];
-        if (address && primero) {
-            rememberPrimal(address, {
-                tokenId: primero.tokenId,
-                imageUrl: primero.imageUrl,
-            });
-        }
-    }, [address, nfts]);
 
     const handleSelectNft = (tokenId: string) => {
         goTo(`/cultomizer/edit?tokenId=${tokenId}`);
@@ -207,31 +194,15 @@ export default function SelectorPage({ demo }: { demo?: number }) {
                             <>
                                 <div data-anim-stagger="" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-5 lg:gap-6">
                                     {filteredAndSortedNfts.map((nft) => (
-                                        <button
+                                        <CartaPrimal
                                             key={nft.id}
-                                            type="button"
+                                            tokenId={nft.tokenId}
+                                            gif={nft.imageUrl}
+                                            alt={nft.name || `Primal Cult #${nft.tokenId}`}
                                             onClick={() =>
                                                 handleSelectNft(nft.tokenId)
                                             }
-                                            className="shadow-lg shadow-darkblue/50 group bg-darkblue rounded-xl sm:rounded-2xl p-2 pb-3 sm:p-3 sm:pb-4 flex flex-col items-center gap-2 sm:gap-3 cursor-pointer outline-none ring-yellow hover:ring-2 focus-visible:ring-2 hover:-translate-y-1 active:scale-97 transition-all duration-300"
                                         >
-                                            <div className="w-full aspect-square rounded-lg overflow-hidden bg-blue">
-                                                {nft.imageUrl ? (
-                                                    <img
-                                                        src={nft.imageUrl}
-                                                        alt={
-                                                            nft.name ||
-                                                            `Primal Cult #${nft.tokenId}`
-                                                        }
-                                                        loading="lazy"
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center font-accent text-lightblue/40 text-2xl">
-                                                        #{nft.tokenId}
-                                                    </div>
-                                                )}
-                                            </div>
                                             <h3 className="font-accent uppercase text-yellow text-sm sm:text-base leading-none text-center">
                                                 {nft.name ||
                                                     `Primal Cult #${nft.tokenId}`}
@@ -239,7 +210,7 @@ export default function SelectorPage({ demo }: { demo?: number }) {
                                             <p className="text-xs text-lightblue/70 leading-none">
                                                 Click to edit
                                             </p>
-                                        </button>
+                                        </CartaPrimal>
                                     ))}
                                 </div>
 

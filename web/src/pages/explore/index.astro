@@ -1,0 +1,14 @@
+---
+import LandingLayout from '@/layouts/LandingLayout.astro';
+import ExploreIsland from '@/components/explore/ExploreIsland';
+---
+
+<LandingLayout image="/og/explore.jpg"
+  title="Explore - Primal Cult"
+  description="Browse all 2,712 Primals: traits, rarity rank, holders and who is training in each region."
+  activo="explore"
+>
+    <main class="mt-10 sm:mt-14">
+        <ExploreIsland client:only="react" />
+    </main>
+</LandingLayout>

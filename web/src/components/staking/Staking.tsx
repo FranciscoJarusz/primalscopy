@@ -33,6 +33,7 @@ import Recientes from './Recientes';
 import Boost from './Boost';
 import Mensaje, { type Aviso } from './Mensaje';
 import StakeCompartir, { type Stakeado } from './StakeCompartir';
+import { ImagenPrimal } from '@/components/shared/CartaPrimal';
 
 const DIA = 24 * 60 * 60 * 1000;
 
@@ -441,10 +442,10 @@ export default function Staking() {
                     >
                         ×
                     </button>
-                    {/* data-lenis-prevent: sin esto el scroll suave del sitio
+                    {/* data-scroll-propio: sin esto el scroll suave del sitio
                         se come la rueda y el panel no baja. */}
                     <div
-                        data-lenis-prevent
+                        data-scroll-propio
                         className="overflow-y-auto overscroll-contain p-4 flex flex-col gap-4"
                     >
                         {panel.tipo === 'zona' && (
@@ -894,7 +895,17 @@ function PanelZona({
     );
     const boostDias = diasConBoost(config.boost, dias);
     const multiplicador = config.boost?.multiplier ?? 1;
-    const totalEstimado = fogDelPeriodo(porDiaEstimado, dias, config.boost);
+    const unicos = new Set(config.oneOfOne?.bonus ? config.oneOfOne.tokenIds : []);
+    const unicosElegidos = [...elegidos].filter((id) => unicos.has(id)).length;
+    const porDiaUnico = Math.floor(
+        (config.dailyRate *
+            (100 + periodo.bonus + extra + (config.oneOfOne?.bonus ?? 0))) /
+            100
+    );
+    const totalEstimado =
+        (elegidos.size - unicosElegidos) *
+            fogDelPeriodo(porDiaEstimado, dias, config.boost) +
+        unicosElegidos * fogDelPeriodo(porDiaUnico, dias, config.boost);
 
     const desmandar = async (ids: string[]) => {
         setConfirmar(null);
@@ -1117,11 +1128,9 @@ function PanelZona({
                                             : 'opacity-70 hover:opacity-100'
                                     }`}
                                 >
-                                    <img
-                                        src={miniaturaPrimal(n.tokenId, 192)}
-                                        alt=""
-                                        loading="lazy"
-                                        className="w-full aspect-square object-cover"
+                                    <ImagenPrimal
+                                        tokenId={n.tokenId}
+                                        estatica={miniaturaPrimal(n.tokenId, 192)}
                                     />
                                     <span className="absolute inset-x-0 bottom-0 bg-darkblue/80 font-accent text-[10px] text-yellow text-center">
                                         #{n.tokenId}
@@ -1145,7 +1154,7 @@ function PanelZona({
                     </button>
                     <p className="text-lightblue/70 text-xs -mt-1">
                         {elegidos.size > 0 &&
-                            `Up to ${fog(elegidos.size * totalEstimado)} FOG in ${dias} days${
+                            `Up to ${fog(totalEstimado)} FOG in ${dias} days${
                                 extra > 0
                                     ? `, with +${extra}% for staking ${conElegidos} Primals`
                                     : ''
@@ -1228,6 +1237,12 @@ function Reglas({
                                     : '.'}
                             </span>
                         )}
+                    </li>
+                )}
+                {(config.oneOfOne?.bonus ?? 0) > 0 && (
+                    <li>
+                        1/1 pieces earn +{config.oneOfOne!.bonus}% more, on top
+                        of every other bonus.
                     </li>
                 )}
                 <li>{CONFIANZA}</li>

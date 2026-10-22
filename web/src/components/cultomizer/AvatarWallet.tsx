@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import {
   readPrimal,
+  rememberPrimal,
   type StoredPrimal,
 } from "@/lib/cultomizer/avatarPrimal";
+import { leerAvatar } from "@/lib/explore";
+import { miniaturaPrimal } from "@/lib/staking";
 
 /// Un patrón simétrico sacado de la dirección: la misma wallet da siempre el
 /// mismo dibujo, y dos wallets distintas dan dibujos distintos. Es la idea de
@@ -81,15 +84,18 @@ export default function AvatarWallet({
       setFallo(false);
     };
     releer();
+    leerAvatar(direccion)
+      .then((tokenId) => {
+        if (tokenId && tokenId !== readPrimal(direccion)?.tokenId) {
+          rememberPrimal(direccion, { tokenId });
+        }
+      })
+      .catch(() => {});
     window.addEventListener("primal-avatar-cambio", releer);
     return () => window.removeEventListener("primal-avatar-cambio", releer);
   }, [direccion]);
 
-  const url = primal?.imageUrl
-    ? primal.imageUrl
-    : primal?.tokenId
-      ? `https://ipfs.primalcult.xyz/images/${primal.tokenId}.gif`
-      : null;
+  const url = primal?.tokenId ? miniaturaPrimal(primal.tokenId, 96) : null;
 
   return (
     <span

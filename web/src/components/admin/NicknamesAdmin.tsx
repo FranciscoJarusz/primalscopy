@@ -133,6 +133,84 @@ export default function NicknamesAdmin({ token }: { token: string }) {
                     </ul>
                 )}
             </section>
+
+            <Bios token={token} />
         </main>
+    );
+}
+
+type Bio = { address: string; bio: string; updatedAt: string };
+
+function Bios({ token }: { token: string }) {
+    const [lista, setLista] = useState<Bio[] | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [borrando, setBorrando] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!token) return;
+        fetch(`${BACKEND_URL}/admin/bios`, { headers: { Authorization: `Bearer ${token}` } })
+            .then((r) => (r.ok ? r.json() : Promise.reject()))
+            .then(setLista)
+            .catch(() => setError("Couldn't load the bios."));
+    }, [token]);
+
+    const borrar = async (b: Bio) => {
+        if (!confirm('Delete this bio? The holder will be able to write a new one.')) return;
+        setBorrando(b.address);
+        try {
+            const respuesta = await fetch(`${BACKEND_URL}/admin/bios/${b.address}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!respuesta.ok && respuesta.status !== 404) throw new Error();
+            setLista((l) => l?.filter((x) => x.address !== b.address) ?? null);
+        } catch {
+            setError("Couldn't delete that bio.");
+        } finally {
+            setBorrando(null);
+        }
+    };
+
+    return (
+        <section className="flex flex-col gap-4 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50">
+            <h2 className="font-accent uppercase text-yellow text-2xl sm:text-3xl">Profile bios</h2>
+            {error && <p className="text-sm text-red-300">{error}</p>}
+            {!lista ? (
+                <p className="text-lightblue/70">Loading...</p>
+            ) : lista.length === 0 ? (
+                <p className="text-lightblue/70">Nobody has written a bio yet.</p>
+            ) : (
+                <ul className="flex flex-col gap-2">
+                    {lista.map((b) => (
+                        <li
+                            key={b.address}
+                            className="flex items-center gap-3 rounded-xl border border-lightblue/10 bg-lightblue/5 px-4 py-2.5"
+                        >
+                            <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                <span className="text-sm text-lightblue whitespace-pre-line break-words">{b.bio}</span>
+                                <a
+                                    href={`/holder/${b.address}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 w-fit font-mono text-xs text-lightblue/60 hover:text-yellow transition-all duration-300 truncate"
+                                >
+                                    {b.address}
+                                    <FiArrowUpRight className="shrink-0 w-3 h-3" />
+                                </a>
+                            </div>
+                            <button
+                                onClick={() => borrar(b)}
+                                disabled={borrando === b.address}
+                                aria-label="Delete bio"
+                                title="Delete bio"
+                                className="shrink-0 rounded-md p-2 text-lightblue hover:text-red-300 hover:bg-red-400/10 cursor-pointer transition-all duration-300 disabled:opacity-40"
+                            >
+                                <FiTrash2 className="w-4 h-4" />
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </section>
     );
 }

@@ -7,6 +7,7 @@ import { useUserNFTs, type Nft } from '@/hooks/cultomizer/useUserNFTs';
 import Cargando from './Cargando';
 import { card, botonClaro, input } from './estilos';
 import { imagenPublica, urlDeRoll } from './forge';
+import CartaPrimal from '@/components/shared/CartaPrimal';
 
 export default function Selector() {
     const { isConnected, status } = useAccount();
@@ -162,24 +163,18 @@ export default function Selector() {
 
 function TarjetaDePrimal({ nft }: { nft: Nft }) {
     return (
-        <a
+        <CartaPrimal
+            tokenId={nft.tokenId}
             href={urlDeRoll(nft.tokenId)}
-            className="shadow-lg shadow-darkblue/50 group bg-darkblue rounded-xl sm:rounded-2xl p-2 pb-3 sm:p-3 sm:pb-4 flex flex-col items-center gap-2 sm:gap-3 cursor-pointer outline-none ring-yellow hover:ring-2 focus-visible:ring-2 hover:-translate-y-1 active:scale-97 transition-all duration-300"
+            gif={nft.imageUrl || imagenPublica(nft.tokenId)}
+            alt={nft.name || `Primal Cult #${nft.tokenId}`}
         >
-            <div className="w-full aspect-square rounded-lg overflow-hidden bg-blue">
-                <img
-                    src={nft.imageUrl || imagenPublica(nft.tokenId)}
-                    alt={nft.name || `Primal Cult #${nft.tokenId}`}
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                />
-            </div>
             <h3 className="font-accent uppercase text-yellow text-sm sm:text-base leading-none text-center">
                 {nft.name || `Primal Cult #${nft.tokenId}`}
             </h3>
             <p className="text-xs text-lightblue/70 leading-none">
                 Click to roll
             </p>
-        </a>
+        </CartaPrimal>
     );
 }

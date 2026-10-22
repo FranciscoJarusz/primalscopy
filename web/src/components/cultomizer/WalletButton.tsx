@@ -3,7 +3,7 @@ import { useAccount, useBalance, useDisconnect, useReadContract } from 'wagmi';
 import { formatUnits } from 'viem';
 import { useStore } from '@nanostores/react';
 import { useEffect, useRef, useState } from 'react';
-import { FiChevronDown, FiEdit2, FiCreditCard, FiGift } from 'react-icons/fi';
+import { FiChevronDown, FiCreditCard, FiGift, FiUser } from 'react-icons/fi';
 import AvatarWallet from '@/components/cultomizer/AvatarWallet';
 import {
     APECHAIN,
@@ -290,26 +290,23 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
                         className="min-w-56 bg-darkblue rounded-2xl p-2 shadow-lg shadow-darkblue/50 flex flex-col font-accent uppercase text-sm"
                     >
                         {nickname && (
-                            <span className="px-3 pt-1 pb-2 mb-1 border-b border-lightblue/15 text-yellow normal-case truncate">
+                            <span className="px-3 pt-1 pb-2.5 mb-1 border-b border-lightblue/15 text-yellow text-xl normal-case truncate">
                                 {nickname}
                             </span>
                         )}
-                        {holder && (
-                            <button
+                        {direccion && (
+                            <a
                                 role="menuitem"
-                                onClick={() => {
-                                    setMenu(false);
-                                    setModal(true);
-                                }}
+                                href={`/holder/${direccion}`}
                                 className="flex items-center gap-3 rounded-lg px-3 pt-1.5 pb-2.5 text-left uppercase text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
                             >
-                                <FiEdit2
+                                <FiUser
                                     aria-hidden="true"
                                     className="mt-1 size-4 shrink-0"
                                     strokeWidth={2.5}
                                 />
-                                {nickname ? 'Edit nickname' : 'Set nickname'}
-                            </button>
+                                My profile
+                            </a>
                         )}
                         <button
                             role="menuitem"

@@ -30,6 +30,8 @@ require.cache[ownershipPath] = {
     exports: {
         checkOwnership: async () => ({ status: 'not-owner' }),
         getTokenOwner: async () => null,
+        getTokenOwners: async ids => new Map(ids.map(id => [String(id),
+            ['1', '2', '3'].includes(String(id)) ? holder.address.toLowerCase() : String(id) === '9' ? otroHolder.address.toLowerCase() : null])),
         getPrimalBalance: async (address) =>
             address.toLowerCase() === sinPrimals.address.toLowerCase() ? 0 : 3,
         CONTRACT_ADDRESS: '0x0000000000000000000000000000000000000000'
@@ -109,6 +111,30 @@ async function main() {
     check('el admin borra un apodo', r.ok && !(clave in (await nicknames())));
     r = await fetch(`${BASE}/api/admin/nicknames/${holder.address}`, { method: 'DELETE', headers: admin });
     check('borrar uno que no existe da 404', r.status === 404);
+
+    console.log('\n--- Perfil ---');
+    const perfil = (body, token) => fetch(`${BASE}/api/profile`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(body)
+    });
+    check('sin sesion no se edita', (await perfil({ bio: 'hola' }, null)).status === 401);
+    check('sin Primals no se edita', (await perfil({ bio: 'hola' }, sinPrimalsToken)).status === 403);
+    check('un avatar ajeno se rechaza', (await perfil({ avatar: '9' }, holderToken)).status === 400);
+    check('un destacado ajeno se rechaza', (await perfil({ featured: ['1', '9'] }, holderToken)).status === 400);
+    check('mas de 6 destacados se rechaza', (await perfil({ featured: ['1', '2', '3', '4', '5', '6', '7'] }, holderToken)).status === 400);
+    check('bio muy larga se rechaza', (await perfil({ bio: 'a'.repeat(161) }, holderToken)).status === 400);
+    check('usuario de X invalido se rechaza', (await perfil({ x: 'con espacios' }, holderToken)).status === 400);
+    r = await perfil({ nickname: 'Cultista', avatar: '2', bio: '  hola\n\n\n\nculto  ', x: '@primal_cult', discord: 'Trout.eth', featured: ['3', '1', '3'] }, holderToken);
+    const d = await r.json();
+    check('se guarda todo junto', r.ok && d.nickname === 'Cultista' && d.profile.avatar === '2' && d.profile.bio === 'hola\n\nculto'
+        && d.profile.x === 'primal_cult' && d.profile.discord === 'trout.eth' && d.profile.featured.join() === '3,1', JSON.stringify(d));
+    check('el apodo nuevo aparece', (await nicknames())[clave] === 'Cultista');
+    check('un apodo ocupado no pisa el perfil', (await perfil({ nickname: 'Trout_1', bio: 'otra' }, holderToken)).status === 400);
+    r = await fetch(`${BASE}/api/admin/bios`, { headers: admin });
+    check('el admin ve las bios', r.ok && (await r.json())[0]?.bio === 'hola\n\nculto');
+    r = await fetch(`${BASE}/api/admin/bios/${holder.address}`, { method: 'DELETE', headers: admin });
+    check('el admin borra una bio', r.ok && (await (await fetch(`${BASE}/api/admin/bios`, { headers: admin })).json()).length === 0);
 
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });

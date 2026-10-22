@@ -8,6 +8,7 @@ const { getAssetsStatus } = require('../lib/assetStore');
 const { startSeeding, getSeedProgress, ORIGIN_URL, LAST_TOKEN } = require('../lib/assetSeeder');
 const remote = require('../lib/remotePublisher');
 const nicknames = require('../lib/nicknameStore');
+const profiles = require('../lib/profileStore');
 const promo = require('../lib/promoStore');
 const exiled = require('../lib/exiledStore');
 const staking = require('../lib/stakingStore');
@@ -117,6 +118,11 @@ router.patch('/traits', renameTrait);
 router.delete('/traits', deleteTrait);
 
 router.get('/nicknames', (req, res) => res.json(nicknames.listNicknames()));
+router.get('/bios', (req, res) => res.json(profiles.listBios()));
+router.delete('/bios/:address', (req, res) => {
+    if (!profiles.clearBio(req.params.address)) return res.status(404).json({ error: 'That wallet has no bio.' });
+    res.json({ ok: true });
+});
 router.delete('/nicknames/:address', (req, res) => {
     if (!nicknames.deleteNickname(req.params.address)) {
         return res.status(404).json({ error: 'That wallet has no nickname.' });

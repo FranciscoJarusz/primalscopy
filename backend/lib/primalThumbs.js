@@ -18,7 +18,7 @@ const DIR = path.join(assets.ASSETS_ROOT, 'staking-thumbs');
 // 96 para el mapa; 192 para la grilla del panel de la region, que los
 // muestra a ~80 px (160 reales en pantallas retina).
 const LADO = 96;
-const LADOS = [96, 192];
+const LADOS = [96, 192, 384, 512];
 const ORIGIN_URL = (process.env.ORIGIN_ASSETS_URL || 'https://ipfs.primalcult.xyz').trim().replace(/\/+$/, '');
 const VIDA_REMOTA_MS = 24 * 60 * 60 * 1000;
 const TIMEOUT_MS = 30000;
@@ -127,4 +127,18 @@ function precalentar(tokenIds, lado = LADO) {
     }
 }
 
-module.exports = { miniatura, servirMiniatura, precalentar, habilitarPrecalentado, LADO };
+let recorriendo = false;
+async function precalentarFaltantes(tokenIds, lado = LADO) {
+    if (!precalentado || recorriendo) return;
+    recorriendo = true;
+    try {
+        for (const id of tokenIds) {
+            if (mtime(path.join(DIR, lado === LADO ? `${id}.webp` : `${id}.${lado}.webp`)) !== null) continue;
+            await miniatura(id, lado).catch(error => console.error(`[staking-thumbs] #${id}:`, error.message));
+        }
+    } finally {
+        recorriendo = false;
+    }
+}
+
+module.exports = { miniatura, servirMiniatura, precalentar, precalentarFaltantes, habilitarPrecalentado, LADO };

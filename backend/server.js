@@ -10,6 +10,8 @@ const profileRoutes = require('./routes/profileRoutes');
 const promoRoutes = require('./routes/promoRoutes');
 const exiledRoutes = require('./routes/exiledRoutes');
 const stakingRoutes = require('./routes/stakingRoutes');
+const exploreRoutes = require('./routes/exploreRoutes');
+const { startCollectionIndex } = require('./lib/collectionIndex');
 const { startStakingJob } = require('./lib/stakingJob');
 const stakingStore = require('./lib/stakingStore');
 const primalThumbs = require('./lib/primalThumbs');
@@ -113,6 +115,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/promo', promoRoutes);
 app.use('/api/exiled', exiledRoutes);
 app.use('/api/staking', stakingRoutes);
+app.use('/api/explore', exploreRoutes);
 
 // Lo que se escapo de una ruta (ver lib/asyncErrors.js). Se contesta un 500 y
 // el server sigue.
@@ -140,6 +143,7 @@ app.listen(PORT, () => {
     startStakingJob();
     primalThumbs.habilitarPrecalentado();
     primalThumbs.precalentar(Object.values(stakingStore.trainingByPeriod()).flat());
+    startCollectionIndex({ alTerminar: ids => primalThumbs.precalentarFaltantes(ids, 384) });
   }
   console.log(`[traits] Sirviendo traits desde ${TRAITS_PATH}`);
   if (!isWalletAuthEnabled()) {

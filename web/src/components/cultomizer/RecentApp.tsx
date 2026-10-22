@@ -3,6 +3,7 @@ import { scrollToTop } from '@/lib/lenis';
 import { goTo, useSearchParams } from '@/lib/navigation';
 import { nombreWallet, useApodos } from '@/lib/nicknames';
 import { BACKEND_URL, BACKEND_BASE_URL } from '@/lib/backend';
+import CartaPrimal from '@/components/shared/CartaPrimal';
 
 interface RecentItem {
     id: string;
@@ -231,9 +232,15 @@ function RecentCustomizationsContent() {
             {!cargando && !fallo && visibles.length > 0 && (
                 <div data-anim-stagger="" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-5 lg:gap-6">
                     {visibles.map((item) => (
-                        <button
+                        <CartaPrimal
                             key={item.id}
-                            type="button"
+                            tokenId={item.tokenId}
+                            gif={false}
+                            estatica={
+                                item.thumbnailUrl.startsWith('http')
+                                    ? item.thumbnailUrl
+                                    : BACKEND_BASE_URL + item.thumbnailUrl
+                            }
                             onClick={() =>
                                 goTo('/cultomizer/edit?tokenId=' + item.tokenId)
                             }
@@ -242,18 +249,7 @@ function RecentCustomizationsContent() {
                                 item.tokenId +
                                 ' in the Cultomizer'
                             }
-                            className="group shadow-lg shadow-darkblue/50 bg-darkblue rounded-xl sm:rounded-2xl p-2 pb-3 sm:p-3 sm:pb-4 flex flex-col items-center gap-2 cursor-pointer outline-none ring-yellow hover:ring-2 focus-visible:ring-2 hover:-translate-y-1 active:scale-97 transition-all duration-300"
                         >
-                            <img
-                                src={
-                                    item.thumbnailUrl.startsWith('http')
-                                        ? item.thumbnailUrl
-                                        : BACKEND_BASE_URL + item.thumbnailUrl
-                                }
-                                alt={'Primal Cult #' + item.tokenId}
-                                loading="lazy"
-                                className="w-full aspect-square object-cover rounded-lg bg-blue mb-1"
-                            />
                             <h3 className="font-accent uppercase text-yellow text-sm sm:text-base leading-none text-center">
                                 Primal Cult #{item.tokenId}
                             </h3>
@@ -263,7 +259,7 @@ function RecentCustomizationsContent() {
                             <p className="text-xs text-lightblue/60 leading-none">
                                 {timeAgo(item.createdAt, clockOffsetMs)}
                             </p>
-                        </button>
+                        </CartaPrimal>
                     ))}
                 </div>
             )}
