@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { FiChevronDown, FiSearch, FiSliders, FiX } from 'react-icons/fi';
 import {
@@ -11,11 +11,12 @@ import {
 import { leerMapa } from '@/lib/staking';
 import { ZONAS } from '@/lib/zonas';
 import Carta from './Carta';
+import { scrollToTop } from '@/lib/lenis';
 import { nombreWallet, useApodos } from '@/lib/nicknames';
 import { tierDe } from '@/components/forge/rareza';
 import { input } from '@/components/forge/estilos';
 
-const POR_TANDA = 48;
+const POR_PAGINA = 50;
 const card =
     'rounded-2xl sm:rounded-[30px] bg-darkblue shadow-lg shadow-darkblue/50';
 
@@ -56,8 +57,9 @@ function desdeUrl(): Filtros {
     };
 }
 
-function aUrl(f: Filtros) {
+function aUrl(f: Filtros, pagina = 1) {
     const p = new URLSearchParams();
+    if (pagina > 1) p.set('page', String(pagina));
     if (f.q) p.set('q', f.q);
     if (f.orden !== 'id') p.set('sort', f.orden);
     if (f.owner) p.set('owner', f.owner);
@@ -192,12 +194,12 @@ export default function Explorador() {
         new Map()
     );
     const [deWallet, setDeWallet] = useState<Set<number> | null>(null);
-    const [cuantos, setCuantos] = useState(POR_TANDA);
+    const [pagina, setPagina] = useState(1);
     const [panelAbierto, setPanelAbierto] = useState(false);
-    const fin = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setFiltros(desdeUrl());
+        setPagina(Math.max(1, Number(new URLSearchParams(location.search).get('page')) || 1));
         leerColeccion()
             .then(setColeccion)
             .catch((e) => setError(e.message));
@@ -223,7 +225,7 @@ export default function Explorador() {
     const cambiar = (cambio: Partial<Filtros>) => {
         const nuevos = { ...filtros, ...cambio };
         setFiltros(nuevos);
-        setCuantos(POR_TANDA);
+        setPagina(1);
         aUrl(nuevos);
     };
 
@@ -271,16 +273,13 @@ export default function Explorador() {
         return lista;
     }, [coleccion, filtros, deWallet, entrenando]);
 
-    useEffect(() => {
-        const nodo = fin.current;
-        if (!nodo) return;
-        const observador = new IntersectionObserver(
-            ([e]) => e.isIntersecting && setCuantos((n) => n + POR_TANDA),
-            { rootMargin: '600px' }
-        );
-        observador.observe(nodo);
-        return () => observador.disconnect();
-    }, [coleccion, cuantos, visibles.length]);
+    const paginas = Math.max(1, Math.ceil(visibles.length / POR_PAGINA));
+    const actual = Math.min(pagina, paginas);
+    const irA = (n: number) => {
+        setPagina(n);
+        aUrl(filtros, n);
+        scrollToTop();
+    };
 
     const filtrosTraits = Object.entries(filtros.traits).flatMap(([c, vs]) =>
         vs.map((v) => [c, v])
@@ -486,7 +485,7 @@ export default function Explorador() {
                     )}
 
                     <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-                        {visibles.slice(0, cuantos).map(([id, rank]) => (
+                        {visibles.slice((actual - 1) * POR_PAGINA, actual * POR_PAGINA).map(([id, rank]) => (
                             <li key={id}>
                                 <Carta
                                     id={id}
@@ -498,7 +497,27 @@ export default function Explorador() {
                             </li>
                         ))}
                     </ul>
-                    <div ref={fin} />
+                    {paginas > 1 && (
+                        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 font-accent uppercase text-sm text-lightblue mt-2">
+                            <button
+                                onClick={() => irA(actual - 1)}
+                                disabled={actual === 1}
+                                className="bg-lightblue text-darkblue rounded-md px-3 pb-1.5 cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-lightblue transition-all duration-300"
+                            >
+                                Previous
+                            </button>
+                            <span>
+                                Page {actual} of {paginas}
+                            </span>
+                            <button
+                                onClick={() => irA(actual + 1)}
+                                disabled={actual === paginas}
+                                className="bg-lightblue text-darkblue rounded-md px-3 pb-1.5 cursor-pointer hover:bg-yellow disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-lightblue transition-all duration-300"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
