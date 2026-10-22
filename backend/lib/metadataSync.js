@@ -91,4 +91,4 @@ async function currentMetadata(tokenId) {
     return origin;
 }
 
-module.exports = { currentMetadata, sameDrawing, fetchOrigin };
+module.exports = { currentMetadata, sameDrawing, fetchOrigin, syncEnabled };

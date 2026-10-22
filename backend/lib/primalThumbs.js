@@ -4,10 +4,11 @@
 // Cada Primal es un GIF animado de 2000x2000 de ~530 KB; 600 serian ~300 MB.
 // La miniatura es el primer cuadro en WebP estatico de 96 px: ~4 KB.
 //
-// Sale de la copia local de la coleccion (assetStore.IMAGES_DIR) y, si ese
-// token no esta, del servidor de origen. Se regenera si la imagen local es mas
-// nueva (un Primal customizado) o, para las que vinieron del origen, cada 24
-// horas. Si regenerar falla, se sirve la vieja.
+// Sale del servidor de origen, que es la verdad (el dueño cambia NFTs ahi sin
+// pasar por este server); la copia local (assetStore.IMAGES_DIR) queda de
+// respaldo, salvo donde no se publica (local o pruebas del Forge). Cada 6 horas
+// se pregunta al origen si cambio, sin bajar el GIF si no cambio. Si regenerar
+// falla, se sirve la vieja.
 
 const fs = require('fs');
 const path = require('path');
@@ -20,7 +21,7 @@ const DIR = path.join(assets.ASSETS_ROOT, 'staking-thumbs');
 const LADO = 96;
 const LADOS = [96, 192, 384, 512];
 const ORIGIN_URL = (process.env.ORIGIN_ASSETS_URL || 'https://ipfs.primalcult.xyz').trim().replace(/\/+$/, '');
-const VIDA_REMOTA_MS = 24 * 60 * 60 * 1000;
+const VIDA_REMOTA_MS = 6 * 60 * 60 * 1000;
 const TIMEOUT_MS = 30000;
 const TOKEN_ID_REGEX = /^\d{1,10}$/;
 
@@ -51,23 +52,50 @@ function mtime(archivo) {
     }
 }
 
-async function original(tokenId) {
-    if (assets.hasImage(tokenId)) return fs.readFileSync(assets.imagePath(tokenId));
+const desdeOrigen = tokenId => !assets.hasImage(tokenId) || require('./metadataSync').syncEnabled(tokenId);
+
+function leerMeta(destino) {
+    try {
+        return JSON.parse(fs.readFileSync(`${destino}.json`, 'utf8'));
+    } catch {
+        return null;
+    }
+}
+
+async function delOrigen(tokenId, meta) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const headers = {};
+    if (meta?.etag) headers['If-None-Match'] = meta.etag;
+    if (meta?.lastModified) headers['If-Modified-Since'] = meta.lastModified;
     try {
-        const respuesta = await fetch(`${ORIGIN_URL}/images/${tokenId}.gif`, { signal: controller.signal });
+        const respuesta = await fetch(`${ORIGIN_URL}/images/${tokenId}.gif`, { signal: controller.signal, headers });
+        if (respuesta.status === 304) return { sinCambios: true };
         if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
-        return Buffer.from(await respuesta.arrayBuffer());
+        return {
+            buffer: Buffer.from(await respuesta.arrayBuffer()),
+            meta: { etag: respuesta.headers.get('etag'), lastModified: respuesta.headers.get('last-modified') }
+        };
     } finally {
         clearTimeout(timer);
+    }
+}
+
+async function original(tokenId, destino) {
+    if (!desdeOrigen(tokenId)) return { buffer: fs.readFileSync(assets.imagePath(tokenId)) };
+    try {
+        return await delOrigen(tokenId, mtime(destino) !== null ? leerMeta(destino) : null);
+    } catch (error) {
+        if (assets.hasImage(tokenId)) return { buffer: fs.readFileSync(assets.imagePath(tokenId)) };
+        throw error;
     }
 }
 
 function vencida(tokenId, destino) {
     const hecha = mtime(destino);
     if (hecha === null) return true;
-    if (assets.hasImage(tokenId)) return mtime(assets.imagePath(tokenId)) > hecha;
+    if (!desdeOrigen(tokenId)) return mtime(assets.imagePath(tokenId)) > hecha;
+    if (assets.hasImage(tokenId) && !leerMeta(destino)) return true;
     return Date.now() - hecha > VIDA_REMOTA_MS;
 }
 
@@ -81,12 +109,19 @@ async function miniatura(tokenId, lado = LADO) {
 
     if (!generando.has(destino)) {
         const trabajo = conTurno(async () => {
-            const webp = await sharp(await original(id))
+            const fuente = await original(id, destino);
+            if (fuente.sinCambios) {
+                const ahora = new Date();
+                fs.utimesSync(destino, ahora, ahora);
+                return destino;
+            }
+            const webp = await sharp(fuente.buffer)
                 .resize(lado, lado, { fit: 'cover' })
                 .webp({ quality: 80 })
                 .toBuffer();
             fs.mkdirSync(DIR, { recursive: true });
             assets.writeAtomic(destino, webp);
+            if (fuente.meta) assets.writeAtomic(`${destino}.json`, JSON.stringify(fuente.meta));
             return destino;
         })
             .catch(error => {

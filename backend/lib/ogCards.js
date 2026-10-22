@@ -71,6 +71,16 @@ async function imagenPrimal(tokenId, lado, radio) {
     return redondeada(fs.readFileSync(archivo), lado, radio);
 }
 
+async function huella(tokenId) {
+    if (!tokenId) return null;
+    try {
+        const archivo = await primalThumbs.miniatura(tokenId, 512);
+        return fs.readFileSync(`${archivo}.json`, 'utf8');
+    } catch {
+        return null;
+    }
+}
+
 function marco(lado, radio) {
     return Buffer.from(`<svg width="${lado + 24}" height="${lado + 24}"><rect x="0" y="0" width="${lado + 24}" height="${lado + 24}" rx="${radio + 10}" fill="#090050"/></svg>`);
 }
@@ -130,7 +140,7 @@ async function tarjetaPrimal(ficha, dueno) {
         .sort((a, b) => a.count - b.count)
         .slice(0, 3)
         .map(a => `${a.value} ${porcentaje(a.count, ficha.total)}`.toUpperCase());
-    const datos = { v: 3, id: ficha.id, image: ficha.image, rank: ficha.rank, total: ficha.total, raros, unico: unico?.value, dueno };
+    const datos = { v: 3, id: ficha.id, image: ficha.image, huella: await huella(ficha.id), rank: ficha.rank, total: ficha.total, raros, unico: unico?.value, dueno };
     return guardar(`primal-${ficha.id}`, datos, () => conImagenALaIzquierda(ficha.id, [
         { texto: 'PRIMAL CULT', size: 34 },
         { texto: `#${ficha.id}`, size: 130, color: AMARILLO },
@@ -146,7 +156,7 @@ async function tarjetaHolder(perfil) {
     const fila = (perfil.profile.featured.length ? perfil.profile.featured : perfil.tokens.map(t => t.id))
         .filter(id => id !== perfil.profile.avatar)
         .slice(0, 5);
-    const datos = { v: 2, nombre, avatar: perfil.profile.avatar, primals, fog: perfil.fog.balance, rank: perfil.rank, fila };
+    const datos = { v: 2, nombre, avatar: perfil.profile.avatar, huella: await huella(perfil.profile.avatar), primals, fog: perfil.fog.balance, rank: perfil.rank, fila };
     return guardar(`holder-${perfil.wallet}`, datos, () => conImagenALaIzquierda(perfil.profile.avatar, [
         { texto: perfil.rank ? `HOLDER #${perfil.rank} OF ${numero(perfil.holders)}` : 'PRIMAL CULT HOLDER', size: 30 },
         { texto: perfil.nickname ? nombre.toUpperCase() : nombre, size: nombre.length > 12 ? 72 : 96, color: AMARILLO },
