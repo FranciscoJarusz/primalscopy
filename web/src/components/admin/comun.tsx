@@ -13,7 +13,7 @@ export const botonGuardar =
 export const panel =
     'flex flex-col gap-4 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50';
 export const titulo = 'font-accent uppercase text-yellow text-2xl';
-// Las listas que la usan llevan data-lenis-prevent: sin eso Lenis se queda con
+// Las listas que la usan llevan data-scroll-propio: sin eso Lenis se queda con
 // la rueda y no bajan.
 export const lista = 'max-h-96 overflow-y-auto overscroll-contain pr-2';
 

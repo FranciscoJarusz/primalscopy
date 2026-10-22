@@ -329,7 +329,7 @@ export default function Tienda({
                         <div
                             onClick={(e) => e.stopPropagation()}
                             className={`${card} w-full max-w-lg max-h-[85vh] overflow-y-auto flex flex-col gap-3 transition-all duration-300 ease-out starting:opacity-0 starting:scale-95 starting:translate-y-4 ${cerrandoPremios ? 'opacity-0 scale-95 translate-y-4' : ''}`}
-                            data-lenis-prevent
+                            data-scroll-propio
                         >
                             <div className="flex items-center justify-between gap-3">
                                 <h3 className="font-accent uppercase text-yellow text-2xl leading-none pb-1.5">

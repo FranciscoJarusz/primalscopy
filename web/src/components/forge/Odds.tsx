@@ -23,10 +23,10 @@ export default function Odds({
                 </span>
                 View roll odds
             </summary>
-            {/* data-lenis-prevent: sin esto el scroll suave del sitio se
+            {/* data-scroll-propio: sin esto el scroll suave del sitio se
                 queda con la rueda del mouse y esta lista no scrollea. */}
             <div
-                data-lenis-prevent
+                data-scroll-propio
                 className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-4 max-h-80 overflow-y-auto pr-1"
             >
                 {categorias.map((category) => (

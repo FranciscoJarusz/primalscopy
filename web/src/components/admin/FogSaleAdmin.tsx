@@ -193,7 +193,7 @@ export default function FogSaleAdmin({
             {compras.purchases.length === 0 ? (
                 <p className="text-lightblue/70">No purchases yet.</p>
             ) : (
-                <ul data-lenis-prevent className={`${lista} text-sm text-lightblue flex flex-col gap-1.5`}>
+                <ul data-scroll-propio className={`${lista} text-sm text-lightblue flex flex-col gap-1.5`}>
                     {compras.purchases.map((c) => (
                         <li key={c.txHash} className="flex flex-wrap gap-x-3">
                             <span className="text-lightblue/60 w-32 shrink-0 whitespace-nowrap">{fecha(c.at)}</span>

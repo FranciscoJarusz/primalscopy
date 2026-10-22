@@ -4,6 +4,13 @@ import 'lenis/dist/lenis.css';
 const DURACION = 1.8;
 
 let lenis: Lenis | null = null;
+let listaPuede = false;
+
+function puedeScrollear(lista: HTMLElement, dy: number) {
+    if (dy > 0) return lista.scrollTop + lista.clientHeight < lista.scrollHeight - 1;
+    if (dy < 0) return lista.scrollTop > 0;
+    return true;
+}
 
 function offsetHeader() {
     const header = document.querySelector<HTMLElement>('[data-header]');
@@ -21,19 +28,21 @@ export function initLenis() {
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         autoRaf: true,
         prevent: (node) =>
-            node.closest('[data-lenis-prevent], w3m-modal, appkit-modal') !==
-            null,
+            node.closest('w3m-modal, appkit-modal') !== null ||
+            (listaPuede && node.closest('[data-scroll-propio]') !== null),
     });
 
-    // La rueda dentro de una lista con scroll propio (data-lenis-prevent) frena
+    // La rueda dentro de una lista con scroll propio (data-scroll-propio) frena
     // a la pagina: si no, la inercia de DURACION la seguia bajando mientras la
     // lista tambien bajaba.
     document.addEventListener(
         'wheel',
         (e) => {
-            if (!lenis?.isScrolling) return;
-            if (!(e.target as HTMLElement).closest?.('[data-lenis-prevent]')) return;
-            lenis.scrollTo(lenis.animatedScroll, { immediate: true });
+            const lista = (e.target as HTMLElement).closest?.<HTMLElement>('[data-scroll-propio]');
+            listaPuede = Boolean(lista && puedeScrollear(lista, e.deltaY));
+            if (listaPuede && lenis?.isScrolling) {
+                lenis.scrollTo(lenis.animatedScroll, { immediate: true });
+            }
         },
         { capture: true, passive: true }
     );

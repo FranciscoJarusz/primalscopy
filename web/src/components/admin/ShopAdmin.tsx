@@ -535,7 +535,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                     {resumen.redemptions.length === 0 ? (
                         <p className="text-lightblue/70">No redemptions yet.</p>
                     ) : (
-                        <ul data-lenis-prevent className={`${lista} text-sm text-lightblue flex flex-col gap-1.5`}>
+                        <ul data-scroll-propio className={`${lista} text-sm text-lightblue flex flex-col gap-1.5`}>
                             {resumen.redemptions.map((r) => (
                                 <li key={r.id} className="flex gap-3">
                                     <span className="text-lightblue/60 w-32 shrink-0 whitespace-nowrap">

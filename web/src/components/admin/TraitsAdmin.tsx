@@ -663,7 +663,7 @@ export default function TraitsAdmin({ token }: { token: string }) {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
                     <div className="lg:col-span-1">
                         <div
-                            data-lenis-prevent
+                            data-scroll-propio
                             className="bg-darkblue rounded-2xl p-4 sm:p-6 shadow-lg shadow-darkblue/50 max-h-[50vh] lg:max-h-[70vh] overflow-y-auto"
                         >
                             <h3 className="font-accent uppercase text-yellow text-2xl mb-4">
