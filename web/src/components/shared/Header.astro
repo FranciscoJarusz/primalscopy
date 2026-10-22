@@ -172,7 +172,7 @@ const clase = (id: string) =>
     <div class="flex items-center justify-end gap-2 sm:gap-3 shrink-0 min-[1100px]:min-w-68">
         <slot name="derecha">
             <WalletIsland
-                client:load
+                client:only="react"
                 dato={activo === 'raffles' ? 'saldo' : 'primals'}
             />
         </slot>
