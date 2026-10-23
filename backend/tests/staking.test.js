@@ -509,6 +509,7 @@ async function main() {
     check('se pone +50% a los 1/1', (await configurar({ oneOfOneBonus: 50 })).ok);
     cfg = await (await fetch(`${BASE}/api/staking/config`)).json();
     check('la pagina ve el bonus y los ids', cfg.oneOfOne?.bonus === 50 && cfg.oneOfOne.tokenIds.includes('27'), JSON.stringify(cfg.oneOfOne));
+    check('el Morale Amulet (#15) cuenta como 1/1', cfg.oneOfOne.tokenIds.includes('15'));
     await configurar({ oneOfOneBonus: 50 });
     const unicos = JSON.parse(fs.readFileSync(rutaConfig, 'utf8'));
     check('guardar el mismo valor no suma un cambio', unicos.oneOfOneBonus.length === 1);

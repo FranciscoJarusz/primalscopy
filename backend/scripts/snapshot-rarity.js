@@ -58,6 +58,7 @@ async function main() {
 
     const categories = {};
     const oneOfOnes = [];
+    const moraleAmulets = [];
 
     for (const [id, metadata] of [...all].sort((a, b) => a[0] - b[0])) {
         const attributes = Array.isArray(metadata.attributes) ? metadata.attributes : [];
@@ -66,6 +67,10 @@ async function main() {
         if (attributes.some(a => a?.trait_type === '1/1')) {
             oneOfOnes.push(id);
             continue;
+        }
+        // Cuentan como 1/1, pero sus traits si entran en la rareza.
+        if (attributes.some(a => a?.trait_type === 'Effect' && a.value === 'Morale Amulet')) {
+            moraleAmulets.push(id);
         }
         for (const { trait_type: category, value } of attributes) {
             if (!category) continue;
@@ -86,6 +91,7 @@ async function main() {
         generatedAt: new Date().toISOString(),
         totalTokens: TOTAL_TOKENS,
         oneOfOnes,
+        moraleAmulets,
         categories
     };
 

@@ -35,14 +35,18 @@ function guardarIndice() {
     derivado = null;
 }
 
+// Los Morale Amulet cuentan como 1/1: se les suma el atributo para que el
+// explorador los trate como tales (ranking, filtro y ficha).
+const AMULETO = 'Morale Amulet';
+
 function entrada(metadata) {
-    return {
-        name: metadata.name || null,
-        image: metadata.image || null,
-        attributes: (metadata.attributes || [])
-            .filter(a => a && a.trait_type)
-            .map(a => ({ trait_type: String(a.trait_type), value: String(a.value) }))
-    };
+    const attributes = (metadata.attributes || [])
+        .filter(a => a && a.trait_type)
+        .map(a => ({ trait_type: String(a.trait_type), value: String(a.value) }));
+    if (attributes.some(a => a.trait_type === 'Effect' && a.value === AMULETO) && !attributes.some(a => a.trait_type === UNICO)) {
+        attributes.push({ trait_type: UNICO, value: AMULETO });
+    }
+    return { name: metadata.name || null, image: metadata.image || null, attributes };
 }
 
 async function leerToken(id) {

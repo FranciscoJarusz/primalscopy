@@ -71,7 +71,8 @@ const TICKETS = 1_000_000_000;
 
 function createRarity(snapshot) {
     const categories = snapshot.categories || {};
-    const oneOfOnes = new Set((snapshot.oneOfOnes || []).map(String));
+    // Los Morale Amulet tienen traits por capas, pero cuentan como 1/1.
+    const oneOfOnes = new Set([...(snapshot.oneOfOnes || []), ...(snapshot.moraleAmulets || [])].map(String));
 
     // [valor, cantidad] de una categoria, excluyendo lo que no se puede
     // sortear. "allow" existe porque la foto no sabe si un trait tiene arte:

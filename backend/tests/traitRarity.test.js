@@ -138,6 +138,7 @@ console.log('\n--- La foto de rareza ---');
     const rarity = getRarity();
     check('tiene las 7 categorias', rarity.categories.length === 7, `(${rarity.categories.join(', ')})`);
     check('las 12 piezas unicas estan marcadas', rarity.isOneOfOne(69) && rarity.isOneOfOne('7') && !rarity.isOneOfOne(54));
+    check('los Morale Amulet cuentan como 1/1', rarity.isOneOfOne(15) && rarity.oneOfOnes.includes('15'));
 
     // Cada valor tiene que tener su carpeta con al menos un archivo en la
     // semilla de traits. Morale Amulet es la excepcion conocida: lo tiene un
