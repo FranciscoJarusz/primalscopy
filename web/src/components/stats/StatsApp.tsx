@@ -282,13 +282,13 @@ function TopHolders({
                                   <li key={h.address}>
                                       <a
                                           href={`/holder/${h.address}`}
-                                          className={`group flex items-center gap-3 sm:gap-4 rounded-xl border px-3 sm:px-4 py-2.5 transition-all duration-300 hover:border-yellow/60 ${
+                                          className={`group flex items-center gap-2.5 sm:gap-4 rounded-xl border px-3 sm:px-4 py-2.5 transition-all duration-300 hover:border-yellow/60 ${
                                               medalla?.fondo ??
                                               'border-lightblue/10 bg-lightblue/5'
                                           }`}
                                       >
                                           <span
-                                              className="w-8 shrink-0 text-center font-accent text-lg pb-1"
+                                              className="w-7 sm:w-8 shrink-0 text-center font-accent text-base sm:text-lg pb-1"
                                               style={{
                                                   color:
                                                       medalla?.color ??
@@ -313,7 +313,7 @@ function TopHolders({
                                                       <span className="font-accent text-lg text-lightblue leading-none pb-1 truncate group-hover:text-yellow transition-all duration-300">
                                                           {nicknames[h.address]}
                                                       </span>
-                                                      <span className="font-mono text-xs text-lightblue/50">
+                                                      <span className="hidden sm:block font-mono text-xs text-lightblue/50">
                                                           {walletCorta(
                                                               h.address
                                                           )}
@@ -339,9 +339,21 @@ function TopHolders({
                                                       </span>
                                                   ))}
                                               </span>
+                                              {suyo && (
+                                                  <span className="sm:hidden inline-flex items-center gap-1 font-accent text-sm text-lightblue leading-none">
+                                                      <img
+                                                          src={ICONO_FOG_CHICO}
+                                                          alt=""
+                                                          className="size-4"
+                                                      />
+                                                      <span className="relative -top-[0.19em]">
+                                                          {numero(suyo.balance)} FOG
+                                                      </span>
+                                                  </span>
+                                              )}
                                           </span>
                                           {hayFog && (
-                                              <span className="flex flex-col items-center shrink-0 w-20 sm:w-28">
+                                              <span className="hidden sm:flex flex-col items-center shrink-0 w-28">
                                                   <span className="text-[10px] sm:text-xs uppercase tracking-wide text-lightblue/60 whitespace-nowrap">
                                                       Current FOG
                                                   </span>
