@@ -27,6 +27,7 @@ import {
 } from '@/components/forge/pago';
 import Tienda from '@/components/staking/Tienda';
 import Mensaje, { type Aviso } from '@/components/staking/Mensaje';
+import FogComprado from './FogComprado';
 
 const PREFIJO = 'store:fog';
 
@@ -277,6 +278,8 @@ function Pestanas({
                                 <ComprarFog
                                     venta={config.fogSale}
                                     session={session}
+                                    alComprar={recargar}
+                                    irATienda={() => setActiva('items')}
                                 />
                             ) : (
                                 tienda(p.id === 'premios' ? 'premios' : 'items')
@@ -294,10 +297,15 @@ type Paso = 'quieto' | 'firmando' | 'confirmando';
 function ComprarFog({
     venta,
     session,
+    alComprar,
+    irATienda,
 }: {
     venta: Extract<VentaFog, { enabled: true }>;
     session: Session;
+    alComprar: () => void;
+    irATienda: () => void;
 }) {
+    const [comprado, setComprado] = useState<number | null>(null);
     const [comprando, setComprando] = useState<number | null>(null);
     const [paso, setPaso] = useState<Paso>('quieto');
     const [aviso, setAviso] = useState<Aviso | null>(null);
@@ -310,10 +318,8 @@ function ComprarFog({
             try {
                 const r = await informarCompra(token, hash);
                 if (session.address) recordar(session.address, null, PREFIJO);
-                setAviso({
-                    ok: true,
-                    texto: `${fog(r.purchase.fog)} FOG added to your wallet.`,
-                });
+                setComprado(r.purchase.fog);
+                alComprar();
             } catch (err) {
                 if (
                     (err as { definitivo?: boolean }).definitivo &&
@@ -332,7 +338,7 @@ function ComprarFog({
             setPaso('quieto');
             setComprando(null);
         },
-        [session.address]
+        [session.address, alComprar]
     );
 
     // Un pago que salio pero no se llego a informar (se cerro la pestaña).
@@ -510,6 +516,16 @@ function ComprarFog({
                     </p>
                 )}
                 {aviso && <Mensaje ok={aviso.ok} texto={aviso.texto} />}
+                {comprado !== null && (
+                    <FogComprado
+                        cantidad={comprado}
+                        onCerrar={() => setComprado(null)}
+                        onGastar={() => {
+                            setComprado(null);
+                            irATienda();
+                        }}
+                    />
+                )}
             </div>
         </div>
     );
