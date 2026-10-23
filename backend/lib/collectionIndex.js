@@ -23,6 +23,7 @@ function leerIndice() {
     if (indice) return indice;
     try {
         indice = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8'));
+        for (const token of Object.values(indice.tokens ?? {})) conAmuleto(token.attributes);
     } catch {
         indice = { builtAt: null, tokens: {} };
     }
@@ -39,14 +40,18 @@ function guardarIndice() {
 // explorador los trate como tales (ranking, filtro y ficha).
 const AMULETO = 'Morale Amulet';
 
+function conAmuleto(attributes) {
+    if (attributes.some(a => a.trait_type === 'Effect' && a.value === AMULETO) && !attributes.some(a => a.trait_type === UNICO)) {
+        attributes.push({ trait_type: UNICO, value: AMULETO });
+    }
+    return attributes;
+}
+
 function entrada(metadata) {
     const attributes = (metadata.attributes || [])
         .filter(a => a && a.trait_type)
         .map(a => ({ trait_type: String(a.trait_type), value: String(a.value) }));
-    if (attributes.some(a => a.trait_type === 'Effect' && a.value === AMULETO) && !attributes.some(a => a.trait_type === UNICO)) {
-        attributes.push({ trait_type: UNICO, value: AMULETO });
-    }
-    return { name: metadata.name || null, image: metadata.image || null, attributes };
+    return { name: metadata.name || null, image: metadata.image || null, attributes: conAmuleto(attributes) };
 }
 
 async function leerToken(id) {
