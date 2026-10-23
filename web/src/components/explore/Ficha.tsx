@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { FiArrowLeft, FiArrowRight, FiArrowUpRight } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiDownload } from 'react-icons/fi';
 import {
     leerFicha,
     urlFicha,
@@ -14,7 +14,7 @@ import { useApodos, walletCorta } from '@/lib/nicknames';
 import { APECHAIN } from '@/lib/cultomizer/contracts';
 import { tierDe } from '@/components/forge/rareza';
 import { urlDeRoll, urlOpenSea } from '@/components/forge/forge';
-import { BACKEND_BASE_URL } from '@/lib/backend';
+import { BACKEND_BASE_URL, BACKEND_URL } from '@/lib/backend';
 
 const card =
     'rounded-2xl sm:rounded-[30px] bg-darkblue shadow-lg shadow-darkblue/50 p-5 sm:p-8';
@@ -174,6 +174,17 @@ export default function Ficha({
                     />
                     <div className="flex flex-wrap gap-2 px-1 pb-1">
                         <Enlace href={urlOpenSea(id)}>OpenSea</Enlace>
+                        {(['gif', 'png'] as const).map((formato) => (
+                            <a
+                                key={formato}
+                                href={`${BACKEND_URL}/explore/download/${id}.${formato}`}
+                                download={`primal-${id}.${formato}`}
+                                className={botonLink}
+                            >
+                                <span className={subir}>{formato}</span>
+                                <FiDownload className="w-4 h-4" />
+                            </a>
+                        ))}
                         {esMio && (
                             <>
                                 <a

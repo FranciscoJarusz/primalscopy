@@ -135,6 +135,13 @@ async function miniatura(tokenId, lado = LADO) {
     return generando.get(destino);
 }
 
+async function descarga(tokenId, formato) {
+    const id = String(tokenId);
+    if (!TOKEN_ID_REGEX.test(id)) throw Object.assign(new Error('Token invalido.'), { status: 404 });
+    const { buffer } = await conTurno(() => original(id, null));
+    return formato === 'png' ? sharp(buffer).png().toBuffer() : buffer;
+}
+
 // GET /api/staking/primal/:tokenId.webp
 async function servirMiniatura(req, res) {
     try {
@@ -176,4 +183,4 @@ async function precalentarFaltantes(tokenIds, lado = LADO) {
     }
 }
 
-module.exports = { miniatura, servirMiniatura, precalentar, precalentarFaltantes, habilitarPrecalentado, LADO };
+module.exports = { miniatura, descarga, servirMiniatura, precalentar, precalentarFaltantes, habilitarPrecalentado, LADO };

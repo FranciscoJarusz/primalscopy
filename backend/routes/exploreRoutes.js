@@ -7,6 +7,7 @@ const exiled = require('../lib/exiledStore');
 const { getRarity } = require('../lib/traitRarity');
 const profiles = require('../lib/profileStore');
 const og = require('../lib/ogCards');
+const primalThumbs = require('../lib/primalThumbs');
 const { getNickname, getAllNicknames } = require('../lib/nicknameStore');
 
 const router = express.Router();
@@ -187,6 +188,20 @@ router.get('/og/primal/:id.png', async (req, res) => {
     } catch (error) {
         console.error('[og] primal:', error.message);
         res.status(502).end();
+    }
+});
+
+router.get('/download/:id.:formato', async (req, res) => {
+    const { id, formato } = req.params;
+    if (!TOKEN_ID_REGEX.test(id) || !['gif', 'png'].includes(formato)) return res.status(404).end();
+    try {
+        const archivo = await primalThumbs.descarga(id, formato);
+        res.set('Cache-Control', 'no-cache');
+        res.attachment(`primal-${id}.${formato}`);
+        res.type(`image/${formato}`).send(archivo);
+    } catch (error) {
+        console.error('[download] primal:', error.message);
+        res.status(error.status || 502).end();
     }
 });
 
