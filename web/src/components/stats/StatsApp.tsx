@@ -8,7 +8,12 @@ import {
     walletCorta,
     type DetalleNickname,
 } from '@/lib/nicknames';
-import { ICONO_FOG_CHICO, leerRanking, miniaturaPrimal, nombreInsignia } from '@/lib/staking';
+import {
+    ICONO_FOG_CHICO,
+    leerRanking,
+    miniaturaPrimal,
+    nombreInsignia,
+} from '@/lib/staking';
 import { leerAvatares } from '@/lib/explore';
 
 // El FOG de cada wallet y sus insignias de staking (ver lib/staking.ts).
@@ -298,9 +303,16 @@ function TopHolders({
                                               #{i + 1}
                                           </span>
                                           <span className="size-10 sm:size-12 shrink-0 rounded-lg overflow-hidden bg-blue">
-                                              {avatares[h.address.toLowerCase()] && (
+                                              {avatares[
+                                                  h.address.toLowerCase()
+                                              ] && (
                                                   <img
-                                                      src={miniaturaPrimal(avatares[h.address.toLowerCase()], 96)}
+                                                      src={miniaturaPrimal(
+                                                          avatares[
+                                                              h.address.toLowerCase()
+                                                          ],
+                                                          96
+                                                      )}
                                                       alt=""
                                                       loading="lazy"
                                                       className="w-full h-full object-cover"
@@ -346,8 +358,9 @@ function TopHolders({
                                                           alt=""
                                                           className="size-4"
                                                       />
-                                                      <span className="relative -top-[0.19em]">
-                                                          {numero(suyo.balance)} FOG
+                                                      <span className="relative top-[-0.19em]">
+                                                          {numero(suyo.balance)}{' '}
+                                                          FOG
                                                       </span>
                                                   </span>
                                               )}
@@ -460,7 +473,12 @@ export default function StatsApp() {
                 }
             />
             <Distribucion stats={stats} />
-            <TopHolders stats={stats} nicknames={nicknames} fog={fog} avatares={avatares} />
+            <TopHolders
+                stats={stats}
+                nicknames={nicknames}
+                fog={fog}
+                avatares={avatares}
+            />
         </div>
     );
 }

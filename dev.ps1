@@ -1,28 +1,40 @@
-# Levanta todo el entorno local: anvil + contrato de raffles, backend y sitio Astro.
+# Levanta todo el entorno local: backend y sitio Astro.
 #   .\dev.ps1          levanta todo
 #   .\dev.ps1 stop     cierra todo
 #   .\dev.ps1 share    backend + sitio detras de un link publico de Cloudflare,
-#                      sin raffles y sin poder publicar nada en produccion.
+#                      sin poder publicar nada en produccion.
 #                      Vos seguis usando http://localhost:4321 (se actualiza al
 #                      guardar); el link muestra una copia compilada (4322).
 #                      Ctrl+C corta el link.
 #   .\dev.ps1 rebuild  pasa lo que tenes en el 4321 al link (la copia del 4322)
 #   .\dev.ps1 tunnel   abre solo el link (link nuevo), con el resto ya levantado
-#   .\dev.ps1 logs backend   la salida de un proceso (backend, web, share o anvil)
+#   .\dev.ps1 logs backend   la salida de un proceso (backend, web o share)
 #
 # No se abre ninguna ventana: cada proceso corre oculto y su salida queda en
 # .logs\<nombre>.log. Para cortarlos, .\dev.ps1 stop.
 param([string]$accion = "start", [string]$cual = "")
 
 $root    = $PSScriptRoot
-$raffles = "C:\Users\imfra\Downloads\primal-raffles"
-$foundry = "$env:USERPROFILE\.foundry\bin"
-$puertos = 8545, 3001, 4321, 4322
+$puertos = 3001, 4321, 4322
 
 function Ocupado($p) { [bool](Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue) }
+# Mata el arbol entero desde arriba: matando solo el que escucha, el nodemon
+# del backend lo relanzaba y se quedaba con el log tomado.
+function Raiz($id) {
+  while ($true) {
+    $padre = Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction SilentlyContinue
+    if (-not $padre) { return $id }
+    $arriba = Get-CimInstance Win32_Process -Filter "ProcessId=$($padre.ParentProcessId)" -ErrorAction SilentlyContinue
+    if (-not $arriba) { return $id }
+    $lanzado = $arriba.Name -eq 'powershell.exe' -and $arriba.CommandLine -match '-EncodedCommand'
+    if ($arriba.Name -notin 'node.exe', 'cmd.exe' -and -not $lanzado) { return $id }
+    $id = $arriba.ProcessId
+    if ($lanzado) { return $id }
+  }
+}
 function Cerrar($p) {
   Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue |
-    ForEach-Object { taskkill /PID $_.OwningProcess /T /F | Out-Null }
+    ForEach-Object { taskkill /PID (Raiz $_.OwningProcess) /T /F 2>&1 | Out-Null }
 }
 function Esperar($p) { while (-not (Ocupado $p)) { Start-Sleep -Milliseconds 500 } }
 
@@ -39,7 +51,7 @@ function Lanzar($nombre, $comando) {
 
 if ($accion -eq "logs") {
   $archivo = "$logs\$cual.log"
-  if (-not $cual -or -not (Test-Path $archivo)) { Write-Host "Uso: .\dev.ps1 logs <backend|web|share|anvil>"; return }
+  if (-not $cual -or -not (Test-Path $archivo)) { Write-Host "Uso: .\dev.ps1 logs <backend|web|share>"; return }
   Get-Content $archivo -Tail 40 -Wait
   return
 }
@@ -114,7 +126,7 @@ if ($accion -eq "share" -or $accion -eq "tunnel") {
 
   Esperar 3001; Esperar 4321
   Write-Host ""
-  Write-Host "Backend y sitio listos (sin raffles, sin publicar en produccion)."
+  Write-Host "Backend y sitio listos (sin publicar en produccion)."
   Write-Host "Vos: http://localhost:4321. Para pasarle cambios al link: .\dev.ps1 rebuild (en otra terminal)."
   Write-Host "Abajo aparece el link https://....trycloudflare.com para pasarle al duenio."
   Write-Host "Ctrl+C lo corta. Despues: .\dev.ps1 stop; .\dev.ps1 para volver a lo normal."
@@ -124,17 +136,7 @@ if ($accion -eq "share" -or $accion -eq "tunnel") {
   return
 }
 
-# 1. Blockchain local + contrato de raffles (el despliegue da siempre las mismas direcciones)
-if (-not (Ocupado 8545)) {
-  Lanzar anvil "& '$foundry\anvil.exe'"
-  Esperar 8545
-  Push-Location $raffles
-  & "$foundry\forge.exe" script script/DesplegarLocal.s.sol --tc DesplegarLocal --rpc-url http://localhost:8545 --broadcast | Out-Null
-  Pop-Location
-  Write-Host "anvil + raffles desplegados"
-}
-
-# 2. Backend (3001) y 3. sitio Astro (4321)
+# Backend (3001) y sitio Astro (4321)
 if (-not (Ocupado 3001)) { Lanzar backend "cd '$root\backend'; npm run dev" }
 if (-not (Ocupado 4321)) { Lanzar web "cd '$root\web'; npm run dev" }
 

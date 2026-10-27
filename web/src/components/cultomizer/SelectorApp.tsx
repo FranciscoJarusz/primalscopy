@@ -13,7 +13,7 @@ export default function SelectorPage({ demo }: { demo?: number }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState<'id' | 'name'>('id');
 
-    const { address, status } = useAccount();
+    const { status } = useAccount();
     const reales = useUserNFTs();
     const { balance, refreshNfts } = reales;
     const demoNfts = useMemo(

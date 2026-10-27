@@ -4,7 +4,6 @@ import { FiChevronDown, FiSearch, FiSliders, FiX } from 'react-icons/fi';
 import {
     leerColeccion,
     leerDe,
-    urlFicha,
     UNICO,
     type Coleccion,
 } from '@/lib/explore';
