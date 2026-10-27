@@ -6,27 +6,13 @@ import node from "@astrojs/node";
 import vercel from "@astrojs/vercel";
 import tailwindcss from "@tailwindcss/vite";
 
-// Raffles todavia no sale: la pagina vive fuera de src/pages y solo se registra
-// en `astro dev`, donde corre contra el anvil local. En el build de produccion
-// la ruta no existe y su codigo (contrato de prueba, cuentas demo) no se empaqueta.
-const rafflesSoloEnDev = {
-  name: "raffles-solo-en-dev",
-  hooks: {
-    /** @param {{ command: string, injectRoute: (r: { pattern: string, entrypoint: string }) => void }} opciones */
-    "astro:config:setup": ({ command, injectRoute }) => {
-      if (command !== "dev") return;
-      injectRoute({ pattern: "/raffles", entrypoint: "./src/raffles/pagina.astro" });
-    },
-  },
-};
-
 // https://astro.build/config
 export default defineConfig({
   // El dominio principal: de aca salen la URL canonica y la de la imagen para
   // compartir (ver BaseLayout).
   site: "https://primalcult.xyz",
 
-  integrations: [react(), rafflesSoloEnDev],
+  integrations: [react()],
 
   // El sitio sigue siendo estatico por defecto: la landing y el resto de las
   // pantallas se generan una vez y se sirven como HTML, que es lo mas rapido.

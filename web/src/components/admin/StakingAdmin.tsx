@@ -9,6 +9,7 @@ import {
     etiqueta,
     fecha,
     fog,
+    Indice,
     lista,
     panel,
     titulo,
@@ -234,11 +235,20 @@ export default function StakingAdmin({ token }: { token: string }) {
                     keep the rate they started with.
                 </p>
             </div>
+            <Indice
+                secciones={[
+                    { id: 'status', nombre: 'Status' },
+                    { id: 'boost', nombre: 'Boost' },
+                    { id: 'rates', nombre: 'Rates' },
+                    { id: 'wallets', nombre: 'Wallets' },
+                    { id: 'stopped', nombre: 'Stopped early' },
+                ]}
+            />
 
             {error && <p className="text-red-300">{error}</p>}
 
             {resumen && (
-                <div className={panel}>
+                <div id="status" className={`${panel} scroll-mt-32`}>
                     <div className="flex flex-wrap items-center gap-3">
                         <span
                             className={`rounded-md px-2.5 uppercase ${
@@ -300,7 +310,7 @@ export default function StakingAdmin({ token }: { token: string }) {
             )}
 
             {resumen && (
-                <div className={panel}>
+                <div id="boost" className={`${panel} scroll-mt-32`}>
                     <BoostAdmin
                         boosts={resumen.config.boosts ?? []}
                         enviar={async (cambios) => {
@@ -312,7 +322,7 @@ export default function StakingAdmin({ token }: { token: string }) {
             )}
 
             {borrador && (
-                <form onSubmit={guardar} className={panel}>
+                <form onSubmit={guardar} id="rates" className={`${panel} scroll-mt-32`}>
                     <h2 className={titulo}>Rates</h2>
                     <label className={`${etiqueta} max-w-48`}>
                         FOG per day, per Primal
@@ -571,7 +581,7 @@ export default function StakingAdmin({ token }: { token: string }) {
 
             {resumen && (
                 <div className="grid gap-5 sm:gap-8 lg:grid-cols-2">
-                    <div className={panel}>
+                    <div id="wallets" className={`${panel} scroll-mt-32`}>
                         <h2 className={titulo}>Wallets</h2>
                         {resumen.topWallets.length === 0 ? (
                             <p className="text-lightblue/70">
@@ -622,7 +632,7 @@ export default function StakingAdmin({ token }: { token: string }) {
                         )}
                     </div>
                     <div className="flex flex-col gap-5 sm:gap-8">
-                        <div className={panel}>
+                        <div id="stopped" className={`${panel} scroll-mt-32`}>
                             <h2 className={titulo}>Stopped early</h2>
                             {resumen.endings.length === 0 ? (
                                 <p className="text-lightblue/70">

@@ -1,7 +1,7 @@
 // El popup despues de mandar Primals a entrenar: confirma que salio y deja
 // twittearlo. La primera vez que la wallet stakea es una bienvenida, con
 // rayos y confeti como el premio de una ruleta.
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { miniaturaPrimal } from '@/lib/staking';
 
@@ -30,13 +30,16 @@ const CSS = `
 
 const MAX_MINIATURAS = 5;
 
+export type Celebracion = { titulo: string; imagen: string; mensaje: ReactNode; tweet: string };
+
 export default function StakeCompartir({
     tokenIds,
     dias,
     zona,
     primera,
+    otro,
     onCerrar,
-}: Stakeado & { onCerrar: () => void }) {
+}: Stakeado & { otro?: Celebracion; onCerrar: () => void }) {
     useEffect(() => {
         const alTeclado = (e: KeyboardEvent) => e.key === 'Escape' && onCerrar();
         window.addEventListener('keydown', alTeclado);
@@ -47,7 +50,8 @@ export default function StakeCompartir({
     const primals = `${n} Primal${n === 1 ? '' : 's'}`;
     const texto = `Now staking and summoning FOG for ${dias} days with my ${primals}! Stake yours here: ${window.location.origin}/staking\n\n#CultNeverDies #PrimalCult`;
     const tweet = new URL('https://x.com/intent/tweet');
-    tweet.searchParams.set('text', texto);
+    tweet.searchParams.set('text', otro?.tweet ?? texto);
+    const festejo = primera || Boolean(otro);
 
     const confeti = useMemo(
         () =>
@@ -78,7 +82,7 @@ export default function StakeCompartir({
             <div
                 role="dialog"
                 aria-modal="true"
-                aria-label={primera ? 'Welcome to the Fog' : 'Staking started'}
+                aria-label={otro?.titulo ?? (primera ? 'Welcome to the Fog' : 'Staking started')}
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-full max-w-md bg-darkblue rounded-2xl p-5 sm:p-6 shadow-lg shadow-darkblue/50 ring-1 ring-lightblue/15 flex flex-col items-center gap-4 text-center overflow-hidden transition-all duration-300 ease-out starting:opacity-0 starting:scale-95 starting:translate-y-4"
             >
@@ -91,19 +95,21 @@ export default function StakeCompartir({
                     ×
                 </button>
                 <h2 className="stake-pop font-accent uppercase text-yellow text-3xl sm:text-4xl">
-                    {primera ? 'Welcome to the Fog!' : 'Staking started!'}
+                    {otro?.titulo ?? (primera ? 'Welcome to the Fog!' : 'Staking started!')}
                 </h2>
 
                 <div className="relative grid place-items-center py-3 w-full">
-                    {primera && (
+                    {festejo && (
                         <>
-                            <div
-                                className="stake-rayos pointer-events-none absolute size-96 rounded-full"
-                                style={{
-                                    background: 'repeating-conic-gradient(#7cf2c455 0deg 10deg, transparent 10deg 24deg)',
-                                    maskImage: 'radial-gradient(circle, black 20%, transparent 68%)',
-                                }}
-                            />
+                            {primera && (
+                                <div
+                                    className="stake-rayos pointer-events-none absolute size-96 rounded-full"
+                                    style={{
+                                        background: 'repeating-conic-gradient(#7cf2c455 0deg 10deg, transparent 10deg 24deg)',
+                                        maskImage: 'radial-gradient(circle, black 20%, transparent 68%)',
+                                    }}
+                                />
+                            )}
                             <div className="pointer-events-none absolute inset-0 grid place-items-center">
                                 {confeti.map((c, i) => (
                                     <i
@@ -126,7 +132,14 @@ export default function StakeCompartir({
                         </>
                     )}
                     <div className="stake-pop relative flex items-center justify-center" style={{ animationDelay: '.1s' }}>
-                        {visibles.map((id, i) => (
+                        {otro && (
+                            <img
+                                src={otro.imagen}
+                                alt=""
+                                className="size-32 sm:size-36 rounded-xl object-cover ring-2 ring-darkblue shadow-lg shadow-darkblue/50 bg-blue"
+                            />
+                        )}
+                        {!otro && visibles.map((id, i) => (
                             <img
                                 key={id}
                                 src={miniaturaPrimal(id, 192)}
@@ -135,7 +148,7 @@ export default function StakeCompartir({
                                 style={{ zIndex: visibles.length - i }}
                             />
                         ))}
-                        {resto > 0 && (
+                        {!otro && resto > 0 && (
                             <span className="-ml-6 sm:-ml-8 size-20 sm:size-24 rounded-xl ring-2 ring-darkblue bg-blue grid place-items-center font-accent text-yellow text-2xl leading-none pb-1.5">
                                 +{resto}
                             </span>
@@ -144,6 +157,7 @@ export default function StakeCompartir({
                 </div>
 
                 <p className="stake-pop text-lightblue text-base sm:text-lg" style={{ animationDelay: '.2s' }}>
+                    {otro ? otro.mensaje : <>
                     {primals} {n === 1 ? 'is' : 'are'} training
                     {zona ? (
                         <>
@@ -152,6 +166,7 @@ export default function StakeCompartir({
                     ) : null}{' '}
                     for {dias} days.
                     {primera && ' Come back when the period ends to keep earning FOG.'}
+                    </>}
                 </p>
 
                 <div className="stake-pop flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: '.3s' }}>

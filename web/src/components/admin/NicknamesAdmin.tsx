@@ -1,14 +1,13 @@
-// Panel de apodos: lista los que eligieron los holders y deja borrar los que
-// no corresponden.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiArrowUpRight, FiTrash2 } from 'react-icons/fi';
 import { APECHAIN } from '@/lib/cultomizer/contracts';
 import { BACKEND_URL } from '@/lib/backend';
+import { Indice } from './comun';
+import ExiledAdmin from './ExiledAdmin';
 
 type Nickname = { address: string; nickname: string; updatedAt: string };
 
 export default function NicknamesAdmin({ token }: { token: string }) {
-
     const [lista, setLista] = useState<Nickname[] | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [busqueda, setBusqueda] = useState('');
@@ -32,12 +31,20 @@ export default function NicknamesAdmin({ token }: { token: string }) {
     }, [token, cargar]);
 
     const borrar = async (n: Nickname) => {
-        if (!confirm(`Delete the nickname "${n.nickname}"? The wallet will be able to choose a new one.`)) return;
+        if (
+            !confirm(
+                `Delete the nickname "${n.nickname}"? The wallet will be able to choose a new one.`
+            )
+        )
+            return;
         setBorrando(n.address);
         try {
             const respuesta = await fetch(
                 `${BACKEND_URL}/admin/nicknames/${n.address}`,
-                { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+                {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                }
             );
             if (!respuesta.ok && respuesta.status !== 404) throw new Error();
             setLista((l) => l?.filter((x) => x.address !== n.address) ?? null);
@@ -60,15 +67,25 @@ export default function NicknamesAdmin({ token }: { token: string }) {
         <main className="flex flex-col gap-5 sm:gap-8">
             <div>
                 <h1 className="font-accent uppercase text-yellow text-4xl sm:text-6xl lg:text-7xl">
-                    Nicknames
+                    Community
                 </h1>
                 <p className="text-base sm:text-lg text-lightblue mt-3 max-w-2xl">
-                    The nicknames holders chose for the Top Holders list. Delete
-                    any that shouldn't be there.
+                    What holders show on the site: nicknames and profile bios,
+                    plus the code of the Exiled easter egg on the home page.
                 </p>
             </div>
+            <Indice
+                secciones={[
+                    { id: 'nicknames', nombre: 'Nicknames' },
+                    { id: 'bios', nombre: 'Profile bios' },
+                    { id: 'exiled', nombre: 'Exiled code' },
+                ]}
+            />
 
-            <section className="flex flex-col gap-4 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50">
+            <section
+                id="nicknames"
+                className="scroll-mt-32 flex flex-col gap-4 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50"
+            >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <input
                         value={busqueda}
@@ -78,7 +95,8 @@ export default function NicknamesAdmin({ token }: { token: string }) {
                     />
                     {lista && (
                         <span className="text-sm text-lightblue/70">
-                            {lista.length} nickname{lista.length === 1 ? '' : 's'}
+                            {lista.length} nickname
+                            {lista.length === 1 ? '' : 's'}
                         </span>
                     )}
                 </div>
@@ -89,7 +107,9 @@ export default function NicknamesAdmin({ token }: { token: string }) {
                     <p className="text-lightblue/70">Loading...</p>
                 ) : filtrada.length === 0 ? (
                     <p className="text-lightblue/70">
-                        {busqueda ? 'No matches.' : 'Nobody has chosen a nickname yet.'}
+                        {busqueda
+                            ? 'No matches.'
+                            : 'Nobody has chosen a nickname yet.'}
                     </p>
                 ) : (
                     <ul className="flex flex-col gap-2">
@@ -113,11 +133,14 @@ export default function NicknamesAdmin({ token }: { token: string }) {
                                     </a>
                                 </div>
                                 <span className="hidden sm:block text-xs text-lightblue/50 shrink-0">
-                                    {new Date(n.updatedAt).toLocaleDateString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        year: 'numeric',
-                                    })}
+                                    {new Date(n.updatedAt).toLocaleDateString(
+                                        'en-US',
+                                        {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            year: 'numeric',
+                                        }
+                                    )}
                                 </span>
                                 <button
                                     onClick={() => borrar(n)}
@@ -135,6 +158,7 @@ export default function NicknamesAdmin({ token }: { token: string }) {
             </section>
 
             <Bios token={token} />
+            <ExiledAdmin token={token} />
         </main>
     );
 }
@@ -148,20 +172,30 @@ function Bios({ token }: { token: string }) {
 
     useEffect(() => {
         if (!token) return;
-        fetch(`${BACKEND_URL}/admin/bios`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${BACKEND_URL}/admin/bios`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
             .then((r) => (r.ok ? r.json() : Promise.reject()))
             .then(setLista)
             .catch(() => setError("Couldn't load the bios."));
     }, [token]);
 
     const borrar = async (b: Bio) => {
-        if (!confirm('Delete this bio? The holder will be able to write a new one.')) return;
+        if (
+            !confirm(
+                'Delete this bio? The holder will be able to write a new one.'
+            )
+        )
+            return;
         setBorrando(b.address);
         try {
-            const respuesta = await fetch(`${BACKEND_URL}/admin/bios/${b.address}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const respuesta = await fetch(
+                `${BACKEND_URL}/admin/bios/${b.address}`,
+                {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
             if (!respuesta.ok && respuesta.status !== 404) throw new Error();
             setLista((l) => l?.filter((x) => x.address !== b.address) ?? null);
         } catch {
@@ -172,13 +206,20 @@ function Bios({ token }: { token: string }) {
     };
 
     return (
-        <section className="flex flex-col gap-4 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50">
-            <h2 className="font-accent uppercase text-yellow text-2xl sm:text-3xl">Profile bios</h2>
+        <section
+            id="bios"
+            className="scroll-mt-32 flex flex-col gap-4 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50"
+        >
+            <h2 className="font-accent uppercase text-yellow text-2xl sm:text-3xl">
+                Profile bios
+            </h2>
             {error && <p className="text-sm text-red-300">{error}</p>}
             {!lista ? (
                 <p className="text-lightblue/70">Loading...</p>
             ) : lista.length === 0 ? (
-                <p className="text-lightblue/70">Nobody has written a bio yet.</p>
+                <p className="text-lightblue/70">
+                    Nobody has written a bio yet.
+                </p>
             ) : (
                 <ul className="flex flex-col gap-2">
                     {lista.map((b) => (
@@ -187,7 +228,9 @@ function Bios({ token }: { token: string }) {
                             className="flex items-center gap-3 rounded-xl border border-lightblue/10 bg-lightblue/5 px-4 py-2.5"
                         >
                             <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                <span className="text-sm text-lightblue whitespace-pre-line break-words">{b.bio}</span>
+                                <span className="text-sm text-lightblue whitespace-pre-line wrap-break-word">
+                                    {b.bio}
+                                </span>
                                 <a
                                     href={`/holder/${b.address}`}
                                     target="_blank"

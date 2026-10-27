@@ -8,13 +8,16 @@
 // pestaña: volver es instantaneo y no se pierde lo que se estaba editando.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FiLogOut } from 'react-icons/fi';
-import { ADMIN_SECCIONES, alRegalar } from '@/lib/admin';
+import { ADMIN_SECCIONES, alIrA, alRegalar } from '@/lib/admin';
 import { AdminLogin, useAdminToken } from './Acceso';
 import TraitsAdmin from './TraitsAdmin';
 import NicknamesAdmin from './NicknamesAdmin';
 import PromoAdmin from './PromoAdmin';
 import StakingAdmin from './StakingAdmin';
 import ShopAdmin from './ShopAdmin';
+import RafflesAdmin from './RafflesAdmin';
+import PendientesAdmin from './PendientesAdmin';
+import EntregasAdmin from './EntregasAdmin';
 
 const PANELES: Record<string, (props: { token: string }) => ReactNode> = {
     traits: TraitsAdmin,
@@ -22,11 +25,16 @@ const PANELES: Record<string, (props: { token: string }) => ReactNode> = {
     promo: PromoAdmin,
     staking: StakingAdmin,
     shop: ShopAdmin,
+    raffles: RafflesAdmin,
+    todo: PendientesAdmin,
+    deliveries: EntregasAdmin,
 };
 
 function seccionDeLaUrl() {
     const id = location.pathname.split('/')[2];
-    return ADMIN_SECCIONES.some((s) => s.id === id) ? id : ADMIN_SECCIONES[0].id;
+    return ADMIN_SECCIONES.some((s) => s.id === id)
+        ? id
+        : ADMIN_SECCIONES[0].id;
 }
 
 export default function AdminApp() {
@@ -36,7 +44,9 @@ export default function AdminApp() {
 
     const mostrar = (id: string) => {
         setSeccion(id);
-        setAbiertas((antes) => (antes.has(id) ? antes : new Set(antes).add(id)));
+        setAbiertas((antes) =>
+            antes.has(id) ? antes : new Set(antes).add(id)
+        );
     };
 
     const ir = (id: string) => {
@@ -50,6 +60,7 @@ export default function AdminApp() {
     const irRef = useRef(ir);
     irRef.current = ir;
     useEffect(() => alRegalar(() => irRef.current('promo')), []);
+    useEffect(() => alIrA((id) => irRef.current(id)), []);
 
     // Atras y adelante del navegador.
     useEffect(() => {
@@ -83,7 +94,13 @@ export default function AdminApp() {
                         href={s.href}
                         onClick={(e) => {
                             // Con Ctrl o el boton del medio, que abra otra pestaña.
-                            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                            if (
+                                e.metaKey ||
+                                e.ctrlKey ||
+                                e.shiftKey ||
+                                e.button !== 0
+                            )
+                                return;
                             e.preventDefault();
                             ir(s.id);
                         }}
@@ -119,7 +136,13 @@ export default function AdminApp() {
 }
 
 // Una seccion que entra con un fundido cada vez que se muestra.
-function Seccion({ visible, children }: { visible: boolean; children: ReactNode }) {
+function Seccion({
+    visible,
+    children,
+}: {
+    visible: boolean;
+    children: ReactNode;
+}) {
     const [entrando, setEntrando] = useState(true);
 
     useEffect(() => {
@@ -141,7 +164,9 @@ function Seccion({ visible, children }: { visible: boolean; children: ReactNode 
         <div
             hidden={!visible}
             className={`flex-1 flex flex-col transition-all duration-300 ${
-                entrando ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
+                entrando
+                    ? 'opacity-0 translate-y-2'
+                    : 'opacity-100 translate-y-0'
             }`}
         >
             {children}

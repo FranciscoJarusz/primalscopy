@@ -51,6 +51,26 @@ export function useQuien() {
     };
 }
 
+export function Indice({ secciones }: { secciones: { id: string; nombre: string }[] }) {
+    return (
+        <nav aria-label="Sections" className="flex flex-wrap gap-2">
+            {secciones.map((s) => (
+                <a
+                    key={s.id}
+                    href={`#${s.id}`}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    className="rounded-md bg-lightblue text-darkblue px-3 pb-1.5 leading-normal! font-accent uppercase cursor-pointer hover:bg-yellow active:scale-97 transition-all duration-300"
+                >
+                    {s.nombre}
+                </a>
+            ))}
+        </nav>
+    );
+}
+
 // Una lista larga que arranca cerrada: el titulo y el resumen se ven siempre,
 // y abierta conserva su propio scroll (ver `lista`).
 export function Desplegable({

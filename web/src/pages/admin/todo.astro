@@ -1,0 +1,10 @@
+---
+// Todas las secciones del admin son la misma app (AdminApp): esta ruta existe
+// para que /admin/todo abra directo en su pestaÃ±a.
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AdminApp from "@/components/admin/AdminApp";
+---
+
+<AdminLayout title="To do - Admin - Primal Cult">
+  <AdminApp client:only="react" />
+</AdminLayout>

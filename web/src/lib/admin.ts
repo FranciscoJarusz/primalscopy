@@ -2,11 +2,14 @@
 // una: se agrega aca, se registra su panel en PANELES de AdminApp.tsx y se crea
 // src/pages/admin/<id>.astro (para que /admin/<id> abra directo en ella).
 export const ADMIN_SECCIONES = [
-    { id: 'traits', nombre: 'Traits', href: '/admin/traits' },
-    { id: 'nicknames', nombre: 'Nicknames', href: '/admin/nicknames' },
-    { id: 'promo', nombre: 'Promo Codes', href: '/admin/promo' },
-    { id: 'staking', nombre: 'Staking', href: '/admin/staking' },
+    { id: 'todo', nombre: 'To do', href: '/admin/todo' },
+    { id: 'deliveries', nombre: 'Deliveries', href: '/admin/deliveries' },
+    { id: 'raffles', nombre: 'Raffles', href: '/admin/raffles' },
     { id: 'shop', nombre: 'Shop', href: '/admin/shop' },
+    { id: 'staking', nombre: 'Staking', href: '/admin/staking' },
+    { id: 'promo', nombre: 'Codes', href: '/admin/promo' },
+    { id: 'nicknames', nombre: 'Community', href: '/admin/nicknames' },
+    { id: 'traits', nombre: 'Traits', href: '/admin/traits' },
 ];
 
 const EVENTO_REGALAR = 'admin-regalar';
@@ -26,4 +29,16 @@ export function tomarRegalo() {
 export function alRegalar(fn: () => void) {
     window.addEventListener(EVENTO_REGALAR, fn);
     return () => window.removeEventListener(EVENTO_REGALAR, fn);
+}
+
+const EVENTO_IR = 'admin-ir';
+
+export function irA(id: string) {
+    window.dispatchEvent(new CustomEvent(EVENTO_IR, { detail: id }));
+}
+
+export function alIrA(fn: (id: string) => void) {
+    const escuchar = (e: Event) => fn((e as CustomEvent<string>).detail);
+    window.addEventListener(EVENTO_IR, escuchar);
+    return () => window.removeEventListener(EVENTO_IR, escuchar);
 }

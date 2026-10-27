@@ -1,0 +1,8 @@
+---
+import CultomizerLayout from '@/layouts/CultomizerLayout.astro';
+import ListaIsland from '@/components/raffles/ListaIsland';
+---
+
+<CultomizerLayout title="Raffles - Primal Cult" description="Enter Primal Cult raffles: free for holders, open to everyone with FOG." activo="raffles">
+    <ListaIsland client:only="react" />
+</CultomizerLayout>

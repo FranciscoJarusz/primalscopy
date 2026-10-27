@@ -1,5 +1,6 @@
 const express = require('express');
 const multer = require('multer');
+const fs = require('fs');
 const path = require('path');
 
 const { adminAuth } = require('../middleware/adminAuth');
@@ -14,6 +15,9 @@ const exiled = require('../lib/exiledStore');
 const staking = require('../lib/stakingStore');
 const { verifyStakes, refreshVaultNow } = require('../lib/stakingJob');
 const wheels = require('../lib/stakingWheels');
+const raffles = require('../lib/raffleStore');
+const traitShop = require('../lib/traitShopStore');
+const { resolveLayerPath } = require('../controllers/nftController');
 const {
     listTraits,
     uploadTrait,
@@ -217,6 +221,45 @@ router.post('/staking/verify', async (req, res) => {
     } catch (error) {
         res.status(503).json({ error: `Couldn't check right now: ${error.message}` });
     }
+});
+
+const conRaffle = (res, result) => {
+    if (result.error) return res.status(result.status || 400).json({ error: result.error });
+    res.json(result);
+};
+const conDrop = (res, result) =>
+    result.error ? res.status(result.status).json({ error: result.error }) : res.json(result);
+
+router.get('/trait-drops', (req, res) => res.json(traitShop.adminList()));
+
+// body: { trait: '/assets/traits/HAT/_GLOBAL/X.gif', price, startsAt?, endsAt?, supply? }
+router.post('/trait-drops', (req, res) => {
+    const file = resolveLayerPath(String(req.body?.trait || ''));
+    if (!file || !fs.existsSync(file)) return res.status(404).json({ error: "That trait doesn't exist." });
+    conDrop(res, traitShop.create(req.body));
+});
+router.put('/trait-drops/:id', (req, res) => conDrop(res, traitShop.update(req.params.id, req.body)));
+router.post('/trait-drops/:id/end', (req, res) => conDrop(res, traitShop.end(req.params.id)));
+router.delete('/trait-drops/:id', (req, res) => conDrop(res, traitShop.remove(req.params.id)));
+
+router.get('/raffles', (req, res) => res.json(raffles.adminList()));
+router.post('/raffles', (req, res) => conRaffle(res, raffles.create(req.body || {})));
+router.patch('/raffles/:id', (req, res) => conRaffle(res, raffles.update(req.params.id, req.body || {})));
+router.delete('/raffles/:id', (req, res) => conRaffle(res, raffles.remove(req.params.id)));
+router.post('/raffles/:id/open', (req, res) => conRaffle(res, raffles.open(req.params.id)));
+router.post('/raffles/:id/cancel', (req, res) => conRaffle(res, raffles.cancel(req.params.id)));
+router.post('/raffles/:id/reroll', (req, res) => conRaffle(res, raffles.reroll(req.params.id, req.body?.slots)));
+router.patch('/raffles/:id/winners/:slot', (req, res) => conRaffle(res, raffles.setWinnerStatus(req.params.id, req.params.slot, req.body || {})));
+router.post('/raffles/:id/draw', async (req, res) => {
+    try {
+        conRaffle(res, await raffles.draw(req.params.id));
+    } catch (error) {
+        res.status(503).json({ error: `Couldn't check the holders right now: ${error.message}` });
+    }
+});
+router.post('/raffles/:id/image', uploadIcon.single('file'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Pick an image.' });
+    conRaffle(res, await raffles.setImage(req.params.id, req.file.buffer));
 });
 
 router.use(adminErrorHandler);

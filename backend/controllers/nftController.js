@@ -140,6 +140,9 @@ async function getNftMetadata(nftId) {
 async function buildCustomizationOptions(nftId, metadataOverride = null) {
         const metadata = metadataOverride || await getNftMetadata(nftId);
         const customizationOptions = {};
+        // Los traits con drop llevan su precio y en que estado esta la venta;
+        // null los comunes.
+        const drops = require('../lib/traitShopStore').publicDrops();
 
         const traitValuesByCategory = {};
         for (const category of CATEGORY_CONFIG) {
@@ -184,7 +187,7 @@ async function buildCustomizationOptions(nftId, metadataOverride = null) {
 
             customizationOptions[category.apiName] = {
                 currentValue,
-                variants
+                variants: variants.map(variant => ({ ...variant, drop: drops[variant.imageUrl] ?? null }))
             };
         }
 

@@ -66,7 +66,6 @@ const DEFAULT_CONFIG = {
         { id: 'lowkey', kind: 'key', label: 'LOW KEY', description: 'NFT drop on ApeChain, floor 1-30 APE', price: 50000, enabled: true },
         { id: 'highkey', kind: 'key', label: 'HIGH KEY', description: 'NFT drop on ApeChain, floor 30-90 APE', price: 500000, enabled: true },
         { id: 'fogkey', kind: 'key', label: 'FOG KEY', description: 'NFT drop on ApeChain, floor 90-200 APE', price: 1000000, enabled: true },
-        { id: 'raffle-ticket', kind: 'raffle', label: 'RAFFLE TICKET', description: 'One entry to a Primal raffle', price: 5000, enabled: true },
         { id: 'forge-roll', kind: 'forge-roll', label: 'REROLL TICKET', description: 'One roll in the Forge', price: 20000, enabled: true },
         { id: 'summon-shard', kind: 'key', label: 'PRIMAL KEY', description: 'Win a Primal from the vault', price: 500000, enabled: true },
         // Los APE salen de la wallet del proyecto: arrancan sin stock y no se
@@ -86,7 +85,7 @@ const IDS_RESERVADOS = ['fog'];
 
 // Los premios que se entregan solos al canjear. El resto del catalogo se
 // muestra pero todavia no se puede canjear: hay que mandar APE o NFTs reales,
-// o depende de algo que no existe todavia (raffles, el firmante del contrato).
+// o depende de algo que no existe todavia (el firmante del contrato).
 // `grant` recibe la wallet y un id unico del canje.
 // Las keys y el Summon shard son ruletas (lib/stakingWheels.js): `grant`
 // sortea el premio y devuelve el FOG que hay que acreditar ya, si toco FOG.
@@ -1125,6 +1124,37 @@ function grantFog(wallet, amount, reason) {
     return { fog: amount };
 }
 
+// Cobra FOG por algo que no es del catalogo (las entradas de los raffles).
+// Devuelve { balance } o { error, reason, status }.
+function spendFog(wallet, amount, reason) {
+    const key = wallet.toLowerCase();
+    const active = activosLectura();
+    const wallets = readWallets();
+    const { balance } = balanceOf(key, active, wallets);
+    if (balance < amount) {
+        return { error: `You need ${amount.toLocaleString('en-US')} FOG and have ${balance.toLocaleString('en-US')}.`, reason: 'insufficient', status: 402 };
+    }
+    const totals = wallets[key] || { earned: 0, spent: 0 };
+    wallets[key] = { ...totals, spent: totals.spent + amount };
+    guardar(WALLETS_PATH, wallets);
+    appendHistory({ event: 'spend', wallet: key, fog: amount, reason });
+    return { balance: balance - amount };
+}
+
+// Devuelve lo cobrado con spendFog: baja `spent`, no suma a `earned`, asi el
+// ranking de FOG ganado no cambia.
+function refundFog(wallet, amount, reason) {
+    const key = wallet.toLowerCase();
+    const wallets = readWallets();
+    const totals = wallets[key] || { earned: 0, spent: 0 };
+    wallets[key] = { ...totals, spent: totals.spent - amount };
+    guardar(WALLETS_PATH, wallets);
+    appendHistory({ event: 'refund', wallet: key, fog: amount, reason });
+    return { fog: amount };
+}
+
+const balanceDe = wallet => balanceOf(wallet).balance;
+
 const MIN_APE = 1;
 const WEI = 10n ** 18n;
 
@@ -1271,6 +1301,9 @@ module.exports = {
     streaksByWallet,
     redeem,
     grantFog,
+    spendFog,
+    refundFog,
+    balanceDe,
     giveItem,
     adminSummary,
     isValidTokenId

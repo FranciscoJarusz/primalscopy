@@ -165,16 +165,13 @@ const clase = (id: string) =>
         principio, el menu del medio no se corre cuando cambia. Los 272px
         (min-w-68) son lo que mide la wallet conectada con 1 digito de Primals
         (260 con "1 Primal", 290 con "120 Primals"): mas reserva deja mas aire a
-        la derecha del menu que a la izquierda. Recien desde 1100px: mas angosto
-        no entran logo, menu y wallet conectada, y reservar apretaria el logo
-        tambien a quien no conecto nada.
+        la derecha del menu que a la izquierda. Debajo de 1300px "Log out" queda
+        solo con el icono y la wallet conectada mide 200px (min-w-50): con el
+        texto, a 1024px logo, menu y wallet entraban con 5px de sobra.
     -->
-    <div class="flex items-center justify-end gap-2 sm:gap-3 shrink-0 min-[1100px]:min-w-68">
+    <div class="flex items-center justify-end gap-2 sm:gap-3 shrink-0 min-[1024px]:min-w-50 min-[1300px]:min-w-68">
         <slot name="derecha">
-            <WalletIsland
-                client:only="react"
-                dato={activo === 'raffles' ? 'saldo' : 'primals'}
-            />
+            <WalletIsland client:only="react" />
         </slot>
 
         <button

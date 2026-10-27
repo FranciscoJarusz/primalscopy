@@ -33,7 +33,8 @@ const THUMBS_DIR = path.join(ASSETS_ROOT, 'thumbs');
 //   grilla  500 px sin perdida, tomando pixeles: la grilla del customizer.
 //           Es el arte en su tamaño real (los GIFs son bloques de 4x4 a 2000
 //           px), asi que comprime mucho mejor que la grande: esta, suavizada,
-//           pesaba ~720 KB en fondos con ruido.
+//           pesaba ~720 KB en fondos con ruido. Va recortada a lo que ocupa el
+//           trait (ver `recortar`): entera, unos ojos eran dos puntos.
 //   preview 1000 px sin perdida: las capas del preview del customizer, que se
 //           ve hasta 500 px (1000 reales en retina). Con el GIF original de
 //           2000 px el navegador decodificaba 7 capas de 4 millones de pixeles
@@ -46,7 +47,7 @@ const THUMBS_DIR = path.join(ASSETS_ROOT, 'thumbs');
 const TAMANOS = {
     chica: { lado: 256, webp: { quality: 70, effort: 4 }, sufijo: '' },
     grande: { lado: 640, webp: { lossless: true, effort: 1 }, sufijo: '.640' },
-    grilla: { lado: 500, kernel: 'nearest', webp: { lossless: true, effort: 1 }, sufijo: '.500' },
+    grilla: { lado: 500, kernel: 'nearest', webp: { lossless: true, effort: 1 }, sufijo: '.500c', recorte: true },
     preview: { lado: 1000, kernel: 'nearest', webp: { lossless: true, effort: 1 }, sufijo: '.1000' },
 };
 const LADO = TAMANOS.chica.lado;
@@ -92,6 +93,43 @@ function rutaOriginal(relativa) {
     return { original, relativa: path.relative(raiz, original) };
 }
 
+// Lo que ocupa el trait en cualquiera de sus cuadros, o null si es todo
+// transparente.
+async function caja(webp) {
+    const imagen = sharp(webp, { animated: true });
+    const paginas = (await imagen.metadata()).pages || 1;
+    const { data, info } = await imagen.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const alto = info.height / paginas;
+    let x0 = info.width, y0 = alto, x1 = -1, y1 = -1;
+    for (let y = 0; y < info.height; y++) {
+        const fila = y % alto;
+        for (let x = 0; x < info.width; x++) {
+            if (data[(y * info.width + x) * 4 + 3] <= 16) continue;
+            if (x < x0) x0 = x;
+            if (x > x1) x1 = x;
+            if (fila < y0) y0 = fila;
+            if (fila > y1) y1 = fila;
+        }
+    }
+    return x1 < 0 ? null : { left: x0, top: y0, width: x1 - x0 + 1, height: y1 - y0 + 1, ancho: info.width, alto };
+}
+
+// Agranda el trait hasta llenar el cuadro, centrado y con margen. Los que ya
+// ocupan casi todo (fondos, pelajes, tunicas) quedan como estan. Va en un paso
+// aparte: sharp aplica un solo resize por cadena y se perdia el primero.
+async function recortar(webp, { lado, kernel, webp: opciones }) {
+    const c = await caja(webp);
+    if (!c || (c.width >= c.ancho * 0.9 && c.height >= c.alto * 0.9)) return webp;
+    const margen = Math.round(lado * 0.08);
+    const vacio = { r: 0, g: 0, b: 0, alpha: 0 };
+    return sharp(webp, { animated: true })
+        .extract({ left: c.left, top: c.top, width: c.width, height: c.height })
+        .resize(lado - 2 * margen, lado - 2 * margen, { fit: 'contain', background: vacio, kernel })
+        .extend({ top: margen, bottom: margen, left: margen, right: margen, background: vacio })
+        .webp(opciones)
+        .toBuffer();
+}
+
 function mtime(archivo) {
     try {
         return fs.statSync(archivo).mtimeMs;
@@ -116,7 +154,7 @@ async function miniatura(relativa, tamano = 'chica') {
             // Se le pasa el contenido y no la ruta: con la ruta, sharp deja el
             // archivo abierto en su cache, y en Windows eso impide reemplazar
             // el trait desde /admin.
-            const webp = await sharp(fs.readFileSync(original), { animated: true })
+            let webp = await sharp(fs.readFileSync(original), { animated: true })
                 .resize(config.lado, config.lado, {
                     fit: 'inside',
                     withoutEnlargement: true,
@@ -124,6 +162,7 @@ async function miniatura(relativa, tamano = 'chica') {
                 })
                 .webp(config.webp)
                 .toBuffer();
+            if (config.recorte) webp = await recortar(webp, config);
             fs.mkdirSync(path.dirname(destino), { recursive: true });
             writeAtomic(destino, webp);
             return destino;

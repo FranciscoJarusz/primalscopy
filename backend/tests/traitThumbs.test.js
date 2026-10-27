@@ -65,10 +65,28 @@ async function main() {
         `(${metaGrande.width}, ${metaGrande.pages})`);
     const grilla = await miniatura('HAT/SPIKES/SPIKES-01.gif', 'grilla');
     const metaGrilla = await sharp(fs.readFileSync(grilla), { animated: true }).metadata();
-    check('la de grilla es otro archivo', grilla.endsWith('SPIKES-01.gif.500.webp'), grilla);
+    check('la de grilla es otro archivo', grilla.endsWith('SPIKES-01.gif.500c.webp'), grilla);
     check('la de grilla mide 500, animada y sin perdida',
         metaGrilla.width === 500 && metaGrilla.pages === 3 && fs.readFileSync(grilla).includes('VP8L'),
         `(${metaGrilla.width} px, ${metaGrilla.pages} cuadros)`);
+
+    // Unos ojos: un trait chico en un lienzo transparente.
+    const ojos = path.join(TMP, 'EYES', 'DOTS', 'DOTS-01.gif');
+    const punto = await sharp({ create: { width: 60, height: 30, channels: 4, background: { r: 255, g: 255, b: 0, alpha: 1 } } }).png().toBuffer();
+    const cuadrosOjos = [];
+    for (const left of [250, 270]) {
+        cuadrosOjos.push(await sharp({ create: { width: 600, height: 600, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+            .composite([{ input: punto, left, top: 280 }]).png().toBuffer());
+    }
+    fs.mkdirSync(path.dirname(ojos), { recursive: true });
+    fs.writeFileSync(ojos, await sharp(cuadrosOjos, { join: { animated: true } }).gif({ delay: [100, 100] }).toBuffer());
+    const recorte = await miniatura('EYES/DOTS/DOTS-01.gif', 'grilla');
+    const metaRecorte = await sharp(fs.readFileSync(recorte), { animated: true }).metadata();
+    const { info: ocupa } = await sharp(fs.readFileSync(recorte)).trim().toBuffer({ resolveWithObject: true });
+    // Sin recortar, el punto mediria 50 px de 500.
+    check('un trait chico se agranda hasta llenar la grilla', metaRecorte.width === 500 && ocupa.width > 250,
+        `(${metaRecorte.width} px, ocupa ${ocupa.width})`);
+    check('y sigue animado', metaRecorte.pages === 2, `(${metaRecorte.pages})`);
     const preview = await miniatura('HAT/SPIKES/SPIKES-01.gif', 'preview');
     const metaPreview = await sharp(fs.readFileSync(preview), { animated: true }).metadata();
     check('la del preview es otro archivo', preview.endsWith('SPIKES-01.gif.1000.webp'), preview);
@@ -96,7 +114,7 @@ async function main() {
     const otro = path.join(TMP, 'FACE', 'GRIN', 'GRIN-01.gif');
     await crearGif(otro);
     check('lista los traits y no lo de _generated',
-        JSON.stringify(listarTraits().sort()) === JSON.stringify(['FACE/GRIN/GRIN-01.gif', 'HAT/SPIKES/SPIKES-01.gif']),
+        JSON.stringify(listarTraits().sort()) === JSON.stringify(['EYES/DOTS/DOTS-01.gif', 'FACE/GRIN/GRIN-01.gif', 'HAT/SPIKES/SPIKES-01.gif']),
         JSON.stringify(listarTraits()));
     await generarTodas();
     const chicaNueva = path.join(THUMBS_DIR, 'FACE', 'GRIN', 'GRIN-01.gif.webp');

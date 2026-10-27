@@ -10,6 +10,7 @@ import {
     botonGuardar,
     campo,
     Desplegable,
+    Indice,
     etiqueta,
     fecha,
     fog,
@@ -19,7 +20,7 @@ import {
     useQuien,
 } from './comun';
 
-type Tipo = 'key' | 'ape' | 'nft' | 'forge-roll' | 'raffle';
+type Tipo = 'key' | 'ape' | 'nft' | 'forge-roll';
 type Premio = {
     id: string;
     kind: Tipo;
@@ -51,7 +52,6 @@ const TIPOS: Record<Tipo, string> = {
     ape: 'APE',
     nft: 'NFT',
     'forge-roll': 'Reroll',
-    raffle: 'Raffle',
 };
 const REGALABLES: Tipo[] = ['key', 'ape', 'nft'];
 
@@ -232,9 +232,18 @@ export default function ShopAdmin({ token }: { token: string }) {
                 </h1>
                 <p className="text-base sm:text-lg text-lightblue mt-3 max-w-2xl">
                     The FOG sale, what holders can buy with FOG, the prize wheels behind
-                    every key, and what has to be sent by hand.
+                    every key, and what was redeemed. Prizes to send by hand are in Deliveries.
                 </p>
             </div>
+            <Indice
+                secciones={[
+                    { id: 'fog-sale', nombre: 'FOG sale' },
+                    { id: 'rewards', nombre: 'Rewards' },
+                    { id: 'add-reward', nombre: 'Add reward' },
+                    { id: 'wheels', nombre: 'Prize wheels' },
+                    { id: 'redemptions', nombre: 'Redemptions' },
+                ]}
+            />
 
             {error && <p className="text-red-300">{error}</p>}
 
@@ -248,7 +257,7 @@ export default function ShopAdmin({ token }: { token: string }) {
             )}
 
             {filas && (
-                <form onSubmit={guardar} className={panel}>
+                <form onSubmit={guardar} id="rewards" className={`${panel} scroll-mt-32`}>
                     <h2 className={titulo}>Rewards</h2>
                     <p className="text-lightblue/70 text-sm -mt-2">
                         A key opens a prize wheel. APE and NFTs are sent by hand (they
@@ -454,7 +463,7 @@ export default function ShopAdmin({ token }: { token: string }) {
             )}
 
             {filas && (
-                <form onSubmit={crear} className={panel}>
+                <form onSubmit={crear} id="add-reward" className={`${panel} scroll-mt-32`}>
                     <h2 className={titulo}>Add reward</h2>
                     <p className="text-lightblue/70 text-sm -mt-2">
                         A new key comes with its own prize wheel below, ready to load.
@@ -526,7 +535,7 @@ export default function ShopAdmin({ token }: { token: string }) {
             )}
 
             {resumen && (
-                <div className={panel}>
+                <div id="redemptions" className={`${panel} scroll-mt-32`}>
                     <Desplegable
                         grande
                         nombre="Redemptions"

@@ -1,7 +1,6 @@
 import { useAppKit } from '@reown/appkit/react';
 import { useAccount, useBalance, useDisconnect, useReadContract } from 'wagmi';
 import { formatUnits } from 'viem';
-import { useStore } from '@nanostores/react';
 import { useEffect, useRef, useState } from 'react';
 import { FiChevronDown, FiCreditCard, FiGift, FiUser } from 'react-icons/fi';
 import AvatarWallet from '@/components/cultomizer/AvatarWallet';
@@ -10,7 +9,6 @@ import {
     NFT_ABI,
     NFT_CONTRACT_ADDRESS,
 } from '@/lib/cultomizer/contracts';
-import { version } from '@/stores/raffles/session';
 import { wagmiConfig } from '@/lib/cultomizer/wallet';
 import { useWalletSession } from '@/hooks/cultomizer/useWalletSession';
 import NicknameModal from '@/components/shared/NicknameModal';
@@ -101,7 +99,7 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
         return () => window.removeEventListener('primal:logout', salir);
     }, [disconnect]);
 
-    const { data: saldo, refetch: refetchSaldo } = useBalance({
+    const { data: saldo } = useBalance({
         address,
         chainId: APECHAIN.id,
         query: {
@@ -196,11 +194,6 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
         if (address && !nickname) saltearNickname(address);
         setModal(false);
     };
-
-    const v = useStore(version);
-    useEffect(() => {
-        if (v > 0 && dato === 'saldo') refetchSaldo();
-    }, [v, dato, refetchSaldo]);
 
     const saldoTexto = saldo
         ? Number(formatUnits(saldo.value, saldo.decimals)).toFixed(2)
@@ -372,10 +365,11 @@ export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
             <button
                 onClick={() => disconnect()}
                 title="Disconnect wallet"
+                aria-label="Log out"
                 className="hidden lg:flex items-center gap-1.5 cursor-pointer font-accent uppercase text-lightblue hover:text-yellow transition-all duration-300"
             >
                 <IconoLogout />
-                <span className="pb-1.5">Log out</span>
+                <span className="pb-1.5 hidden min-[1300px]:inline">Log out</span>
             </button>
         </div>
     );

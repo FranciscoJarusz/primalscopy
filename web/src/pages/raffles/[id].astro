@@ -1,0 +1,29 @@
+---
+import CultomizerLayout from '@/layouts/CultomizerLayout.astro';
+import DetalleIsland from '@/components/raffles/DetalleIsland';
+import { BACKEND_URL as BACKEND } from '@/lib/backend';
+import { imagenRaffle, type RaffleDetalle } from '@/lib/raffles';
+
+export const prerender = false;
+
+const { id = '' } = Astro.params;
+if (!/^[a-z0-9]{8}$/.test(id)) return Astro.redirect('/raffles');
+
+const local = ['localhost', '127.0.0.1', '[::1]'].includes(Astro.url.hostname);
+const origen = local ? Astro.url.origin : `https://${Astro.url.host}`;
+const backend = BACKEND.startsWith('/') ? new URL(BACKEND, origen).href : BACKEND;
+
+const respuesta = await fetch(`${backend}/raffles/${id}`).catch(() => null);
+if (respuesta?.status === 404) return Astro.redirect('/raffles');
+const raffle: RaffleDetalle | null = respuesta?.ok ? await respuesta.json().catch(() => null) : null;
+
+const titulo = raffle ? `${raffle.title} - Raffles - Primal Cult` : 'Raffle - Primal Cult';
+const descripcion = raffle
+    ? `${raffle.prizes.map((p) => p.label).join(', ')}. ${raffle.totalEntries.toLocaleString('en-US')} entries so far.`
+    : 'A Primal Cult raffle.';
+const imagen = raffle?.image ? imagenRaffle(raffle.image) : undefined;
+---
+
+<CultomizerLayout title={titulo} description={descripcion} activo="raffles" image={imagen}>
+    <DetalleIsland client:only="react" id={id} inicial={raffle} />
+</CultomizerLayout>

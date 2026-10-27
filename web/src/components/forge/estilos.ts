@@ -1,7 +1,3 @@
-// Las clases de la grafica del Cultomizer que usa el Forge. Viven aca para que
-// las paginas .astro y los componentes de React se vean igual: cambiar una
-// clase aca la cambia en todos lados.
-
 export const card =
     'bg-darkblue rounded-2xl p-4 sm:p-5 shadow-lg shadow-darkblue/50';
 export const tituloCard = 'font-accent uppercase text-yellow text-2xl';

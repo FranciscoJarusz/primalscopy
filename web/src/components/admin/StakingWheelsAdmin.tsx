@@ -1,16 +1,13 @@
 // Las ruletas de la tienda de FOG en el admin (ver backend/lib/stakingWheels.js):
 // los premios de cada key con su imagen, peso y stock, el vault del Summon
 // shard, y las entregas pendientes (NFTs, APE y Primals que hay que mandar a
-// mano desde la wallet del proyecto).
+// mano desde la wallet del proyecto, que se marcan en la pestaña Deliveries).
 import { useCallback, useEffect, useState } from 'react';
-import { FiCheck, FiCopy, FiImage, FiX } from 'react-icons/fi';
-import { getAddress } from 'viem';
-import { useApodos } from '@/lib/nicknames';
+import { FiImage, FiX } from 'react-icons/fi';
 import Ruleta from '@/components/staking/Ruleta';
 import {
     colorRareza,
     imagenPremio,
-    miniaturaPrimal,
     type Ganado,
     type PremioRuleta,
 } from '@/lib/staking';
@@ -69,15 +66,6 @@ const panel =
     'flex flex-col gap-4 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50';
 const titulo = 'font-accent uppercase text-yellow text-2xl';
 
-// Las wallets se guardan en minusculas; se muestran y copian con mayusculas
-// (checksum), que es como las muestran las wallets y el explorador.
-const conChecksum = (w: string) => {
-    try {
-        return getAddress(w);
-    } catch {
-        return w;
-    }
-};
 const fecha = (iso: string) =>
     new Date(iso).toLocaleString('en-US', {
         month: 'short',
@@ -117,7 +105,6 @@ export default function StakingWheelsAdmin({
     version?: number;
 }) {
     const nombreDe = (id: string) => nombres[id] ?? id;
-    const apodos = useApodos();
     const [datos, setDatos] = useState<Datos | null>(null);
     const [elegida, setElegida] = useState(ruletas[0] ?? 'lowkey');
     const [borrador, setBorrador] = useState<Borrador>([]);
@@ -126,9 +113,6 @@ export default function StakingWheelsAdmin({
     const [error, setError] = useState<string | null>(null);
     const [guardado, setGuardado] = useState(false);
     const [ocupado, setOcupado] = useState(false);
-    const [verEnviados, setVerEnviados] = useState(false);
-    const [notas, setNotas] = useState<Record<string, string>>({});
-    const [copiada, setCopiada] = useState<string | null>(null);
     const [simulacion, setSimulacion] = useState<Simulacion | null>(null);
     const [tirada, setTirada] = useState<{ ganado: Ganado; pozo: PremioRuleta[] } | null>(null);
 
@@ -314,14 +298,10 @@ export default function StakingWheelsAdmin({
         });
     };
 
-    const entregas = datos.wins.filter((w) =>
-        verEnviados ? w.status === 'sent' : w.status === 'pending'
-    );
-    const pendientes = datos.wins.filter((w) => w.status === 'pending').length;
 
     return (
         <>
-            <div className={panel}>
+            <div id="wheels" className={`${panel} scroll-mt-32`}>
                 <h2 className={titulo}>Prize wheels</h2>
                 <p className="text-lightblue/70 text-sm -mt-2">
                     Every key opens a wheel right after it is bought. The prize is drawn on the server with each
@@ -606,129 +586,6 @@ export default function StakingWheelsAdmin({
                 </div>
             </div>
 
-            <div className={panel}>
-                <div className="flex flex-wrap items-center gap-3">
-                    <h2 className={`${titulo} flex-1`}>
-                        Deliveries{pendientes > 0 && ` (${pendientes} pending)`}
-                    </h2>
-                    <button
-                        type="button"
-                        onClick={() => setVerEnviados((v) => !v)}
-                        className={botonChico}
-                    >
-                        {verEnviados ? 'Show pending' : 'Show sent'}
-                    </button>
-                </div>
-                {entregas.length === 0 ? (
-                    <p className="text-lightblue/70">
-                        {verEnviados ? 'Nothing sent yet.' : 'Nothing to send.'}
-                    </p>
-                ) : (
-                    <ul className="flex flex-col gap-3">
-                        {entregas.map((w) => {
-                            const imagen =
-                                imagenPremio(w.prize) ??
-                                (w.prize.tokenId ? miniaturaPrimal(w.prize.tokenId, 192) : null);
-                            return (
-                                <li key={w.id} className="flex flex-wrap items-center gap-3 text-sm text-lightblue">
-                                    <div className="size-10 rounded-lg bg-blue grid place-items-center overflow-hidden">
-                                        {imagen ? (
-                                            <img src={imagen} alt="" className="w-full h-full object-contain" />
-                                        ) : (
-                                            <span className="text-[10px] font-accent text-yellow">{w.prize.kind.toUpperCase()}</span>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-48 leading-tight">
-                                        <div className="text-white">
-                                            {w.prize.label}
-                                            <span className="text-lightblue/60"> · {datos.wheels[w.item] ? nombreDe(w.item) : 'Shop'}</span>
-                                        </div>
-                                        <div className="text-lightblue/60 text-xs">
-                                            {fecha(w.at)}
-                                            {w.note && ` · ${w.note}`}
-                                        </div>
-                                        {/* La wallet que lo gano, entera: es a donde hay que mandarlo. */}
-                                        <div className="mt-1 flex items-center gap-1.5 text-xs">
-                                            <span className="text-lightblue/60">Wallet:</span>
-                                            {apodos[w.wallet] && (
-                                                <span className="text-yellow font-semibold">{apodos[w.wallet]}</span>
-                                            )}
-                                            <span className="font-mono text-lightblue break-all select-all">
-                                                {conChecksum(w.wallet)}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                title="Copy the address"
-                                                aria-label="Copy the address"
-                                                onClick={() => {
-                                                    navigator.clipboard?.writeText(conChecksum(w.wallet));
-                                                    setCopiada(w.id);
-                                                    setTimeout(() => setCopiada((c) => (c === w.id ? null : c)), 1500);
-                                                }}
-                                                className="shrink-0 inline-flex items-center gap-1 text-lightblue/60 hover:text-yellow cursor-pointer transition-all duration-300"
-                                            >
-                                                {copiada === w.id ? (
-                                                    <>
-                                                        <FiCheck className="size-3.5 text-green-300" />
-                                                        <span className="text-green-300">Copied</span>
-                                                    </>
-                                                ) : (
-                                                    <FiCopy className="size-3.5" />
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-                                    {w.status === 'pending' ? (
-                                        <>
-                                            <input
-                                                value={notas[w.id] ?? ''}
-                                                onChange={(e) => setNotas((n) => ({ ...n, [w.id]: e.target.value }))}
-                                                placeholder="Tx hash (optional)"
-                                                className={`${campo} w-48 text-sm py-1`}
-                                            />
-                                            <button
-                                                type="button"
-                                                disabled={ocupado}
-                                                onClick={() =>
-                                                    correr(
-                                                        () =>
-                                                            pedir(`prizes/${w.id}`, {
-                                                                method: 'PATCH',
-                                                                body: JSON.stringify({ status: 'sent', note: notas[w.id] }),
-                                                            }),
-                                                        false
-                                                    )
-                                                }
-                                                className={botonChico}
-                                            >
-                                                Mark sent
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            disabled={ocupado}
-                                            onClick={() =>
-                                                correr(
-                                                    () =>
-                                                        pedir(`prizes/${w.id}`, {
-                                                            method: 'PATCH',
-                                                            body: JSON.stringify({ status: 'pending' }),
-                                                        }),
-                                                    false
-                                                )
-                                            }
-                                            className="text-xs text-lightblue/60 hover:text-yellow underline underline-offset-4 cursor-pointer transition-all duration-300"
-                                        >
-                                            Back to pending
-                                        </button>
-                                    )}
-                                </li>
-                            );
-                        })}
-                    </ul>
-                )}
-            </div>
         </>
     );
 }

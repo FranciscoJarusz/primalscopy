@@ -14,6 +14,7 @@ const { fingerprint, findVariantByFingerprint } = require('../lib/traitFingerpri
 const marketplaces = require('../lib/marketplaceRefresh');
 const feed = require('../lib/feedStore');
 const forge = require('../lib/forgeStore');
+const shop = require('../lib/traitShopStore');
 const sharp = require('sharp');
 const fs = require('fs');
 
@@ -92,6 +93,20 @@ function resolveSelections(options, selections) {
     }
 
     return { layers, applied };
+}
+
+// Un trait con drop solo se guarda si esta wallet lo desbloqueo, aunque el
+// drop ya haya terminado. El que el Primal ya tiene puesto pasa igual: si lo
+// compro el dueño anterior, el nuevo no pierde el arte que vino con el NFT
+// mientras no lo cambie.
+function assertUnlocked(nftId, applied, wallet) {
+    const actual = assets.readSelection(nftId)?.applied || {};
+    for (const [category, variant] of Object.entries(applied)) {
+        if (!shop.isExclusive(variant.imageUrl)) continue;
+        if (actual[category]?.imageUrl === variant.imageUrl) continue;
+        if (shop.hasUnlocked(wallet, variant.imageUrl)) continue;
+        throw Object.assign(new Error(`Unlock ${variant.name} before saving it.`), { status: 402 });
+    }
 }
 
 // La metadata vigente, que es la que se va a reescribir. Tiene que salir del
@@ -208,6 +223,7 @@ async function saveCustomization(req, res) {
     try {
         const options = await buildCustomizationOptions(nftId);
         const { layers, applied } = resolveSelections(options, req.body?.selections);
+        assertUnlocked(nftId, applied, req.walletAddress);
 
         // Los attributes quedan intactos a proposito: las variantes son
         // diseños alternativos del MISMO valor de trait, asi que la rareza de

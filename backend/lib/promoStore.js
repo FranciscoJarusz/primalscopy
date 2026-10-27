@@ -207,8 +207,15 @@ function redeem(wallet, rawCode) {
     };
 }
 
+// Para entregar un premio de rewards() desde otro lado (los raffles).
+function grantReward(id, wallet, amount, reason) {
+    const reward = rewards()[id];
+    if (!reward) return { error: 'That prize does not exist anymore.' };
+    return reward.grant(wallet.toLowerCase(), amount, reason) ?? {};
+}
+
 function rewardTypes() {
     return Object.entries(rewards()).map(([id, { label, max, plural }]) => ({ id, label, max, plural }));
 }
 
-module.exports = { listCodes, createCode, setActive, setArchived, redeem, rewardTypes, CODES_PATH };
+module.exports = { listCodes, createCode, setActive, setArchived, redeem, rewardTypes, grantReward, CODES_PATH };

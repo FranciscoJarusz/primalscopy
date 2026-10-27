@@ -23,7 +23,7 @@ export type Premio = {
     wheel?: boolean;
     // El icono subido desde el admin, si hay uno (ver iconoPremio).
     icon?: string;
-    kind?: 'key' | 'ape' | 'nft' | 'forge-roll' | 'raffle';
+    kind?: 'key' | 'ape' | 'nft' | 'forge-roll';
     amount?: number;
     // El fondo del mosaico en la Shop; sin esto sale del precio (fondoDe).
     background?: Fondo;

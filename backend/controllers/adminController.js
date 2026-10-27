@@ -181,6 +181,10 @@ function renameTrait(req, res, next) {
 
         fs.renameSync(currentPath, nextPath);
         generarAhora(`${category}/${directory}/${newFile}`);
+        require('../lib/traitShopStore').move(
+            `/assets/traits/${category}/${directory}/${file}`,
+            `/assets/traits/${category}/${directory}/${newFile}`
+        );
 
         res.json({
             message: 'Trait renamed.',

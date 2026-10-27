@@ -6,6 +6,7 @@ export default function Confirmacion({
     children,
     textoConfirmar,
     textoCancelar = 'Cancel',
+    deshabilitado = false,
     onConfirmar,
     onCancelar,
 }: {
@@ -13,6 +14,7 @@ export default function Confirmacion({
     children: ReactNode;
     textoConfirmar: string;
     textoCancelar?: string;
+    deshabilitado?: boolean;
     onConfirmar: () => void;
     onCancelar: () => void;
 }) {
@@ -31,7 +33,7 @@ export default function Confirmacion({
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 transition-all duration-300 ease-out starting:opacity-0"
             onClick={onCancelar}
         >
             <div
@@ -39,7 +41,7 @@ export default function Confirmacion({
                 aria-modal="true"
                 aria-labelledby="confirmacion-titulo"
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md bg-darkblue rounded-2xl p-5 sm:p-6 shadow-lg shadow-darkblue/50 ring-1 ring-lightblue/15 flex flex-col gap-4"
+                className="w-full max-w-md bg-darkblue rounded-2xl p-5 sm:p-6 shadow-lg shadow-darkblue/50 ring-1 ring-lightblue/15 flex flex-col gap-4 transition-all duration-300 ease-out starting:opacity-0 starting:scale-95 starting:translate-y-4"
             >
                 <h2
                     id="confirmacion-titulo"
@@ -57,7 +59,8 @@ export default function Confirmacion({
                     <button
                         ref={confirmar}
                         onClick={onConfirmar}
-                        className="bg-yellow text-darkblue font-accent uppercase leading-normal rounded-md px-4 pb-1.5 cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300 outline-none focus-visible:ring-2 focus-visible:ring-lightblue"
+                        disabled={deshabilitado}
+                        className="bg-yellow text-darkblue font-accent uppercase leading-normal rounded-md px-4 pb-1.5 cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300 outline-none focus-visible:ring-2 focus-visible:ring-lightblue disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100"
                     >
                         {textoConfirmar}
                     </button>

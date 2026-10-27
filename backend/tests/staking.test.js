@@ -417,7 +417,7 @@ async function main() {
 
     const estado = async id => (await (await fetch(`${BASE}/api/staking/config`)).json()).catalog.find(i => i.id === id)?.status;
     check('una key que se quedo sin premios dice sold out', (await estado('lowkey')) === 'sold-out');
-    check('lo que todavia no existe dice soon', (await estado('raffle-ticket')) === 'soon');
+    check('el Raffle Ticket ya no esta en la tienda', (await estado('raffle-ticket')) === undefined);
     check('los APE arrancan sin stock: sold out', (await estado('ape-10')) === 'sold-out');
 
     console.log('\nAPE con stock');

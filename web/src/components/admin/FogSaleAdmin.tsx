@@ -56,7 +56,7 @@ export default function FogSaleAdmin({
     };
 
     return (
-        <section className={panel}>
+        <section id="fog-sale" className={`${panel} scroll-mt-32`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className={titulo}>FOG sale</h2>
                 <span
