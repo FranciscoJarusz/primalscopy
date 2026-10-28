@@ -3,6 +3,7 @@
 // src/pages/admin/<id>.astro (para que /admin/<id> abra directo en ella).
 export const ADMIN_SECCIONES = [
     { id: 'todo', nombre: 'To do', href: '/admin/todo' },
+    { id: 'economy', nombre: 'Economy', href: '/admin/economy' },
     { id: 'deliveries', nombre: 'Deliveries', href: '/admin/deliveries' },
     { id: 'raffles', nombre: 'Raffles', href: '/admin/raffles' },
     { id: 'shop', nombre: 'Shop', href: '/admin/shop' },

@@ -2,6 +2,7 @@ const express = require('express');
 // Antes de armar las rutas: los errores de los handlers async van a next().
 require('./lib/asyncErrors');
 const cors = require('cors');
+const { rateLimit } = require('express-rate-limit');
 const nftRoutes = require('./routes/nftRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
@@ -26,6 +27,7 @@ const { isAdminEnabled, getAdminTokenLength } = require('./middleware/adminAuth'
 const { isWalletAuthEnabled } = require('./lib/walletAuth');
 const assets = require('./lib/assetStore');
 const feed = require('./lib/feedStore');
+const backup = require('./lib/backup');
 const path = require('path');
 
 const app = express();
@@ -110,6 +112,21 @@ app.use('/viewer', express.static(path.join(ASSETS_PATH, 'viewer'), {
 app.use('/category', express.static(path.join(ASSETS_PATH, 'legacy', 'category'), { maxAge: '30d' }));
 app.use('/t', express.static(path.join(ASSETS_PATH, 'legacy', 't'), { maxAge: '30d' }));
 
+const esLocal = ip => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(ip);
+const limite = (limit, windowMs) => rateLimit({
+  windowMs,
+  limit,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  skip: req => esLocal(req.ip),
+  message: { error: 'Too many requests. Wait a minute and try again.', reason: 'rate-limited' }
+});
+const limiteLogin = limite(Number(process.env.RATE_LIMIT_LOGIN || 30), 15 * 60 * 1000);
+const limiteEscrituras = limite(Number(process.env.RATE_LIMIT_WRITES || 60), 60 * 1000);
+app.post(['/api/auth/nonce', '/api/auth/verify'], limiteLogin);
+app.use('/api', (req, res, next) =>
+  req.method === 'GET' || req.method === 'OPTIONS' || req.path.startsWith('/admin/') ? next() : limiteEscrituras(req, res, next));
+
 app.use('/api/nft', nftRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
@@ -147,6 +164,7 @@ app.listen(PORT, () => {
     // Igual el chequeo del staking: los tests lo llaman a mano.
     startStakingJob();
     startRaffleJob();
+    backup.startBackupJob();
     primalThumbs.habilitarPrecalentado();
     primalThumbs.precalentar(Object.values(stakingStore.trainingByPeriod()).flat());
     startCollectionIndex({ alTerminar: ids => primalThumbs.precalentarFaltantes(ids, 384) });

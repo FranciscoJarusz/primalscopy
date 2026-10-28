@@ -4,7 +4,30 @@ import { irA } from '@/lib/admin';
 import { leerEntregas } from './EntregasAdmin';
 import { botonChico, fecha, panel } from './comun';
 
-type Tarjeta = { id: string; seccion: string; nombre: string; valor: string; detalle: string; atencion: boolean };
+type Tarjeta = {
+    id: string;
+    seccion?: string;
+    nombre: string;
+    valor: string;
+    detalle: string;
+    atencion: boolean;
+    accion?: { nombre: string; hacer: () => void };
+};
+type Backup = {
+    configured: boolean;
+    running: boolean;
+    lastSuccessAt: string | null;
+    lastError: string | null;
+};
+type Uso = {
+    disk: { total: number; used: number; usedPercent: number } | null;
+    folders: { path: string; bytes: number; cache: boolean }[];
+    cacheBytes: number;
+};
+const DIA_MS = 24 * 60 * 60 * 1000;
+const tamaño = (bytes: number) =>
+    bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.round(bytes / 1e6).toLocaleString('en-US')} MB`;
+const nombreCarpeta = (p: string) => p.replace(/^_generated\//, '');
 
 export default function PendientesAdmin({ token }: { token: string }) {
     const [tarjetas, setTarjetas] = useState<Tarjeta[] | null>(null);
@@ -17,12 +40,19 @@ export default function PendientesAdmin({ token }: { token: string }) {
                 return r.json();
             });
         try {
-            const [entregas, raffles, staking, promo] = await Promise.all([
+            const [entregas, raffles, staking, promo, backup, uso] = await Promise.all([
                 leerEntregas(token),
                 pedir('raffles'),
                 pedir('staking'),
                 pedir('promo'),
+                pedir('backup') as Promise<Backup>,
+                pedir('storage/usage') as Promise<Uso>,
             ]);
+            const respaldar = async () => {
+                await fetch(`${BACKEND_URL}/admin/backup`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+                cargar();
+            };
+            const viejo = !backup.lastSuccessAt || Date.now() - Date.parse(backup.lastSuccessAt) > 1.5 * DIA_MS;
             const pendientes = entregas.filter((e) => e.estado === 'pending');
             const vivos = raffles.raffles.filter((r: { status: string }) => r.status === 'open');
             const borradores = raffles.raffles.filter((r: { status: string }) => r.status === 'draft');
@@ -79,6 +109,41 @@ export default function PendientesAdmin({ token }: { token: string }) {
                     detalle: 'Promo codes that can be redeemed right now.',
                     atencion: false,
                 },
+                {
+                    id: 'almacenamiento',
+                    seccion: 'traits',
+                    nombre: 'Storage',
+                    valor: uso.disk ? `${uso.disk.usedPercent}% used` : 'Unknown',
+                    detalle: [
+                        uso.disk ? `${tamaño(uso.disk.used)} of ${tamaño(uso.disk.total)}.` : null,
+                        `Biggest: ${uso.folders
+                            .slice(0, 4)
+                            .map((f) => `${nombreCarpeta(f.path)} ${tamaño(f.bytes)}${f.cache ? ' (cache)' : ''}`)
+                            .join(', ')}.`,
+                        `${tamaño(uso.cacheBytes)} are caches that rebuild on their own.`,
+                    ]
+                        .filter(Boolean)
+                        .join(' '),
+                    atencion: (uso.disk?.usedPercent ?? 0) >= 80,
+                },
+                {
+                    id: 'backup',
+                    nombre: 'Backup',
+                    valor: !backup.configured
+                        ? 'Not set up'
+                        : backup.running
+                          ? 'Running'
+                          : backup.lastSuccessAt
+                            ? fecha(backup.lastSuccessAt)
+                            : 'Never',
+                    detalle: !backup.configured
+                        ? 'Add the BACKUP_S3_* variables in Railway. Nothing is being backed up.'
+                        : backup.lastError
+                          ? `The last try failed: ${backup.lastError}`
+                          : 'All the data is copied once a day. Images and traits only when they change.',
+                    atencion: !backup.configured || Boolean(backup.lastError) || (viejo && !backup.running),
+                    accion: backup.configured && !backup.running ? { nombre: 'Back up now', hacer: respaldar } : undefined,
+                },
             ]);
             setError(null);
         } catch {
@@ -109,9 +174,16 @@ export default function PendientesAdmin({ token }: { token: string }) {
                                 {t.valor}
                             </span>
                             <p className="text-lightblue/80 text-sm flex-1">{t.detalle}</p>
-                            <button onClick={() => irA(t.seccion)} className={`${botonChico} self-start`}>
-                                Open {t.nombre}
-                            </button>
+                            {t.seccion && (
+                                <button onClick={() => irA(t.seccion!)} className={`${botonChico} self-start`}>
+                                    Open {t.nombre}
+                                </button>
+                            )}
+                            {t.accion && (
+                                <button onClick={t.accion.hacer} className={`${botonChico} self-start`}>
+                                    {t.accion.nombre}
+                                </button>
+                            )}
                         </section>
                     ))}
                 </div>

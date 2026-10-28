@@ -600,6 +600,24 @@ async function main() {
         (await configurar({ fogSale: { packs: [{ ape: 5, from: '#111111', to: '#222222' }, { ape: 5, from: '#333333', to: '#444444' }] } })).status === 400);
     check('sin paquetes se rechaza', (await configurar({ fogSale: { packs: [] } })).status === 400);
 
+    console.log('\nEconomia');
+    check('sin token de admin no', (await fetch(`${BASE}/api/admin/economy`)).status === 401);
+    const eco = await (await fetch(`${BASE}/api/admin/economy`, { headers: admin })).json();
+    const ranking = (await (await fetch(`${BASE}/api/staking/leaderboard`)).json()).wallets;
+    const enCirculacion = Object.values(ranking).reduce((n, w) => n + w.balance, 0);
+    check('lo que circula es la suma de los saldos', eco.totals.circulating === enCirculacion
+        && eco.totals.circulating === eco.totals.earned - eco.totals.spent, JSON.stringify(eco.totals));
+    check('todo el FOG tiene origen y destino en el historial', eco.unaccounted.earned === 0 && eco.unaccounted.spent === 0,
+        JSON.stringify({ unaccounted: eco.unaccounted, sources: eco.sources, sinks: eco.sinks }));
+    check('el reroll aparece como gasto de la Shop', eco.sinks.some(s => s.id === 'shop:forge-roll' && s.fog >= 300), JSON.stringify(eco.sinks));
+    let porDia = 0;
+    for (const token of [tH, tO, tT]) porDia += (await yo(token)).dailyFog;
+    check('el FOG por dia es el de todas las wallets', eco.perDay === porDia, `${eco.perDay} vs ${porDia}`);
+    const roll = eco.affordability.find(i => i.id === 'lowkey');
+    check('cuenta cuantas wallets pueden pagar cada premio', roll
+        && roll.wallets === Object.values(ranking).filter(w => w.balance >= roll.price).length, JSON.stringify(roll));
+    check('las ventanas de 7 y 30 dias', eco.windows.length === 2 && eco.windows[1].spent >= eco.windows[0].spent, JSON.stringify(eco.windows));
+
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });
     process.exit(fail ? 1 : 0);

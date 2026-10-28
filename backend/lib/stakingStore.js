@@ -1262,6 +1262,105 @@ function adminSummary() {
     };
 }
 
+function origenDe(reason = '') {
+    if (reason.startsWith('promo:raffle:') || reason.startsWith('raffle:')) return 'raffle-prizes';
+    if (reason.startsWith('promo:')) return 'promo-codes';
+    return reason.split(':')[0] || 'other';
+}
+
+function destinoDe(reason = '') {
+    const tipo = reason.split(':')[0];
+    if (tipo === 'trait') return 'trait-drops';
+    if (tipo === 'raffle') return 'raffles';
+    return tipo || 'other';
+}
+
+function economy(now = Date.now()) {
+    const active = activosLectura();
+    const wallets = readWallets();
+    const history = readHistory();
+    const cuenta = contador();
+    const boosts = boostsLectura();
+    const labels = Object.fromEntries(getConfig().catalog.map(i => [i.id, i.label]));
+    const sumar = (obj, key, n) => { obj[key] = (obj[key] ?? 0) + n; };
+
+    const sources = { staking: 0, bought: 0, wheels: 0 };
+    const sinks = {};
+    const ventanas = [7, 30].map(dias => ({ dias, desde: now - dias * DAY_MS, spent: 0, bought: 0, granted: 0 }));
+    const enVentana = (at, campo, n) => {
+        const t = Date.parse(at);
+        for (const v of ventanas) if (t >= v.desde) v[campo] += n;
+    };
+
+    for (const h of history) {
+        if (h.event === 'end') sumar(sources, 'staking', h.earned ?? 0);
+        else if (h.event === 'purchase') {
+            sumar(sources, 'bought', h.fog);
+            enVentana(h.at, 'bought', h.fog);
+        } else if (h.event === 'redeem') {
+            sumar(sinks, `shop:${h.item}`, h.price);
+            enVentana(h.at, 'spent', h.price);
+            if (h.fog) {
+                sumar(sources, 'wheels', h.fog);
+                enVentana(h.at, 'granted', h.fog);
+            }
+        } else if (h.event === 'grant' && h.fog) {
+            sumar(sources, origenDe(h.reason), h.fog);
+            enVentana(h.at, 'granted', h.fog);
+        } else if (h.event === 'spend') {
+            sumar(sinks, destinoDe(h.reason), h.fog);
+            enVentana(h.at, 'spent', h.fog);
+        } else if (h.event === 'refund') {
+            sumar(sinks, destinoDe(h.reason), -h.fog);
+            enVentana(h.at, 'spent', -h.fog);
+        }
+    }
+
+    const enCurso = {};
+    let perDay = 0;
+    for (const stake of Object.values(active)) {
+        const fog = creditedFog(stake, cuenta, boosts);
+        sumar(enCurso, stake.wallet, fog);
+        sources.staking += fog;
+        perDay += fogPorDiaAhora(stake, cuenta, boosts, now);
+    }
+
+    const saldos = [...new Set([...Object.keys(wallets), ...Object.keys(enCurso)])].map(w => {
+        const t = wallets[w] || { earned: 0, spent: 0 };
+        return { wallet: w, balance: t.earned + (enCurso[w] ?? 0) - t.spent };
+    }).sort((a, b) => b.balance - a.balance);
+    const circulating = saldos.reduce((n, s) => n + s.balance, 0);
+    const earned = Object.values(wallets).reduce((n, w) => n + w.earned, 0) + Object.values(enCurso).reduce((n, f) => n + f, 0);
+    const spent = Object.values(wallets).reduce((n, w) => n + w.spent, 0);
+    const conSaldo = saldos.filter(s => s.balance > 0);
+    const top10 = conSaldo.slice(0, 10).reduce((n, s) => n + s.balance, 0);
+    const explicado = Object.values(sources).reduce((n, f) => n + f, 0);
+    const gastado = Object.values(sinks).reduce((n, f) => n + f, 0);
+
+    return {
+        totals: { earned, spent, circulating },
+        perDay,
+        windows: ventanas.map(({ dias, spent: s, bought, granted }) => ({
+            days: dias, spent: s, bought, granted, spentPerDay: Math.round(s / dias)
+        })),
+        sources,
+        sinks: Object.entries(sinks)
+            .map(([id, fog]) => ({ id, label: id.startsWith('shop:') ? labels[id.slice(5)] ?? id.slice(5) : id, fog }))
+            .filter(s => s.fog !== 0)
+            .sort((a, b) => b.fog - a.fog),
+        unaccounted: { earned: earned - explicado, spent: spent - gastado },
+        holders: {
+            withBalance: conSaldo.length,
+            median: conSaldo.length ? conSaldo[Math.floor(conSaldo.length / 2)].balance : 0,
+            top10Share: circulating > 0 ? Math.round(top10 * 1000 / circulating) / 10 : 0
+        },
+        affordability: getConfig().catalog
+            .filter(i => i.enabled)
+            .map(i => ({ id: i.id, label: i.label, price: i.price, wallets: conSaldo.filter(s => s.balance >= i.price).length }))
+            .sort((a, b) => a.price - b.price)
+    };
+}
+
 function ventasDeFog() {
     const compras = Object.values(readPurchases());
     return {
@@ -1306,5 +1405,6 @@ module.exports = {
     balanceDe,
     giveItem,
     adminSummary,
+    economy,
     isValidTokenId
 };

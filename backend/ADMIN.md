@@ -134,3 +134,34 @@ queda en `http://localhost:4321/admin/traits`.
 - Los nombres de categoría, carpeta y archivo se validan contra una lista blanca
   y un regex, y toda ruta se resuelve y se verifica que caiga dentro de
   `TRAITS_PATH` antes de escribir.
+- Escrituras de la API limitadas por IP: 60 por minuto (`RATE_LIMIT_WRITES`) y
+  30 logins cada 15 minutos (`RATE_LIMIT_LOGIN`). Las lecturas y el admin no
+  tienen límite.
+
+---
+
+## Backups
+
+El volumen se copia a un bucket compatible con S3 (Cloudflare R2, Backblaze B2).
+Sin estas variables no se hace ningún backup y la tarjeta Backup de "To do" lo avisa.
+
+| Variable | Ejemplo |
+|---|---|
+| `BACKUP_S3_ENDPOINT` | `https://<account id>.r2.cloudflarestorage.com` |
+| `BACKUP_S3_BUCKET` | `primalcult-backups` |
+| `BACKUP_S3_ACCESS_KEY_ID` | la clave del token del bucket |
+| `BACKUP_S3_SECRET_ACCESS_KEY` | el secreto del token del bucket |
+| `BACKUP_S3_REGION` | opcional, `auto` por defecto |
+
+- Una vez por día: todos los datos (JSON, historiales, metadata) en
+  `snapshots/<fecha>.json.gz`. Cada uno queda guardado.
+- Imágenes y traits en `files/<ruta>`, solo los nuevos o cambiados.
+- Las miniaturas, tarjetas OG y el índice del explorador no se copian: se regeneran solos.
+
+Para restaurar (siempre a una carpeta vacía, nunca encima del volumen):
+
+```bash
+node --env-file=.env scripts/restore-backup.js list
+node --env-file=.env scripts/restore-backup.js ./restaurado            # el último
+node --env-file=.env scripts/restore-backup.js ./restaurado <snapshot>  # uno en particular
+```

@@ -17,6 +17,8 @@ const { verifyStakes, refreshVaultNow } = require('../lib/stakingJob');
 const wheels = require('../lib/stakingWheels');
 const raffles = require('../lib/raffleStore');
 const traitShop = require('../lib/traitShopStore');
+const backup = require('../lib/backup');
+const { diskUsage } = require('../lib/diskUsage');
 const { resolveLayerPath } = require('../controllers/nftController');
 const {
     listTraits,
@@ -161,6 +163,16 @@ router.put('/exiled', (req, res) => {
 // Staking: la tasa, los periodos y el catalogo se cambian desde aca para
 // probar sin deploys. Ver lib/stakingStore.js.
 router.get('/staking', (req, res) => res.json(staking.adminSummary()));
+router.get('/economy', (req, res) => res.json(staking.economy()));
+
+router.get('/storage/usage', async (req, res) => res.json(await diskUsage({ fresh: req.query.fresh === '1' })));
+
+router.get('/backup', (req, res) => res.json(backup.status()));
+router.post('/backup', (req, res) => {
+    if (!backup.isConfigured()) return res.status(409).json({ error: 'Backups are not set up. Add the BACKUP_S3_* variables in Railway.' });
+    backup.run().catch(() => {});
+    res.status(202).json(backup.status());
+});
 router.patch('/staking/config', (req, res) => {
     const result = staking.updateConfig(req.body);
     if (result.error) return res.status(400).json({ error: result.error });

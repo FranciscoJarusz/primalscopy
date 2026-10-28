@@ -1507,9 +1507,7 @@ function CustomizerContent() {
             {aDesbloquear && (
                 <Confirmacion
                     titulo={
-                        aDesbloquear.precio === 0
-                            ? 'Free drop'
-                            : 'Unlock trait'
+                        aDesbloquear.precio === 0 ? 'Free drop' : 'Unlock trait'
                     }
                     textoConfirmar={
                         firmaPendiente
@@ -1702,7 +1700,7 @@ function Opciones({
                         <div
                             style={{ height: lado }}
                             className={`relative w-full rounded-xl overflow-hidden transition-all duration-300 ${
-                                drop ? 'btn-rainbow p-[2px]' : 'bg-white/10'
+                                drop ? 'btn-rainbow p-0.5' : 'bg-white/10'
                             } ${
                                 elegido === valor
                                     ? 'ring-2 ring-yellow'
@@ -1771,7 +1769,7 @@ function Opciones({
                                 </>
                             )}
                         </div>
-                        <div className="h-[26px] max-w-full flex items-center justify-center">
+                        <div className="h-6.5 max-w-full flex items-center justify-center">
                             {precio === null ? (
                                 <p className="max-w-full truncate whitespace-nowrap pb-0.5 font-accent uppercase text-yellow text-xs sm:text-sm leading-none text-center">
                                     {variant.name}
