@@ -1506,13 +1506,19 @@ function CustomizerContent() {
 
             {aDesbloquear && (
                 <Confirmacion
-                    titulo="Unlock trait"
+                    titulo={
+                        aDesbloquear.precio === 0
+                            ? 'Free drop'
+                            : 'Unlock trait'
+                    }
                     textoConfirmar={
                         firmaPendiente
                             ? 'Verify wallet'
                             : desbloqueando
                               ? 'Unlocking...'
-                              : `Unlock for ${aDesbloquear.precio.toLocaleString('en-US')} FOG`
+                              : aDesbloquear.precio === 0
+                                ? 'Claim for free'
+                                : `Unlock for ${aDesbloquear.precio.toLocaleString('en-US')} FOG`
                     }
                     deshabilitado={
                         desbloqueando ||
@@ -1563,7 +1569,8 @@ function CustomizerContent() {
                         {aviso ? (
                             <p className="text-lightblue/80">{aviso}</p>
                         ) : (
-                            tienda && (
+                            tienda &&
+                            aDesbloquear.precio > 0 && (
                                 <dl className="flex flex-col m-0">
                                     {[
                                         ['Price', aDesbloquear.precio],
@@ -1771,15 +1778,21 @@ function Opciones({
                                 </p>
                             ) : (
                                 <span className="inline-flex items-center gap-1 rounded-md bg-yellow text-darkblue font-accent uppercase text-xs sm:text-sm leading-none px-1.5 sm:px-2 pt-1 pb-1.5 whitespace-nowrap group-hover:scale-105 transition-all duration-300">
-                                    <span className="hidden sm:inline">
-                                        Unlock
-                                    </span>
-                                    <img
-                                        src={ICONO_FOG_CHICO}
-                                        alt=""
-                                        className="size-4 relative top-[0.12em]"
-                                    />
-                                    {precio.toLocaleString('en-US')}
+                                    {precio === 0 ? (
+                                        'Free'
+                                    ) : (
+                                        <>
+                                            <span className="hidden sm:inline">
+                                                Unlock
+                                            </span>
+                                            <img
+                                                src={ICONO_FOG_CHICO}
+                                                alt=""
+                                                className="size-4 relative top-[0.12em]"
+                                            />
+                                            {precio.toLocaleString('en-US')}
+                                        </>
+                                    )}
                                 </span>
                             )}
                         </div>

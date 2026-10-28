@@ -1,5 +1,6 @@
 // Los drops de traits: un trait exclusivo que se vende con FOG por un tiempo.
-// Un trait con drop nunca es gratis: antes de empezar se ve como "Soon",
+// Con precio 0 es un regalo para holders: no cobra, pero la ruta exige que la
+// wallet tenga algun Primal. Antes de empezar se ve como "Soon",
 // mientras dura se compra, y cuando termina o se agota desaparece para quien
 // no lo compro. Lo comprado queda para toda la wallet: lo usan los Primals de
 // esa wallet que ya lo ven en el customizer (los de su carpeta, o todos si
@@ -53,6 +54,7 @@ function publicDrops(now = Date.now()) {
 }
 
 const isExclusive = url => readDrops().some(d => d.trait === url);
+const isFree = url => readDrops().some(d => d.trait === url && d.price === 0);
 
 function unlockedBy(wallet) {
     const key = String(wallet).toLowerCase();
@@ -62,8 +64,8 @@ function unlockedBy(wallet) {
 const hasUnlocked = (wallet, url) => unlockedBy(wallet).includes(url);
 
 function parseDrop(body, current = null) {
-    const price = intEntre(body.price, 1, MAX_PRICE);
-    if (price === null) return error(400, 'The price has to be a whole number of FOG, from 1.');
+    const price = intEntre(body.price, 0, MAX_PRICE);
+    if (price === null) return error(400, 'The price has to be a whole number of FOG, from 0 (free for holders).');
 
     const startsAt = body.startsAt ? new Date(body.startsAt) : current ? new Date(current.startsAt) : new Date();
     if (Number.isNaN(startsAt.getTime())) return error(400, 'Invalid start date.');
@@ -141,7 +143,9 @@ function unlock(wallet, url) {
     if (status === 'scheduled') return error(409, "This drop hasn't started yet.");
     if (status === 'ended') return error(409, 'This drop already ended.');
     if (status === 'sold-out') return error(409, 'This drop sold out.');
-    const charge = staking.spendFog(key, drop.price, `trait:${url}`);
+    const charge = drop.price > 0
+        ? staking.spendFog(key, drop.price, `trait:${url}`)
+        : { balance: staking.balanceDe(key) };
     if (charge.error) return charge;
     const unlocks = readUnlocks();
     unlocks.push({ id: crypto.randomUUID(), wallet: key, trait: url, price: drop.price, at: new Date().toISOString() });
@@ -181,6 +185,7 @@ function adminList() {
 module.exports = {
     publicDrops,
     isExclusive,
+    isFree,
     unlockedBy,
     hasUnlocked,
     create,

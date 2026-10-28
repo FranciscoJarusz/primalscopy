@@ -19,6 +19,9 @@ const ADMIN = 'admin-solo-para-tests';
 
 const owner = privateKeyToAccount('0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d');
 const nuevoDueño = privateKeyToAccount('0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba');
+const sinPrimals = privateKeyToAccount('0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a');
+const holders = new Set([owner.address, nuevoDueño.address].map(a => a.toLowerCase()));
+let rpcCaido = false;
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'primal-traitshop-'));
 process.env.TRAITS_PATH = TMP;
@@ -66,6 +69,10 @@ require.cache[ownershipPath] = {
             return { status: isOwner ? 'owner' : 'not-owner', owner: dueño.address };
         },
         getTokenOwner: async () => dueño.address,
+        getPrimalBalance: async address => {
+            if (rpcCaido) throw new Error('rpc caido');
+            return holders.has(String(address).toLowerCase()) ? 1 : 0;
+        },
         CONTRACT_ADDRESS: '0x0000000000000000000000000000000000000000'
     }
 };
@@ -147,8 +154,8 @@ async function main() {
     check('sin token de admin no se crea', (await pedir('POST', url, { trait: aVender, price: 10 })).status === 401);
     let r = await json(await pedir('POST', url, { trait: '/assets/traits/HAT/NADA/NO.gif', price: 10 }, admin));
     check('un trait que no existe -> 404', r.status === 404);
-    r = await json(await pedir('POST', url, { trait: aVender, price: 0 }, admin));
-    check('precio 0 -> 400', r.status === 400);
+    r = await json(await pedir('POST', url, { trait: aVender, price: -5 }, admin));
+    check('precio negativo -> 400', r.status === 400);
     r = await json(await pedir('POST', url, { trait: aVender, price: 1000, startsAt: enHoras(5), endsAt: enHoras(1) }, admin));
     check('terminar antes de empezar -> 400', r.status === 400);
     r = await json(await pedir('POST', url, { trait: aVender, price: 1000, startsAt: enHoras(24), endsAt: enHoras(24 * 6) }, admin));
@@ -234,6 +241,24 @@ async function main() {
     check('sin ventas se borra y vuelve a ser comun', r.status === 200 && dropEn(await opciones(), sinVentas) === null);
     r = await json(await fetch(url, { headers: admin }));
     check('el admin ve los drops con lo vendido', r.drops.length === 2 && r.drops.every(d => d.sold === 1) && r.unlocks.length === 2, JSON.stringify(r).slice(0, 200));
+
+    console.log('\nDrop gratis para holders');
+    const tokenSinPrimals = await login(sinPrimals);
+    r = await json(await pedir('POST', url, { trait: sinVentas, price: 0, supply: 1 }, admin));
+    check('el admin crea un drop gratis de una copia', r.status === 200 && r.drop.price === 0, JSON.stringify(r));
+    check('el customizer lo ve gratis y a la venta', dropEn(await opciones(), sinVentas)?.price === 0 && dropEn(await opciones(), sinVentas)?.status === 'live');
+    r = await json(await pedir('POST', `${BASE}/api/traits/unlock`, { trait: sinVentas }, conToken(tokenSinPrimals)));
+    check('sin Primals no se reclama', r.status === 403 && r.reason === 'not-holder', JSON.stringify(r));
+    rpcCaido = true;
+    r = await json(await pedir('POST', `${BASE}/api/traits/unlock`, { trait: sinVentas }, conToken(tokenOwner)));
+    check('si la cadena no responde -> 503', r.status === 503);
+    rpcCaido = false;
+    const antes = staking.balanceDe(owner.address);
+    r = await json(await pedir('POST', `${BASE}/api/traits/unlock`, { trait: sinVentas }, conToken(tokenOwner)));
+    check('un holder lo reclama sin pagar', r.status === 200 && r.balance === antes && r.unlocked.includes(sinVentas), JSON.stringify(r));
+    check('no anota un gasto de FOG', staking.balanceDe(owner.address) === antes);
+    r = await json(await pedir('POST', `${BASE}/api/traits/unlock`, { trait: sinVentas }, conToken(tokenNuevo)));
+    check('respeta las copias', r.status === 409);
 
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });

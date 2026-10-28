@@ -299,8 +299,12 @@ export default function DropsAdmin({
                             one in _GLOBAL for all of them.
                         </li>
                         <li>
-                            A trait with a drop is never free, not even after
-                            the drop ends.
+                            A trait with a drop is never free for everyone, not
+                            even after the drop ends.
+                        </li>
+                        <li>
+                            Price 0 makes it a free drop: only wallets holding a
+                            Primal can claim it.
                         </li>
                         <li>
                             If someone already bought it you can end the drop,
@@ -520,8 +524,18 @@ function Tarjeta({
 
             <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 m-0 text-sm">
                 <Dato nombre="Price">
-                    <img src={ICONO_FOG_CHICO} alt="" className="size-4" />
-                    {fog(d.price)}
+                    {d.price === 0 ? (
+                        'Free for holders'
+                    ) : (
+                        <>
+                            <img
+                                src={ICONO_FOG_CHICO}
+                                alt=""
+                                className="size-4"
+                            />
+                            {fog(d.price)}
+                        </>
+                    )}
                 </Dato>
                 <Dato nombre="Sold">
                     {d.supply === null
@@ -744,14 +758,14 @@ function Formulario({
 
             <Paso
                 nombre="2. Price"
-                ayuda="Leave copies empty to sell as many as people want."
+                ayuda="Price 0 makes it free for Primal holders. Leave copies empty to sell as many as people want."
             >
                 <div className="grid gap-4 sm:grid-cols-2">
                     <label className={etiqueta}>
                         FOG to unlock it
                         <input
                             type="number"
-                            min={1}
+                            min={0}
                             step={1}
                             required
                             value={b.price}
