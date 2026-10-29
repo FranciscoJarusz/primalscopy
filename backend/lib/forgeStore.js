@@ -227,6 +227,7 @@ module.exports = {
     appendHistory,
     readHistory,
     getPayment,
+    readPayments,
     addPayment,
     addPromoCredits,
     addFogCredit,

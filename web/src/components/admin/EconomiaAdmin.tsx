@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BACKEND_URL } from '@/lib/backend';
 import { botonChico, fog, panel, titulo } from './comun';
+import PagosApe from './PagosApe';
 
 type Linea = { id: string; label: string; fog: number };
 type Economia = {
@@ -185,6 +186,8 @@ export default function EconomiaAdmin({ token }: { token: string }) {
                             </ul>
                         </section>
                     </div>
+
+                    <PagosApe token={token} />
 
                     {(eco.unaccounted.earned !== 0 || eco.unaccounted.spent !== 0) && (
                         <p className="text-lightblue/70 text-sm">

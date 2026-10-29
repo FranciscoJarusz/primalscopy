@@ -166,6 +166,7 @@ router.put('/exiled', (req, res) => {
 // probar sin deploys. Ver lib/stakingStore.js.
 router.get('/staking', (req, res) => res.json(staking.adminSummary()));
 router.get('/economy', (req, res) => res.json(staking.economy()));
+router.get('/ape-payments', (req, res) => res.json(require('../lib/apePayments').resumen()));
 
 router.get('/storage/usage', async (req, res) => res.json(await diskUsage({ fresh: req.query.fresh === '1' })));
 

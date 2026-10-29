@@ -1402,6 +1402,8 @@ function economy(now = Date.now()) {
     };
 }
 
+const comprasDeFog = () => Object.values(readPurchases());
+
 function ventasDeFog() {
     const compras = Object.values(readPurchases());
     return {
@@ -1418,6 +1420,7 @@ function isValidTokenId(tokenId) {
 
 module.exports = {
     buyFog,
+    comprasDeFog,
     isPurchase,
     fogSaleWindow,
     MIN_APE,
