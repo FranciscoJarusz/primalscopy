@@ -137,6 +137,7 @@ export default function Roll() {
                                 dice nada y deja un casillero suelto. */}
                             {LAYER_ORDER.filter(
                                 (category) =>
+                                    status.traits![category] !== undefined &&
                                     !(
                                         category === 'Effect' &&
                                         status.traits![category] === 'Standart'

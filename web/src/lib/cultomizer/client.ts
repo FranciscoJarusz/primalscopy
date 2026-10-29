@@ -1,4 +1,4 @@
-import { createPublicClient, http } from "viem";
+import { createPublicClient, fallback, http } from "viem";
 import { apeChain } from "viem/chains";
 import { APECHAIN } from "@/lib/cultomizer/contracts";
 
@@ -14,10 +14,13 @@ export const chain = {
   },
 };
 
+const urls = [...new Set([APECHAIN.rpcUrl, ...apeChain.rpcUrls.default.http])];
+
 /// Cliente de solo lectura. Vive en el servidor: el navegador nunca lo usa.
+/// Si el RPC configurado se cae, sigue con el publico.
 export const client = createPublicClient({
   chain: chain,
-  transport: http(),
+  transport: urls.length > 1 ? fallback(urls.map((url) => http(url))) : http(),
 });
 
 /// Respuesta JSON, para no repetir headers en cada ruta.

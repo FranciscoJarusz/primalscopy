@@ -46,6 +46,14 @@ export type Perfil = {
     rank: number | null;
     holders: number;
     oneOfOnes: number;
+    holding: { since: string | null; first: string | null; minted: number; mintedHeld: number; sent: number } | null;
+    activity: {
+        at: string;
+        kind: 'forge' | 'customize' | 'stake' | 'trained' | 'redeem';
+        tokenId?: string;
+        days?: number;
+        label?: string;
+    }[];
     fog: {
         balance: number;
         perDay: number;

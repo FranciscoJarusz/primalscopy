@@ -1,7 +1,7 @@
 ---
 import LandingLayout from '@/layouts/LandingLayout.astro';
 import PerfilIsland from '@/components/explore/PerfilIsland';
-import { BACKEND_URL as BACKEND } from '@/lib/backend';
+import { backendAbsoluto } from '@/lib/backend';
 import { walletCorta } from '@/lib/nicknames';
 import type { Perfil } from '@/lib/explore';
 
@@ -10,9 +10,7 @@ export const prerender = false;
 const { id = '' } = Astro.params;
 if (!/^(0x[0-9a-fA-F]{40}|[A-Za-z0-9_]{3,20})$/.test(id)) return Astro.redirect('/explore');
 
-const local = ['localhost', '127.0.0.1', '[::1]'].includes(Astro.url.hostname);
-const origen = local ? Astro.url.origin : `https://${Astro.url.host}`;
-const backend = BACKEND.startsWith('/') ? new URL(BACKEND, origen).href : BACKEND;
+const backend = backendAbsoluto(Astro.url);
 
 const respuesta = await fetch(`${backend}/explore/holder/${id}`).catch(() => null);
 if (respuesta?.status === 404) return Astro.redirect('/explore');

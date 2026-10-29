@@ -81,7 +81,8 @@ function clientFor(config) {
 
     // cacheTime 0: viem guarda el numero de bloque 4 segundos, y con eso las
     // confirmaciones se contarian de menos.
-    cachedClient = createPublicClient({ chain, transport: http(config.rpcUrl || undefined), cacheTime: 0 });
+    const transport = config.rpcUrl ? http(config.rpcUrl) : require('./cadena').transporte();
+    cachedClient = createPublicClient({ chain, transport, cacheTime: 0 });
     cachedKey = key;
     return cachedClient;
 }

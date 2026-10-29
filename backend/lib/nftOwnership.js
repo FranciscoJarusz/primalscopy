@@ -6,8 +6,8 @@
 // seguir con la sesion abierta. Si la propiedad se verificara solo al entrar,
 // ese usuario podria editar un NFT que ya no es suyo.
 
-const { createPublicClient, http, getAddress } = require('viem');
-const { apeChain } = require('viem/chains');
+const { getAddress } = require('viem');
+const { client: publicClient } = require('./cadena');
 
 const CONTRACT_ADDRESS = getAddress(
     (process.env.NFT_CONTRACT_ADDRESS || '0xe277A7643562775C4f4257E23B068ba8F45608b4').trim()
@@ -36,11 +36,6 @@ const TOTAL_SUPPLY_ABI = [{
     stateMutability: 'view',
     type: 'function'
 }];
-
-const publicClient = createPublicClient({
-    chain: apeChain,
-    transport: http()
-});
 
 // Devuelve la direccion dueña del token, o null si el token no existe.
 // ownerOf revierte para un tokenId no minteado; eso no es un error nuestro.

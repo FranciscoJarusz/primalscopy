@@ -80,7 +80,8 @@ function readTraitFiles(category, directory) {
 function listTraits(req, res, next) {
     try {
         const categories = VALID_CATEGORIES
-            .filter(category => fs.existsSync(path.join(TRAITS_PATH, category)))
+            .filter(category => fs.existsSync(path.join(TRAITS_PATH, category))
+                || CATEGORY_CONFIG.find(c => c.fsName === category).opcional)
             .map(category => {
                 const categoryDir = path.join(TRAITS_PATH, category);
 
@@ -93,7 +94,7 @@ function listTraits(req, res, next) {
                     traits: readTraitFiles(category, GLOBAL_DIR)
                 }];
 
-                for (const directory of getVariantDirectories(categoryDir)) {
+                for (const directory of fs.existsSync(categoryDir) ? getVariantDirectories(categoryDir) : []) {
                     directories.push({
                         name: directory,
                         isGlobal: false,

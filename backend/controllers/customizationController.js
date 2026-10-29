@@ -20,7 +20,7 @@ const fs = require('fs');
 
 // De atras hacia adelante. Es el mismo orden que usa el front; si difirieran,
 // el NFT guardado no se pareceria al preview.
-const LAYER_ORDER = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Effect'];
+const LAYER_ORDER = ['Background', 'Fur', 'Tunic', 'Face', 'Eyes', 'Hat', 'Addon', 'Effect'];
 
 // Componer un GIF de 2000x2000 tarda entre 4 y 10 segundos y usa bastante
 // memoria. Sin un limite, unos pocos pedidos simultaneos tumban el servicio.

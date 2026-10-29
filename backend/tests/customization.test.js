@@ -328,6 +328,33 @@ async function main() {
     check('las opciones cargan igual', r.status === 200 && Boolean(conCopia.Fur), `(dio ${r.status})`);
     origen.caido = false;
 
+    console.log('\n--- Addon: para todos y arranca en EMPTY ---');
+    check('sin addons subidos no aparece', !(await (await fetch(`${BASE}/api/nft/${TOKEN}/customize-options`)).json()).Addon);
+    const addonDir = path.join(TMP, 'ADDON', '_GLOBAL');
+    fs.mkdirSync(addonDir, { recursive: true });
+    const unHat = path.join(TMP, ...otraVez.applied.Hat.imageUrl.replace('/assets/traits/', '').split('/'));
+    fs.copyFileSync(unHat, path.join(addonDir, 'CROW.gif'));
+    fs.copyFileSync(unHat, path.join(addonDir, 'EMPTY.gif'));
+    const conAddon = await (await fetch(`${BASE}/api/nft/${TOKEN}/customize-options`)).json();
+    const addon = conAddon.Addon;
+    check('EMPTY va primero y es el elegido', addon?.variants[0]?.name === 'EMPTY' && addon.currentValue === 'EMPTY',
+        `(${JSON.stringify(addon)?.slice(0, 120)})`);
+    check('ofrece lo de _GLOBAL', addon?.variants.some(v => v.imageUrl === '/assets/traits/ADDON/_GLOBAL/CROW.gif'));
+
+    const conVacio = {};
+    for (const [category, option] of Object.entries(conAddon)) conVacio[category] = option.variants[0].imageUrl;
+    r = await post(`${BASE}/api/nft/${TOKEN}/customization`, { selections: conVacio }, ownerToken);
+    check('guarda con EMPTY -> 200', r.status === 200, `(dio ${r.status})`);
+
+    r = await post(`${BASE}/api/nft/${TOKEN}/customization`, {
+        selections: { ...conVacio, Addon: '/assets/traits/ADDON/_GLOBAL/CROW.gif' }
+    }, ownerToken);
+    check('guarda con un addon -> 200', r.status === 200, `(dio ${r.status})`);
+    const leido = await (await fetch(`${BASE}/api/nft/${TOKEN}/customization`)).json();
+    check('quedan las 8 capas', Object.keys(leido.applied || {}).length === 8 && leido.applied.Addon.name === 'CROW');
+    check('los attributes siguen sin Addon',
+        !origen.metadata.attributes.some(a => a.trait_type === 'Addon'));
+
     console.log(`\n${pass} ok, ${fail} fallas\n`);
     origenServer.close();
     fs.rmSync(TMP, { recursive: true, force: true });

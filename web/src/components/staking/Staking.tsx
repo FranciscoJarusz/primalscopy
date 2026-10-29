@@ -926,9 +926,11 @@ function PanelZona({
                     `${r.unstaked.length} Primal${r.unstaked.length === 1 ? '' : 's'} unstaked. You kept ${fog(ganado)} FOG.`
                 );
             }
-            for (const { tokenId, reason } of r.rejected) {
+            for (const { tokenId, reason, missing } of r.rejected) {
                 partes.push(
-                    `#${tokenId} ${MOTIVOS[reason] ?? "couldn't be unstaked"}.`
+                    reason === 'bonus-spent'
+                        ? `#${tokenId} can't be unstaked yet: you already spent its bonus. You need ${fog(missing ?? 0)} more FOG, or let it finish its period.`
+                        : `#${tokenId} ${MOTIVOS[reason] ?? "couldn't be unstaked"}.`
                 );
             }
             setAviso({ ok: r.unstaked.length > 0, texto: partes.join(' ') });

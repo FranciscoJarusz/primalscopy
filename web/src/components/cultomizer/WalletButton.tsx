@@ -44,10 +44,16 @@ function guardarRecordada(r: Recordada | null) {
 
 export type Dato = 'saldo' | 'primals';
 
-export default function WalletButton({ dato = 'primals' }: { dato?: Dato }) {
+export default function WalletButton({ dato = 'primals', abrir = false }: { dato?: Dato; abrir?: boolean }) {
     const { open } = useAppKit();
     const { disconnect } = useDisconnect();
     const { isConnected, isConnecting, address } = useAccount();
+    const abierto = useRef(false);
+    useEffect(() => {
+        if (!abrir || abierto.current) return;
+        abierto.current = true;
+        if (!wagmiConfig.state.current) open();
+    }, [abrir, open]);
 
     const [montado, setMontado] = useState(false);
     const [recordada, setRecordada] = useState<Recordada | null>(null);

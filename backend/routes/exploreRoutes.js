@@ -9,6 +9,8 @@ const profiles = require('../lib/profileStore');
 const og = require('../lib/ogCards');
 const primalThumbs = require('../lib/primalThumbs');
 const { getNickname, getAllNicknames } = require('../lib/nicknameStore');
+const supply = require('../lib/collectionSupply');
+const transfers = require('../lib/transferIndex');
 
 const router = express.Router();
 const TOKEN_ID_REGEX = /^\d{1,10}$/;
@@ -24,6 +26,17 @@ router.get('/owner/:wallet', async (req, res) => {
     try {
         res.set('Cache-Control', 'no-cache');
         res.json({ tokenIds: await index.idsDe(req.params.wallet) });
+    } catch {
+        res.status(503).json({ error: "Couldn't reach the blockchain. Try again in a few seconds." });
+    }
+});
+
+// Cuantos Primals tiene cada wallet, para /stats.
+router.get('/holders', async (req, res) => {
+    try {
+        const [{ conteo }, totalSupply] = await Promise.all([index.holders(), supply.totalSupply()]);
+        res.set('Cache-Control', 'no-cache');
+        res.json({ totalSupply, holders: Object.fromEntries(conteo) });
     } catch {
         res.status(503).json({ error: "Couldn't reach the blockchain. Try again in a few seconds." });
     }
@@ -116,6 +129,24 @@ function walletDe(texto) {
     return encontrada?.[0] ?? null;
 }
 
+// Lo ultimo que hizo la wallet en el sitio, lo mas nuevo primero.
+function actividad(wallet, cuantos = 8) {
+    const igual = w => String(w || '').toLowerCase() === wallet;
+    const eventos = [
+        ...forge.readHistory()
+            .filter(h => h.event === 'choose' && !h.testMode && igual(h.wallet))
+            .map(h => ({ at: h.at, kind: 'forge', tokenId: h.tokenId })),
+        ...feed.list()
+            .filter(e => igual(e.wallet))
+            .map(e => ({ at: e.createdAt, kind: 'customize', tokenId: e.tokenId })),
+        ...staking.actividadDe(wallet)
+    ];
+    return eventos
+        .filter(e => e.at && Date.parse(e.at) <= Date.now())
+        .sort((a, b) => b.at.localeCompare(a.at))
+        .slice(0, cuantos);
+}
+
 async function datosHolder(wallet) {
     const [tokenIds, ranking] = await Promise.all([index.idsDe(wallet), index.holders()]);
     const porRareza = [...tokenIds].sort((a, b) => (index.puestoDe(a) ?? Infinity) - (index.puestoDe(b) ?? Infinity));
@@ -136,6 +167,8 @@ async function datosHolder(wallet) {
         rank: tokenIds.length ? ranking.puesto.get(tokenIds.length) ?? null : null,
         holders: ranking.total,
         oneOfOnes: tokenIds.filter(id => getRarity().isOneOfOne(id)).length,
+        holding: transfers.holderSince(wallet),
+        activity: actividad(wallet),
         fog: {
             balance: resumen.balance,
             perDay: resumen.dailyFog,

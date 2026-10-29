@@ -1,21 +1,13 @@
 import type { APIRoute } from 'astro';
-import { parseAbi } from 'viem';
-import { client, json } from '@/lib/cultomizer/client';
-import { NFT_CONTRACT_ADDRESS } from '@/lib/cultomizer/contracts';
+import { json } from '@/lib/cultomizer/client';
+import { backendAbsoluto } from '@/lib/backend';
 import { readEnvValue } from '@/lib/env';
 import { ROLES, rolDe } from '@/lib/stats/roles';
-import { MARGEN_IDS, totalSupply } from '@/lib/cultomizer/supply';
 
 export const prerender = false;
 
-const ABI = parseAbi(['function ownerOf(uint256 tokenId) view returns (address)']);
-
 const DURACION_CACHE = 10 * 60 * 1000;
 const TOP = 100;
-const SIN_DUENO = new Set([
-    '0x0000000000000000000000000000000000000000',
-    '0x000000000000000000000000000000000000dead',
-]);
 
 type Stats = {
     totalSupply: number;
@@ -50,30 +42,19 @@ async function leerVolumen(): Promise<Stats['volumen']> {
     }
 }
 
-async function calcular(): Promise<Stats> {
-    const [supply, volumen] = await Promise.all([totalSupply(), leerVolumen()]);
-
-    const ids = Array.from(
-        { length: supply + MARGEN_IDS },
-        (_, i) => BigInt(i + 1)
-    );
-    const duenos = await client.multicall({
-        contracts: ids.map((id) => ({
-            address: NFT_CONTRACT_ADDRESS,
-            abi: ABI,
-            functionName: 'ownerOf' as const,
-            args: [id] as const,
-        })),
-        batchSize: 1024 * 200,
-    });
-
-    const porWallet = new Map<string, number>();
-    for (const d of duenos) {
-        if (d.status !== 'success') continue;
-        const address = d.result.toLowerCase();
-        if (SIN_DUENO.has(address)) continue;
-        porWallet.set(address, (porWallet.get(address) ?? 0) + 1);
-    }
+// Cuantos tiene cada wallet sale del backend, que lo lleva al dia con las
+// transferencias de la cadena (ver backend/lib/transferIndex.js).
+async function calcular(backend: string): Promise<Stats> {
+    const [respuesta, volumen] = await Promise.all([
+        fetch(`${backend}/explore/holders`, { signal: AbortSignal.timeout(60_000) }),
+        leerVolumen(),
+    ]);
+    if (!respuesta.ok) throw new Error(`El backend respondio ${respuesta.status}`);
+    const { totalSupply: supply, holders } = (await respuesta.json()) as {
+        totalSupply: number;
+        holders: Record<string, number>;
+    };
+    const porWallet = new Map(Object.entries(holders));
 
     const conteo = new Map(ROLES.map((r) => [r.slug, 0]));
     for (const cantidad of porWallet.values()) {
@@ -110,12 +91,12 @@ const cacheada = (stats: Stats) => {
     return respuesta;
 };
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ url }) => {
     if (cache && Date.now() - cache.actualizado < DURACION_CACHE) {
         return cacheada(cache);
     }
 
-    enCurso ??= calcular().finally(() => {
+    enCurso ??= calcular(backendAbsoluto(url)).finally(() => {
         enCurso = null;
     });
 

@@ -6,7 +6,7 @@ import {
     APECHAIN,
     normalizeIpfs,
 } from '@/lib/cultomizer/contracts';
-import { MARGEN_IDS, totalSupply } from '@/lib/cultomizer/supply';
+import { backendAbsoluto } from '@/lib/backend';
 
 export const prerender = false;
 
@@ -26,44 +26,17 @@ function chunk<T>(items: T[], size: number): T[][] {
     return out;
 }
 
-/// Busca que tokens de la coleccion son de esta wallet.
-///
-/// El contrato NO implementa ERC721Enumerable — `tokenOfOwnerByIndex` revierte,
-/// esta comprobado contra la cadena. Por eso se va directo al barrido de
-/// `ownerOf`, sin intentar primero el camino enumerable que siempre falla.
-/// Con multicall, barrer 4000 tokens son ~20 requests, no 4000.
-async function findTokensOwnedBy(
-    owner: `0x${string}`,
-    expected: number
-): Promise<bigint[]> {
-    const found: bigint[] = [];
-    // Hasta el supply de la cadena y un poco mas (ver lib/cultomizer/supply).
-    const ultimo = (await totalSupply()) + MARGEN_IDS;
-    const allIds = Array.from({ length: ultimo }, (_, i) => BigInt(i + 1));
-
-    for (const batch of chunk(allIds, BATCH_SIZE)) {
-        const results = await client.multicall({
-            contracts: batch.map((tokenId) => ({
-                address: NFT_CONTRACT_ADDRESS,
-                abi: NFT_ABI,
-                functionName: 'ownerOf' as const,
-                args: [tokenId] as const,
-            })),
-            allowFailure: true,
-        });
-
-        results.forEach((r, i) => {
-            if (r.status !== 'success') return;
-            if (String(r.result).toLowerCase() === owner.toLowerCase()) {
-                found.push(batch[i]!);
-            }
-        });
-
-        // Ya tenemos todos los que la wallet declara tener: no sigue barriendo.
-        if (found.length >= expected) break;
-    }
-
-    return found;
+/// Que tokens de la coleccion son de esta wallet. El contrato no implementa
+/// ERC721Enumerable: lo sabe el backend, que lleva los dueños al dia con las
+/// transferencias de la cadena (ver backend/lib/transferIndex.js).
+async function findTokensOwnedBy(backend: string, owner: string): Promise<bigint[]> {
+    const respuesta = await fetch(`${backend}/explore/owner/${owner}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(60_000),
+    });
+    if (!respuesta.ok) throw new Error(`El backend respondio ${respuesta.status}`);
+    const { tokenIds } = (await respuesta.json()) as { tokenIds: string[] };
+    return tokenIds.map((id) => BigInt(id));
 }
 
 async function readTokenUris(tokenIds: bigint[]): Promise<Map<string, string>> {
@@ -123,22 +96,15 @@ async function fetchMetadata(
 
 export const GET: APIRoute = async ({ url }) => {
     const address = url.searchParams.get('address');
-    if (!address) {
+    if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address)) {
         return json({ error: 'Address is required' }, 400);
     }
 
-    const owner = address as `0x${string}`;
     const startedAt = Date.now();
 
     try {
-        const balance = await client.readContract({
-            address: NFT_CONTRACT_ADDRESS,
-            abi: NFT_ABI,
-            functionName: 'balanceOf',
-            args: [owner],
-        });
-
-        const count = Number(balance);
+        const tokenIds = await findTokensOwnedBy(backendAbsoluto(url), address);
+        const count = tokenIds.length;
 
         if (count === 0) {
             return json({
@@ -150,7 +116,6 @@ export const GET: APIRoute = async ({ url }) => {
             });
         }
 
-        const tokenIds = await findTokensOwnedBy(owner, count);
         const uris = await readTokenUris(tokenIds);
         const metadataByToken = await fetchMetadata(uris);
 

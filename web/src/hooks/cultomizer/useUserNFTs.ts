@@ -14,7 +14,7 @@ export interface Nft {
 /// Los NFTs de la coleccion que tiene la wallet conectada.
 ///
 /// El balance se lee directo de la cadena con wagmi; la list de tokens sale de
-/// /api/user/nfts, que barre la coleccion con multicall del lado del servidor.
+/// /api/user/nfts, que se la pide al backend.
 ///
 /// Dos caminos que tenia la version anterior no estan mas, porque no podian
 /// funcionar: pedir los tokens con `tokenOfOwnerByIndex` (el contrato no es

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
 import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiDownload } from 'react-icons/fi';
 import {
     leerFicha,
@@ -15,6 +14,7 @@ import { APECHAIN } from '@/lib/cultomizer/contracts';
 import { tierDe } from '@/components/forge/rareza';
 import { urlDeRoll, urlOpenSea } from '@/components/forge/forge';
 import { BACKEND_BASE_URL, BACKEND_URL } from '@/lib/backend';
+import { useWalletRecordada } from '@/lib/walletLista';
 
 const card =
     'rounded-2xl sm:rounded-[30px] bg-darkblue shadow-lg shadow-darkblue/50 p-5 sm:p-8';
@@ -101,7 +101,7 @@ export default function Ficha({
     id: string;
     inicial: Datos | null;
 }) {
-    const { address } = useAccount();
+    const address = useWalletRecordada();
     const apodos = useApodos();
     const [datos, setDatos] = useState<Datos | null>(inicial);
     const [error, setError] = useState<string | null>(null);
@@ -156,7 +156,7 @@ export default function Ficha({
         );
     }
 
-    const esMio = Boolean(address && datos.owner === address.toLowerCase());
+    const esMio = Boolean(address && datos.owner === address);
     const apodo = datos.owner ? (apodos[datos.owner] ?? datos.ownerName) : null;
     const rasgos = datos.attributes.filter((a) => a.trait_type !== UNICO);
     const unico = datos.attributes.find((a) => a.trait_type === UNICO);

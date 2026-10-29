@@ -19,9 +19,9 @@ const esAutomatico = kind =>
 
 async function walletsConPrimal() {
     const supply = require('./collectionSupply');
-    const { getTokenOwners } = require('./nftOwnership');
+    const { ownersOf } = require('./transferIndex');
     const total = (await supply.totalSupply()) + supply.MARGEN_IDS;
-    const owners = await getTokenOwners(Array.from({ length: total }, (_, i) => String(i + 1)));
+    const owners = await ownersOf(Array.from({ length: total }, (_, i) => String(i + 1)));
     return new Set([...owners.values()].filter(Boolean));
 }
 const MAX_PRIZES = 20;

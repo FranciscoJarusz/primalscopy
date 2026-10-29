@@ -879,7 +879,8 @@ function applyVerification({ owners, listings, checkedAt }) {
  * cadena: `ownedIds` son los que siguen en la wallet (sus dias se acreditan
  * hasta ahora); si la cadena no contesto, `ownedIds` es null y se acreditan
  * solo los dias ya verificados. Los que ya no son de la wallet los cierra el
- * chequeo periodico como vendidos.
+ * chequeo periodico como vendidos. Si el bonus que pierde ya se gasto y el
+ * saldo quedaria negativo, no se saca (`bonus-spent`, con lo que falta).
  *
  * Devuelve { unstaked: [{ tokenId, earned, bonusLost }], rejected }.
  */
@@ -898,6 +899,12 @@ function unstake(wallet, tokenIds, { ownedIds }) {
         if (isFinished(stake, now)) { rejected.push({ tokenId, reason: 'already-finished' }); continue; }
         if (ownedIds && !ownedIds.has(tokenId)) { rejected.push({ tokenId, reason: 'not-owner' }); continue; }
         if (ownedIds) stake.verifiedAt = new Date(now).toISOString();
+        const pierde = creditedFog(stake, cuenta) - creditedDays(stake) * baseRateOf(stake);
+        const { balance } = balanceOf(key, active, wallets, cuenta);
+        if (balance - pierde < 0) {
+            rejected.push({ tokenId, reason: 'bonus-spent', missing: pierde - balance });
+            continue;
+        }
         unstaked.push({ tokenId, ...finish(active, wallets, tokenId, 'unstaked', now, cuenta) });
     }
 
@@ -977,6 +984,40 @@ function publicStake(stake, now = Date.now(), cuenta) {
         perDayNow: fogPorDiaAhora(stake, cuenta ?? contador(), boostsLectura(), now),
         oneOfOneBonus: bonusUnicoEn(stake.tokenId, now),
         finished: isFinished(stake, now)
+    };
+}
+
+// Lo que hizo la wallet en el staking y la tienda, para la actividad del perfil.
+function actividadDe(wallet) {
+    const key = wallet.toLowerCase();
+    return readHistory()
+        .filter(h => h.wallet === key && ['start', 'end', 'redeem'].includes(h.event) && (h.event !== 'end' || h.reason === 'completed'))
+        .map(h => h.event === 'redeem'
+            ? { at: h.at, kind: 'redeem', label: h.label }
+            : { at: h.event === 'start' ? h.startAt : h.endsAt, kind: h.event === 'start' ? 'stake' : 'trained', tokenId: h.tokenId, days: h.days });
+}
+
+// Lo del staking que miran las insignias (lib/badgeStore.js).
+function datosParaInsignias(wallet) {
+    const key = wallet.toLowerCase();
+    const now = Date.now();
+    const history = readHistory();
+    const active = activosLectura();
+    const tramos = streaksByWallet(history, active, now)[key] ?? [];
+    const periodos = {};
+    const canjes = {};
+    for (const h of history) {
+        if (h.wallet !== key) continue;
+        if (h.event === 'start') periodos[h.days] = (periodos[h.days] ?? 0) + 1;
+        if (h.event === 'redeem') canjes[h.item] = (canjes[h.item] ?? 0) + 1;
+    }
+    const { earned } = balanceOf(key, active);
+    return {
+        bestStreak: Math.max(0, ...tramos.map(([a, b]) => Math.floor((b - a) / DAY_MS))),
+        stakingNow: Object.values(active).filter(s => s.wallet === key && !isFinished(s, now)).length,
+        fogEarned: earned - (readWallets()[key]?.bought ?? 0),
+        periodos,
+        canjes
     };
 }
 
@@ -1395,6 +1436,8 @@ module.exports = {
     applyVerification,
     walletSummary,
     stakeOf,
+    datosParaInsignias,
+    actividadDe,
     leaderboard,
     badgesOf,
     streaksByWallet,

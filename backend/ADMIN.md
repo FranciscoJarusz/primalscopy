@@ -25,6 +25,22 @@ En el dashboard de Railway, sobre el servicio del backend:
 |---|---|---|
 | `TRAITS_PATH` | `/data/traits` | Dónde viven los traits. Tiene que coincidir con el mount path del volumen. |
 | `ADMIN_TOKEN` | un secreto largo | Contraseña del panel. Sin esto, la API de admin devuelve 503 y el panel no funciona. |
+| `APECHAIN_RPC_URL` | opcional | RPC propio de ApeChain (Alchemy, QuickNode). Pueden ir varios separados por coma; el público queda de respaldo. |
+
+### Índice de transferencias
+
+El backend lee todos los eventos Transfer del contrato (`lib/transferIndex.js`)
+y guarda en `_generated/transfers/index.json` quién tiene cada Primal y desde
+cuándo tiene Primals cada wallet. De ahí salen los dueños del explorador, del
+vault, de los raffles, de `/stats` y del selector del Cultomizer, y el "holder
+since" del perfil (`holding` en `/api/explore/holder/:id`).
+
+La primera vez lee todo desde el mint (menos de una hora con el RPC público).
+Mientras tanto, y si alguna vez queda más de 5 minutos atrasado, los dueños se
+leen Primal por Primal como antes. El progreso se ve en la tarjeta "Chain
+index" del To do. Lo que tiene que ser exacto en el momento (guardar en el
+Cultomizer, el Forge, stakear, el chequeo del staking) sigue preguntando
+`ownerOf` a la cadena.
 
 Para generar un token:
 
@@ -74,6 +90,14 @@ En el panel aparece primero, marcada con 🌐.
 
 > Si un trait de `_GLOBAL` tiene el mismo nombre que uno de la carpeta propia
 > del NFT, gana el de la carpeta propia y el global no se duplica.
+
+### Addon
+
+`ADDON` es una categoría que no está en la metadata: todos los Primals pueden
+usar todo lo que se suba ahí (en `_GLOBAL` o en cualquier carpeta). Arrancan en
+el trait que se llame **EMPTY**: subilo como un GIF transparente de 2000×2000,
+como cualquier otro trait. Va arriba del sombrero y abajo del efecto. Mientras
+no haya ningún addon subido, el Cultomizer no la muestra.
 
 ### Limpiar las copias viejas
 

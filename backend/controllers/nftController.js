@@ -15,8 +15,21 @@ const CATEGORY_CONFIG = [
     { fsName: 'FACE', apiName: 'Face' },
     { fsName: 'EYES', apiName: 'Eyes' },
     { fsName: 'HAT', apiName: 'Hat' },
+    { fsName: 'ADDON', apiName: 'Addon', opcional: true },
     { fsName: 'EFFECT', apiName: 'Effect' }
 ];
+
+// Las categorias opcionales no estan en la metadata: cualquier Primal puede
+// usar todo lo que haya en ellas, y arrancan en el trait que se llame EMPTY.
+const EMPTY_KEY = 'EMPTY';
+
+function optionalVariants(category) {
+    const categoryDir = path.join(TRAITS_PATH, category.fsName);
+    const directories = fs.existsSync(categoryDir) ? getVariantDirectories(categoryDir) : [];
+    const variants = buildAllVariantsForCategory(category.fsName, null, directories);
+    const empty = variants.filter(v => normalizeKey(v.name) === EMPTY_KEY);
+    return [...empty, ...variants.filter(v => !empty.includes(v))];
+}
 
 function normalizeKey(value) {
     return String(value || '')
@@ -167,6 +180,16 @@ async function buildCustomizationOptions(nftId, metadataOverride = null) {
         }
 
         for (const category of CATEGORY_CONFIG) {
+            if (category.opcional) {
+                const variants = optionalVariants(category);
+                if (variants.length) {
+                    customizationOptions[category.apiName] = {
+                        currentValue: variants[0].name,
+                        variants: variants.map(variant => ({ ...variant, drop: drops[variant.imageUrl] ?? null }))
+                    };
+                }
+                continue;
+            }
             const categoryDir = path.join(TRAITS_PATH, category.fsName);
             if (!fs.existsSync(categoryDir)) continue;
 

@@ -19,8 +19,8 @@
 
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { createPublicClient, http, getAddress, isAddress } = require('viem');
-const { apeChain } = require('viem/chains');
+const { getAddress, isAddress } = require('viem');
+const { client: publicClient } = require('./cadena');
 
 // Igual que ADMIN_TOKEN: el .trim() no es cosmetico. Pegar un secreto en el
 // dashboard de Railway suele arrastrar un espacio o un salto de linea, y eso
@@ -33,11 +33,6 @@ const APP_DOMAIN = (process.env.APP_DOMAIN || 'primalcult.xyz').trim();
 
 const NONCE_TTL_MS = 5 * 60 * 1000;        // 5 minutos para firmar
 const SESSION_TTL_SECONDS = 24 * 60 * 60;  // 24 horas de sesion
-
-const publicClient = createPublicClient({
-    chain: apeChain,
-    transport: http()
-});
 
 // Si no hay secreto, toda la autenticacion queda deshabilitada. Es deliberado,
 // mismo criterio que el panel de admin: prefiero que no funcione a que quede

@@ -182,7 +182,7 @@ export function rangoEscalon(escalones: Escalon[], i: number) {
     if (!siguiente) return `${min}+`;
     return siguiente.min - 1 === min ? `${min}` : `${min}-${siguiente.min - 1}`;
 }
-export type Rechazo = { tokenId: string; reason: string };
+export type Rechazo = { tokenId: string; reason: string; missing?: number };
 
 async function pedir<T>(
     ruta: string,

@@ -1,17 +1,10 @@
 ---
-import { BACKEND_URL as BACKEND } from '@/lib/backend';
+import { backendAbsoluto as absoluto, origenPublico } from '@/lib/backend';
 
 export const prerender = false;
 
-// Detras del tunel (o de un proxy) la pagina recibe la visita en http aunque
-// afuera sea https, y X no carga imagenes por http: salvo en localhost, el
-// origen publico va siempre con https.
-const local = ['localhost', '127.0.0.1', '[::1]'].includes(Astro.url.hostname);
-const origen = local ? Astro.url.origin : `https://${Astro.url.host}`;
-
-const backendAbsoluto = BACKEND.startsWith('/')
-    ? new URL(BACKEND, origen).href
-    : BACKEND;
+const origen = origenPublico(Astro.url);
+const backendAbsoluto = absoluto(Astro.url);
 
 const { id = '' } = Astro.params;
 type Premio = { prize: { label: string }; itemLabel: string; name: string };

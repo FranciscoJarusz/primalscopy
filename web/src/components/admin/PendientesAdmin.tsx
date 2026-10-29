@@ -19,6 +19,13 @@ type Backup = {
     lastSuccessAt: string | null;
     lastError: string | null;
 };
+type Indice = {
+    ready: boolean;
+    running: boolean;
+    progress: number;
+    syncedAt: string | null;
+    holders: number;
+};
 type Uso = {
     disk: { total: number; used: number; usedPercent: number } | null;
     folders: { path: string; bytes: number; cache: boolean }[];
@@ -40,13 +47,14 @@ export default function PendientesAdmin({ token }: { token: string }) {
                 return r.json();
             });
         try {
-            const [entregas, raffles, staking, promo, backup, uso] = await Promise.all([
+            const [entregas, raffles, staking, promo, backup, uso, indice] = await Promise.all([
                 leerEntregas(token),
                 pedir('raffles'),
                 pedir('staking'),
                 pedir('promo'),
                 pedir('backup') as Promise<Backup>,
                 pedir('storage/usage') as Promise<Uso>,
+                pedir('transfers') as Promise<Indice>,
             ]);
             const respaldar = async () => {
                 await fetch(`${BACKEND_URL}/admin/backup`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
@@ -143,6 +151,17 @@ export default function PendientesAdmin({ token }: { token: string }) {
                           : 'All the data is copied once a day. Images and traits only when they change.',
                     atencion: !backup.configured || Boolean(backup.lastError) || (viejo && !backup.running),
                     accion: backup.configured && !backup.running ? { nombre: 'Back up now', hacer: respaldar } : undefined,
+                },
+                {
+                    id: 'indice',
+                    nombre: 'Chain index',
+                    valor: indice.ready ? 'Up to date' : `${Math.floor(indice.progress * 100)}% read`,
+                    detalle: indice.ready
+                        ? `${indice.holders.toLocaleString('en-US')} holders. Owners and holder since come from every transfer of the collection.`
+                        : indice.running
+                          ? 'Reading every transfer since the mint. Until it ends, owners are read Primal by Primal like before.'
+                          : "Couldn't read ApeChain. It retries on its own every minute.",
+                    atencion: !indice.ready && !indice.running,
                 },
             ]);
             setError(null);

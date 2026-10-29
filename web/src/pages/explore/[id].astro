@@ -1,7 +1,7 @@
 ---
 import LandingLayout from '@/layouts/LandingLayout.astro';
-import FichaIsland from '@/components/explore/FichaIsland';
-import { BACKEND_URL as BACKEND } from '@/lib/backend';
+import FichaPrimal from '@/components/explore/Ficha';
+import { backendAbsoluto } from '@/lib/backend';
 import type { Ficha } from '@/lib/explore';
 
 export const prerender = false;
@@ -9,9 +9,7 @@ export const prerender = false;
 const { id = '' } = Astro.params;
 if (!/^\d{1,5}$/.test(id) || id.startsWith('0')) return Astro.redirect('/explore');
 
-const local = ['localhost', '127.0.0.1', '[::1]'].includes(Astro.url.hostname);
-const origen = local ? Astro.url.origin : `https://${Astro.url.host}`;
-const backend = BACKEND.startsWith('/') ? new URL(BACKEND, origen).href : BACKEND;
+const backend = backendAbsoluto(Astro.url);
 
 const respuesta = await fetch(`${backend}/explore/primal/${id}`).catch(() => null);
 if (respuesta?.status === 404) return Astro.redirect('/explore');
@@ -33,6 +31,6 @@ const descripcion = ficha
   image={tarjeta}
 >
     <main class="mt-10 sm:mt-14">
-        <FichaIsland client:only="react" id={id} inicial={ficha} />
+        <FichaPrimal client:load id={id} inicial={ficha} />
     </main>
 </LandingLayout>

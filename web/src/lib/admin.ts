@@ -10,6 +10,7 @@ export const ADMIN_SECCIONES = [
     { id: 'staking', nombre: 'Staking', href: '/admin/staking' },
     { id: 'promo', nombre: 'Codes', href: '/admin/promo' },
     { id: 'nicknames', nombre: 'Community', href: '/admin/nicknames' },
+    { id: 'badges', nombre: 'Badges', href: '/admin/badges' },
     { id: 'traits', nombre: 'Traits', href: '/admin/traits' },
 ];
 

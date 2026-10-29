@@ -10,6 +10,7 @@ import { createAppKit } from "@reown/appkit/react";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { apeChain, mainnet, defineChain } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
+import { avisarWalletLista } from "@/lib/walletLista";
 
 // El projectId decide, entre otras cosas, desde que dominios se permite parear
 // por WalletConnect. Produccion usa un proyecto propio de cloud.reown.com, con
@@ -79,3 +80,5 @@ export const appKit = createAppKit({
     socials: false,
   },
 });
+
+avisarWalletLista();

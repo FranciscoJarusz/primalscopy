@@ -367,6 +367,12 @@ async function main() {
     d = await sacar(tT, ['24']);
     check('sacarlo pierde tambien el bonus por cantidad', d.unstaked[0].earned === 2 * 30 && d.unstaked[0].bonusLost === 2 * 3, JSON.stringify(d.unstaked));
     check('y los que quedan siguen con lo ya ganado', d.balance === previo - 2 * 3, `balance ${d.balance}`);
+    const { spendFog } = require('../lib/stakingStore');
+    spendFog(T, d.balance - 2, 'test');
+    d = await sacar(tT, ['23']);
+    check('si ya gasto el bonus no lo puede sacar', d.unstaked.length === 0 && d.rejected[0]?.reason === 'bonus-spent'
+        && d.rejected[0].missing === 2 * 3 - 2 && d.balance === 2, JSON.stringify(d.rejected));
+    check('y sigue entrenando', d.stakes.some(s => s.tokenId === '23'));
     check('los entrenamientos de antes de los escalones pagan su tasa fija', (await yo(tH)).stakes.every(s => s.earned === s.creditedDays * s.perDay));
 
     console.log('\nRuletas');

@@ -4,6 +4,7 @@ const { ASSETS_ROOT, readMetadata, writeAtomic } = require('./assetStore');
 const { fetchOrigin, currentMetadata } = require('./metadataSync');
 const { getTokenOwners, CONTRACT_ADDRESS } = require('./nftOwnership');
 const supply = require('./collectionSupply');
+const transfers = require('./transferIndex');
 
 const INDEX_PATH = path.join(ASSETS_ROOT, 'explore', 'index.json');
 const REFRESH_MS = 6 * 60 * 60 * 1000;
@@ -131,6 +132,8 @@ let duenos = { leidos: 0, mapa: null };
 let leyendoDuenos = null;
 
 async function owners() {
+    const delIndice = transfers.duenos();
+    if (delIndice) return delIndice;
     if (duenos.mapa && Date.now() - duenos.leidos < OWNERS_MS) return duenos.mapa;
     leyendoDuenos ??= getTokenOwners(derivar().ids)
         .then(mapa => {
@@ -151,11 +154,11 @@ async function ownerOf(id) {
     return dueno && !SIN_DUENO.has(dueno) ? dueno : null;
 }
 
-let rankingMemo = { leidos: null, datos: null };
+let rankingMemo = { mapa: null, datos: null };
 
 async function holders() {
     const mapa = await owners();
-    if (rankingMemo.leidos === duenos.leidos) return rankingMemo.datos;
+    if (rankingMemo.mapa === mapa) return rankingMemo.datos;
     const contrato = CONTRACT_ADDRESS.toLowerCase();
     const conteo = new Map();
     for (const dueno of mapa.values()) {
@@ -166,15 +169,15 @@ async function holders() {
     const puesto = new Map();
     cantidades.forEach((n, i) => { if (!puesto.has(n)) puesto.set(n, i + 1); });
     const datos = { conteo, puesto, total: conteo.size };
-    rankingMemo = { leidos: duenos.leidos, datos };
+    rankingMemo = { mapa, datos };
     return datos;
 }
 
-let avataresMemo = { leidos: null, datos: null };
+let avataresMemo = { mapa: null, puesto: null, datos: null };
 
 async function avatares() {
     const mapa = await owners();
-    if (avataresMemo.leidos === duenos.leidos) return avataresMemo.datos;
+    if (avataresMemo.mapa === mapa && avataresMemo.puesto === derivar().puesto) return avataresMemo.datos;
     const { puesto } = derivar();
     const mejor = new Map();
     for (const [id, dueno] of mapa) {
@@ -182,7 +185,7 @@ async function avatares() {
         const actual = mejor.get(dueno);
         if (!actual || (puesto[id] ?? Infinity) < (puesto[actual] ?? Infinity)) mejor.set(dueno, id);
     }
-    avataresMemo = { leidos: duenos.leidos, datos: mejor };
+    avataresMemo = { mapa, puesto, datos: mejor };
     return mejor;
 }
 

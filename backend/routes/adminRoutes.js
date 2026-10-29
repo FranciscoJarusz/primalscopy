@@ -18,6 +18,8 @@ const wheels = require('../lib/stakingWheels');
 const raffles = require('../lib/raffleStore');
 const traitShop = require('../lib/traitShopStore');
 const backup = require('../lib/backup');
+const transfers = require('../lib/transferIndex');
+const badges = require('../lib/badgeStore');
 const { diskUsage } = require('../lib/diskUsage');
 const { resolveLayerPath } = require('../controllers/nftController');
 const {
@@ -167,6 +169,8 @@ router.get('/economy', (req, res) => res.json(staking.economy()));
 
 router.get('/storage/usage', async (req, res) => res.json(await diskUsage({ fresh: req.query.fresh === '1' })));
 
+router.get('/transfers', (req, res) => res.json(transfers.status()));
+
 router.get('/backup', (req, res) => res.json(backup.status()));
 router.post('/backup', (req, res) => {
     if (!backup.isConfigured()) return res.status(409).json({ error: 'Backups are not set up. Add the BACKUP_S3_* variables in Railway.' });
@@ -273,6 +277,18 @@ router.post('/raffles/:id/image', uploadIcon.single('file'), async (req, res) =>
     if (!req.file) return res.status(400).json({ error: 'Pick an image.' });
     conRaffle(res, await raffles.setImage(req.params.id, req.file.buffer));
 });
+
+const conBadges = (res, r) => (r.error ? res.status(r.status || 400).json({ error: r.error }) : res.json(r));
+router.get('/badges', (req, res) => res.json(badges.admin()));
+router.post('/badges', (req, res) => conBadges(res, badges.crear(req.body)));
+router.put('/badges/order', (req, res) => conBadges(res, badges.ordenar(req.body?.order)));
+router.patch('/badges/:id', (req, res) => conBadges(res, badges.actualizar(req.params.id, req.body)));
+router.delete('/badges/:id', (req, res) => conBadges(res, badges.borrar(req.params.id)));
+router.post('/badges/:id/image', uploadIcon.single('file'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Pick an image.' });
+    conBadges(res, await badges.ponerImagen(req.params.id, req.file.buffer));
+});
+router.delete('/badges/:id/image', (req, res) => conBadges(res, badges.quitarImagen(req.params.id)));
 
 router.use(adminErrorHandler);
 
