@@ -92,8 +92,13 @@ const partes = (url: string) => {
     const [, , , categoria = '', carpeta = ''] = url.split('/');
     return { categoria, carpeta };
 };
-const miniatura = (url: string, version?: number) =>
+const miniatura = (url: string, version?: string | number) =>
     `${BACKEND_BASE_URL}${miniaturaDeTrait(url, { tamano: 'grilla', version })}`;
+const versionDe = (categorias: Categoria[], url: string) =>
+    categorias
+        .flatMap((c) => c.directories)
+        .flatMap((d) => d.traits)
+        .find((t) => t.url === url)?.updatedAt;
 
 function alcance(url: string) {
     const { categoria, carpeta } = partes(url);
@@ -485,7 +490,7 @@ function Tarjeta({
         <article className={`${panel} gap-5`}>
             <div className="flex flex-wrap items-center gap-4">
                 <img
-                    src={miniatura(d.trait, version)}
+                    src={miniatura(d.trait, version ?? versionDe(categorias, d.trait))}
                     alt=""
                     className="size-20 shrink-0 rounded-xl bg-white/10 object-contain"
                 />
@@ -695,7 +700,7 @@ function Formulario({
                 {editando ? (
                     <div className="flex items-center gap-3">
                         <img
-                            src={miniatura(b.trait!)}
+                            src={miniatura(b.trait!, versionDe(categorias, b.trait!))}
                             alt=""
                             className="size-14 rounded-lg bg-white/10 object-contain"
                         />

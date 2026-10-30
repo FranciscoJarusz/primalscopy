@@ -83,9 +83,12 @@ function buildVariantsFromDirectory(fsCategoryName, directoryName, isGlobal) {
 
     const targetDir = path.join(TRAITS_PATH, fsCategoryName, directoryName);
 
+    // `version`: la fecha del archivo, para que el front pida la miniatura
+    // nueva cuando se cambia la imagen desde /admin y no la de su cache.
     return getImageFilesFromDir(targetDir).map(file => ({
         name: stripImageExtensions(file),
         imageUrl: `/assets/traits/${fsCategoryName}/${directoryName}/${file}`,
+        version: Math.round(fs.statSync(path.join(targetDir, file)).mtimeMs),
         isNone: false,
         isGlobal
     }));

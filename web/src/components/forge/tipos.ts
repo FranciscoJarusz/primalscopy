@@ -1,7 +1,7 @@
 // Lo que devuelve el backend del Forge (/api/forge).
 
 export type Traits = Record<string, string>;
-export type Layer = { name: string; imageUrl: string };
+export type Layer = { name: string; imageUrl: string; version?: number };
 export type RollOption = { changes: Traits; layers: Record<string, Layer> };
 
 export type PendingRoll = {

@@ -92,7 +92,7 @@ async function layersFor(nftId, metadata, changes, { randomInt } = {}) {
                 || option.variants.find(v => v.name === option.currentValue)
                 || option.variants[0];
         }
-        if (variant) layers[category] = { name: variant.name, imageUrl: variant.imageUrl };
+        if (variant) layers[category] = { name: variant.name, imageUrl: variant.imageUrl, version: variant.version };
     }
     return layers;
 }

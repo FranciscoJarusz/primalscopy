@@ -38,7 +38,7 @@ export default function Opcion({
                         key={c}
                         src={miniaturaDeTrait(
                             `${BACKEND_BASE_URL}${option.layers[c].imageUrl}`,
-                            { grande: true }
+                            { grande: true, version: option.layers[c].version }
                         )}
                         alt=""
                         className="absolute inset-0 w-full h-full object-contain"

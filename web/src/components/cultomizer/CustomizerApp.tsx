@@ -29,6 +29,7 @@ interface Drop {
 interface TraitVariant {
     name: string;
     imageUrl: string | null;
+    version?: number;
     isNone?: boolean;
     // El drop si es un trait exclusivo, o null si es comun.
     drop?: Drop | null;
@@ -370,6 +371,16 @@ function CustomizerContent() {
         () => capasDe(selectedVariants).map(({ url }) => url),
         [selectedVariants, BACKEND_BASE_URL]
     );
+
+    const versiones = useMemo(() => {
+        const mapa = new Map<string, number>();
+        for (const opcion of Object.values(customizationOptions ?? {}))
+            for (const v of opcion.variants)
+                if (v.imageUrl && v.version) mapa.set(v.imageUrl, v.version);
+        return mapa;
+    }, [customizationOptions]);
+    const versionDe = (url: string) =>
+        versiones.get(url.slice(url.indexOf('/assets/traits/')));
 
     const capasPreview = useMemo(
         () =>
@@ -1058,6 +1069,7 @@ function CustomizerContent() {
                         miniatura
                             ? miniaturaDeTrait(url, {
                                   tamano: 'preview',
+                                  version: versionDe(url),
                               })
                             : url
                     }
@@ -1491,7 +1503,7 @@ function CustomizerContent() {
                         imagen: desbloqueado.imageUrl
                             ? miniaturaDeTrait(
                                   `${BACKEND_BASE_URL}${desbloqueado.imageUrl}`,
-                                  { tamano: 'grilla' }
+                                  { tamano: 'grilla', version: desbloqueado.version }
                               )
                             : '',
                         mensaje: (
@@ -1543,7 +1555,7 @@ function CustomizerContent() {
                                 <img
                                     src={miniaturaDeTrait(
                                         `${BACKEND_BASE_URL}${aDesbloquear.variant.imageUrl}`,
-                                        { tamano: 'grilla' }
+                                        { tamano: 'grilla', version: aDesbloquear.variant.version }
                                     )}
                                     alt=""
                                     className="size-20 shrink-0 rounded-xl bg-white/10 object-contain"
@@ -1724,7 +1736,7 @@ function Opciones({
                                             variant.imageUrl.startsWith('http')
                                                 ? variant.imageUrl
                                                 : `${BACKEND_BASE_URL}${variant.imageUrl}`,
-                                            { tamano: 'grilla' }
+                                            { tamano: 'grilla', version: variant.version }
                                         )}
                                         onError={(e) => {
                                             const img = e.currentTarget;
