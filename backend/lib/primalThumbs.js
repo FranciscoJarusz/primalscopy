@@ -81,8 +81,16 @@ async function delOrigen(tokenId, meta) {
     }
 }
 
+// La copia local mas nueva que la miniatura: el Primal se acaba de guardar
+// en este server y el origen puede no tenerlo todavia.
+const localMasNueva = (tokenId, destino) =>
+    assets.hasImage(tokenId) && mtime(assets.imagePath(tokenId)) > (mtime(destino) ?? 0);
+
 async function original(tokenId, destino) {
     if (!desdeOrigen(tokenId)) return { buffer: fs.readFileSync(assets.imagePath(tokenId)) };
+    if (destino && localMasNueva(tokenId, destino)) {
+        return { buffer: fs.readFileSync(assets.imagePath(tokenId)), meta: leerMeta(destino) ?? {} };
+    }
     try {
         return await delOrigen(tokenId, mtime(destino) !== null ? leerMeta(destino) : null);
     } catch (error) {
@@ -96,6 +104,7 @@ function vencida(tokenId, destino) {
     if (hecha === null) return true;
     if (!desdeOrigen(tokenId)) return mtime(assets.imagePath(tokenId)) > hecha;
     if (assets.hasImage(tokenId) && !leerMeta(destino)) return true;
+    if (localMasNueva(tokenId, destino)) return true;
     return Date.now() - hecha > VIDA_REMOTA_MS;
 }
 
@@ -146,7 +155,9 @@ async function descarga(tokenId, formato) {
 async function servirMiniatura(req, res) {
     try {
         const archivo = await miniatura(req.params.tokenId, req.query.t ? Number(req.query.t) : LADO);
-        res.set('Cache-Control', 'public, max-age=3600');
+        // Cinco minutos: un Primal recien guardado (por ejemplo con un Addon)
+        // tiene que verse pronto en el perfil.
+        res.set('Cache-Control', 'public, max-age=300');
         res.type('image/webp').sendFile(archivo);
     } catch (error) {
         res.status(error.status || 502).json({ error: "Couldn't load that Primal." });
