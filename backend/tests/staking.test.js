@@ -624,6 +624,25 @@ async function main() {
         && roll.wallets === Object.values(ranking).filter(w => w.balance >= roll.price).length, JSON.stringify(roll));
     check('las ventanas de 7 y 30 dias', eco.windows.length === 2 && eco.windows[1].spent >= eco.windows[0].spent, JSON.stringify(eco.windows));
 
+    console.log('\nHolders desde el admin');
+    const nuevo = '0x00000000000000000000000000000000000000aa';
+    const put = (ruta, body) => fetch(`${BASE}/api/admin/${ruta}`, { method: 'PUT', headers: admin, body: JSON.stringify(body) });
+    check('sin token de admin no se ajusta', (await fetch(`${BASE}/api/admin/fog/${nuevo}`, { method: 'PUT', body: '{}' })).status === 401);
+    check('saldo negativo -> 400', (await put(`fog/${nuevo}`, { balance: -5 })).status === 400);
+    check('wallet invalida -> 400', (await put('fog/0x123', { balance: 5 })).status === 400);
+    r = await (await put(`fog/${nuevo}`, { balance: 5000 })).json();
+    check('el admin le pone 5000 FOG', r.balance === 5000 && require('../lib/stakingStore').balanceDe(nuevo) === 5000, JSON.stringify(r));
+    r = await (await put(`fog/${nuevo}`, { balance: 1200 })).json();
+    check('y lo baja a 1200', r.delta === -3800 && require('../lib/stakingStore').balanceDe(nuevo) === 1200, JSON.stringify(r));
+    const eco2 = await (await fetch(`${BASE}/api/admin/economy`, { headers: admin })).json();
+    check('Economy lo muestra como ajuste del admin', eco2.sources.admin === 1200 && eco2.unaccounted.earned === eco.unaccounted.earned, JSON.stringify(eco2.sources));
+    check('apodo invalido -> 400', (await put(`nicknames/${nuevo}`, { nickname: 'x' })).status === 400);
+    r = await (await put(`nicknames/${nuevo}`, { nickname: 'Provisorio' })).json();
+    check('el admin le pone un apodo', r.nickname === 'Provisorio', JSON.stringify(r));
+    const lista = await (await fetch(`${BASE}/api/admin/holders`, { headers: admin })).json();
+    const fila = Array.isArray(lista) && lista.find(h => h.wallet === nuevo);
+    check('aparece en la lista de holders con apodo y FOG', fila && fila.nickname === 'Provisorio' && fila.fog === 1200 && fila.primals === 0, JSON.stringify(fila || lista).slice(0, 200));
+
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });
     process.exit(fail ? 1 : 0);

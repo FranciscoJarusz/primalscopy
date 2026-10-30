@@ -39,6 +39,16 @@ export const botonGuardar =
 export const panel =
     'flex flex-col gap-4 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50';
 export const titulo = 'font-accent uppercase text-yellow text-2xl';
+// Los dos botones de elegir: `pestana` sobre el fondo de la pagina (como el
+// menu del admin) y `opcion` adentro de un panel.
+export const pestana = (activa: boolean) =>
+    `rounded-md px-3 pb-1.5 leading-normal! font-accent uppercase cursor-pointer active:scale-97 transition-all duration-300 ${
+        activa ? 'bg-yellow text-darkblue' : 'bg-darkblue text-lightblue hover:text-yellow'
+    }`;
+export const opcion = (activa: boolean) =>
+    `rounded-md px-3 pb-1 font-accent uppercase text-sm cursor-pointer active:scale-97 transition-all duration-300 ${
+        activa ? 'bg-yellow text-darkblue' : 'bg-blue text-lightblue hover:text-yellow'
+    }`;
 // Las listas que la usan llevan data-scroll-propio: sin eso Lenis se queda con
 // la rueda y no bajan.
 export const lista = 'max-h-96 overflow-y-auto overscroll-contain pr-2';
@@ -77,21 +87,24 @@ export function useQuien() {
     };
 }
 
+// Sub-pestañas: se ve una seccion por vez. Las otras se ocultan por su id y no
+// se desmontan, asi no se pierde lo que se estaba editando.
 export function Indice({ secciones }: { secciones: { id: string; nombre: string }[] }) {
+    const [activa, setActiva] = useState(secciones[0]?.id);
+    const ocultas = secciones.filter((s) => s.id !== activa).map((s) => `#${s.id}`);
     return (
         <nav aria-label="Sections" className="flex flex-wrap gap-2">
+            {ocultas.length > 0 && <style>{`${ocultas.join(',')}{display:none!important}`}</style>}
             {secciones.map((s) => (
-                <a
+                <button
                     key={s.id}
-                    href={`#${s.id}`}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }}
-                    className="rounded-md bg-lightblue text-darkblue px-3 pb-1.5 leading-normal! font-accent uppercase cursor-pointer hover:bg-yellow active:scale-97 transition-all duration-300"
+                    type="button"
+                    onClick={() => setActiva(s.id)}
+                    aria-pressed={activa === s.id}
+                    className={pestana(activa === s.id)}
                 >
                     {s.nombre}
-                </a>
+                </button>
             ))}
         </nav>
     );

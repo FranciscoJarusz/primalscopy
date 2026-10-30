@@ -22,6 +22,7 @@ import {
     fecha,
     fog,
     lista,
+    opcion,
     panel,
     titulo,
     useQuien,
@@ -662,12 +663,6 @@ function Formulario({
         [actual, ocupados]
     );
     const { inicio, fin } = fechas(b);
-    const opcion = (activo: boolean) =>
-        `rounded-md px-3 pb-1 font-accent uppercase text-sm cursor-pointer transition-all duration-300 ${
-            activo
-                ? 'bg-yellow text-darkblue'
-                : 'bg-blue text-lightblue hover:text-yellow'
-        }`;
 
     const guardar = async () => {
         if (!b.trait) return setError('Pick a trait first.');

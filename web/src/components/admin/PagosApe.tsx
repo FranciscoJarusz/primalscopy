@@ -3,7 +3,7 @@ import { formatEther } from 'viem';
 import { FiArrowUpRight } from 'react-icons/fi';
 import { BACKEND_URL } from '@/lib/backend';
 import { APECHAIN } from '@/lib/cultomizer/contracts';
-import { botonChico, fecha, fog, lista, panel, titulo, useQuien } from './comun';
+import { botonChico, fecha, fog, lista, opcion, panel, titulo, useQuien } from './comun';
 
 type Total = { count: number; apeWei: string };
 type Pago = {
@@ -114,9 +114,7 @@ export default function PagosApe({ token }: { token: string }) {
                     <button
                         key={f.id}
                         onClick={() => setFiltro(f.id)}
-                        className={`rounded-md px-3 pb-1 font-accent uppercase text-sm cursor-pointer transition-all duration-300 ${
-                            filtro === f.id ? 'bg-yellow text-darkblue' : 'bg-lightblue/10 text-lightblue hover:text-yellow'
-                        }`}
+                        className={opcion(filtro === f.id)}
                     >
                         {f.nombre}
                     </button>

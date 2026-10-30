@@ -5,7 +5,7 @@ import { useApodos } from '@/lib/nicknames';
 import { BACKEND_URL } from '@/lib/backend';
 import { imagenPremio, miniaturaPrimal, type PremioRuleta } from '@/lib/staking';
 import { imagenRaffle } from '@/lib/raffles';
-import { botonChico, campo, fecha, fog, panel, titulo } from './comun';
+import { botonChico, campo, fecha, fog, panel, pestana, titulo } from './comun';
 
 type Entrega = {
     clave: string;
@@ -172,9 +172,7 @@ export default function EntregasAdmin({ token }: { token: string }) {
                     <button
                         key={o.nombre}
                         onClick={() => setVerEnviados(o.valor)}
-                        className={`rounded-md px-3 pb-1.5 leading-normal! font-accent uppercase cursor-pointer active:scale-97 transition-all duration-300 ${
-                            verEnviados === o.valor ? 'bg-yellow text-darkblue' : 'bg-darkblue text-lightblue hover:text-yellow'
-                        }`}
+                        className={pestana(verEnviados === o.valor)}
                     >
                         {o.nombre}
                     </button>

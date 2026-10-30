@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BACKEND_URL } from '@/lib/backend';
-import { botonChico, fog, panel, titulo } from './comun';
+import { botonChico, fog, Indice, panel, titulo } from './comun';
 import PagosApe from './PagosApe';
 
 type Linea = { id: string; label: string; fog: number };
@@ -21,6 +21,7 @@ const ORIGENES: Record<string, string> = {
     wheels: 'Key prizes',
     'promo-codes': 'Promo codes',
     'raffle-prizes': 'Raffle prizes',
+    admin: 'Set by admin',
 };
 const DESTINOS: Record<string, string> = {
     'trait-drops': 'Trait drops',
@@ -52,6 +53,26 @@ function Barras({ lineas }: { lineas: Linea[] }) {
     );
 }
 
+function Tarjeta({ nombre, valor, detalle }: { nombre: string; valor: string; detalle: string }) {
+    return (
+        <section className={panel}>
+            <span className="text-lightblue/70 text-xs uppercase">{nombre}</span>
+            <span className="font-accent uppercase text-3xl leading-none pb-1.5 text-white tabular-nums">{valor}</span>
+            <p className="text-lightblue/80 text-sm">{detalle}</p>
+        </section>
+    );
+}
+
+// Que tanto de lo que entra por dia (staking, compras con APE y premios) se
+// gasta: menos de 80% es que el FOG se junta, mas de 120% que se va.
+function veredicto(absorbe: number) {
+    if (absorbe < 80)
+        return `FOG is piling up: people spend ${absorbe}% of the FOG that comes in each day. More things to spend it on would help.`;
+    if (absorbe > 120)
+        return `FOG is draining: people spend ${absorbe}% of the FOG that comes in each day, so balances are going down.`;
+    return `Balanced: people spend ${absorbe}% of the FOG that comes in each day.`;
+}
+
 export default function EconomiaAdmin({ token }: { token: string }) {
     const [eco, setEco] = useState<Economia | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -72,29 +93,8 @@ export default function EconomiaAdmin({ token }: { token: string }) {
     }, [token, cargar]);
 
     const semana = eco?.windows.find((w) => w.days === 7);
-    const absorbe = eco && semana && eco.perDay > 0 ? Math.round((semana.spentPerDay / eco.perDay) * 100) : null;
-
-    const tarjetas = eco
-        ? [
-              { nombre: 'In circulation', valor: fog(eco.totals.circulating), detalle: 'FOG sitting in wallets right now.' },
-              { nombre: 'Made per day', valor: fog(eco.perDay), detalle: 'What staking pays per day today, boosts included.' },
-              {
-                  nombre: 'Spent per day',
-                  valor: fog(semana?.spentPerDay ?? 0),
-                  detalle:
-                      absorbe === null
-                          ? 'Average of the last 7 days.'
-                          : `Average of the last 7 days: ${absorbe}% of what staking makes per day.`,
-              },
-              { nombre: 'Earned', valor: fog(eco.totals.earned), detalle: 'All the FOG ever given, bought FOG included.' },
-              { nombre: 'Spent', valor: fog(eco.totals.spent), detalle: 'All the FOG ever spent, refunds taken out.' },
-              {
-                  nombre: 'Top 10 wallets',
-                  valor: `${eco.holders.top10Share}%`,
-                  detalle: `Of the FOG in circulation. ${fog(eco.holders.withBalance)} wallets have FOG, the median one has ${fog(eco.holders.median)}.`,
-              },
-          ]
-        : [];
+    const entraPorDia = eco && semana ? eco.perDay + (semana.bought + semana.granted) / 7 : 0;
+    const absorbe = semana && entraPorDia > 0 ? Math.round((semana.spentPerDay / entraPorDia) * 100) : null;
 
     return (
         <main className="flex flex-col gap-5 sm:gap-8">
@@ -102,45 +102,78 @@ export default function EconomiaAdmin({ token }: { token: string }) {
                 <div>
                     <h1 className="font-accent uppercase text-yellow text-4xl sm:text-6xl lg:text-7xl">Economy</h1>
                     <p className="text-base sm:text-lg text-lightblue mt-3 max-w-2xl">
-                        Where FOG comes from, where it goes and who has it.
+                        Where FOG comes from, where it goes and who has it, plus the APE paid on the site.
                     </p>
                 </div>
                 <button onClick={cargar} className={botonChico}>
                     Refresh
                 </button>
             </div>
+            <Indice
+                secciones={[
+                    { id: 'overview', nombre: 'Overview' },
+                    { id: 'flow', nombre: 'In & out' },
+                    { id: 'holders', nombre: 'Holders' },
+                    { id: 'ape', nombre: 'APE payments' },
+                ]}
+            />
             {error && <p className="text-red-300">{error}</p>}
             {!eco && !error && <p className="text-lightblue/70">Loading...</p>}
             {eco && (
                 <>
-                    <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                        {tarjetas.map((t) => (
-                            <section key={t.nombre} className={panel}>
-                                <span className="text-lightblue/70 text-xs uppercase">{t.nombre}</span>
-                                <span className="font-accent uppercase text-3xl leading-none pb-1.5 text-white tabular-nums">
-                                    {t.valor}
-                                </span>
-                                <p className="text-lightblue/80 text-sm">{t.detalle}</p>
+                    <div id="overview" className="flex flex-col gap-4 sm:gap-5">
+                        {absorbe !== null && (
+                            <section className={panel}>
+                                <h2 className={titulo}>How it&apos;s doing</h2>
+                                <p className="text-white">{veredicto(absorbe)}</p>
                             </section>
-                        ))}
-                    </div>
-
-                    <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
-                        <section className={panel}>
-                            <h2 className={titulo}>Where it comes from</h2>
-                            <Barras
-                                lineas={Object.entries(eco.sources)
-                                    .map(([id, n]) => ({ id, label: ORIGENES[id] ?? id, fog: n }))
-                                    .sort((a, b) => b.fog - a.fog)}
+                        )}
+                        <div className="grid gap-4 sm:gap-5 sm:grid-cols-3">
+                            <Tarjeta
+                                nombre="In circulation"
+                                valor={fog(eco.totals.circulating)}
+                                detalle="FOG sitting in wallets right now."
                             />
-                        </section>
-                        <section className={panel}>
-                            <h2 className={titulo}>Where it goes</h2>
-                            <Barras lineas={eco.sinks.map((s) => ({ ...s, label: DESTINOS[s.id] ?? s.label }))} />
-                        </section>
+                            <Tarjeta
+                                nombre="Made per day"
+                                valor={fog(eco.perDay)}
+                                detalle="What staking pays per day today, boosts included."
+                            />
+                            <Tarjeta
+                                nombre="Spent per day"
+                                valor={fog(semana?.spentPerDay ?? 0)}
+                                detalle="Average of the last 7 days."
+                            />
+                        </div>
+                        <div className="grid gap-4 sm:gap-5 sm:grid-cols-2">
+                            <Tarjeta
+                                nombre="Earned, all time"
+                                valor={fog(eco.totals.earned)}
+                                detalle="All the FOG ever given, bought FOG included."
+                            />
+                            <Tarjeta
+                                nombre="Spent, all time"
+                                valor={fog(eco.totals.spent)}
+                                detalle="All the FOG ever spent, refunds taken out."
+                            />
+                        </div>
                     </div>
 
-                    <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
+                    <div id="flow" className="flex flex-col gap-4 sm:gap-5">
+                        <div className="grid gap-4 sm:gap-5 lg:grid-cols-2">
+                            <section className={panel}>
+                                <h2 className={titulo}>Where it comes from</h2>
+                                <Barras
+                                    lineas={Object.entries(eco.sources)
+                                        .map(([id, n]) => ({ id, label: ORIGENES[id] ?? id, fog: n }))
+                                        .sort((a, b) => b.fog - a.fog)}
+                                />
+                            </section>
+                            <section className={panel}>
+                                <h2 className={titulo}>Where it goes</h2>
+                                <Barras lineas={eco.sinks.map((s) => ({ ...s, label: DESTINOS[s.id] ?? s.label }))} />
+                            </section>
+                        </div>
                         <section className={panel}>
                             <h2 className={titulo}>Last days</h2>
                             <table className="w-full text-sm">
@@ -164,11 +197,40 @@ export default function EconomiaAdmin({ token }: { token: string }) {
                                 </tbody>
                             </table>
                             <p className="text-lightblue/70 text-sm">
-                                Prizes are FOG won in keys, codes and raffles.
+                                Bought is FOG paid with APE. Prizes are FOG won in keys, codes and raffles.
                             </p>
                         </section>
+                        {(eco.unaccounted.earned !== 0 || eco.unaccounted.spent !== 0) && (
+                            <p className="text-lightblue/70 text-sm">
+                                {fog(eco.unaccounted.earned)} FOG earned and {fog(eco.unaccounted.spent)} FOG spent don't
+                                show up in the history, so they're left out of the breakdowns.
+                            </p>
+                        )}
+                    </div>
+
+                    <div id="holders" className="flex flex-col gap-4 sm:gap-5">
+                        <div className="grid gap-4 sm:gap-5 sm:grid-cols-3">
+                            <Tarjeta
+                                nombre="Wallets with FOG"
+                                valor={fog(eco.holders.withBalance)}
+                                detalle="Wallets with any FOG right now."
+                            />
+                            <Tarjeta
+                                nombre="Median balance"
+                                valor={fog(eco.holders.median)}
+                                detalle="Half of those wallets have less than this."
+                            />
+                            <Tarjeta
+                                nombre="Top 10 wallets"
+                                valor={`${eco.holders.top10Share}%`}
+                                detalle="Of the FOG in circulation."
+                            />
+                        </div>
                         <section className={panel}>
                             <h2 className={titulo}>Who can afford it</h2>
+                            <p className="text-lightblue/70 text-sm -mt-2">
+                                How many wallets have enough FOG for each thing in the shop.
+                            </p>
                             <ul className="flex flex-col">
                                 {eco.affordability.map((i) => (
                                     <li
@@ -186,17 +248,11 @@ export default function EconomiaAdmin({ token }: { token: string }) {
                             </ul>
                         </section>
                     </div>
-
-                    <PagosApe token={token} />
-
-                    {(eco.unaccounted.earned !== 0 || eco.unaccounted.spent !== 0) && (
-                        <p className="text-lightblue/70 text-sm">
-                            {fog(eco.unaccounted.earned)} FOG earned and {fog(eco.unaccounted.spent)} FOG spent don't
-                            show up in the history, so they're left out of the breakdowns.
-                        </p>
-                    )}
                 </>
             )}
+            <div id="ape">
+                <PagosApe token={token} />
+            </div>
         </main>
     );
 }

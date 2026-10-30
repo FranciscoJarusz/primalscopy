@@ -10,7 +10,13 @@ import { miniaturaDeTrait } from '@/lib/miniaturas';
 import { BACKEND_URL, BACKEND_BASE_URL } from '@/lib/backend';
 import DropsAdmin from './DropsAdmin';
 import PaginasGrilla from '@/components/shared/PaginasGrilla';
-import { botonChico, cambiarImagenTrait, extensionDe } from './comun';
+import {
+    botonChico,
+    cambiarImagenTrait,
+    extensionDe,
+    opcion,
+    pestana,
+} from './comun';
 
 interface Trait {
     file: string;
@@ -494,11 +500,7 @@ export default function TraitsAdmin({ token }: { token: string }) {
                             type="button"
                             onClick={() => setVista(id)}
                             aria-pressed={vista === id}
-                            className={`rounded-md px-3 pb-1.5 leading-normal! font-accent uppercase cursor-pointer active:scale-97 transition-all duration-300 ${
-                                vista === id
-                                    ? 'bg-yellow text-darkblue'
-                                    : 'bg-darkblue text-lightblue hover:text-yellow'
-                            }`}
+                            className={pestana(vista === id)}
                         >
                             {nombre}
                         </button>
@@ -714,11 +716,7 @@ export default function TraitsAdmin({ token }: { token: string }) {
                                             setActiveCategory(category.name);
                                             setActiveDirectory(null);
                                         }}
-                                        className={`font-accent uppercase text-darkblue rounded-md px-3 pb-1.5 cursor-pointer active:scale-97 transition-all duration-300 ${
-                                            isActive
-                                                ? 'bg-yellow'
-                                                : 'bg-lightblue hover:bg-yellow'
-                                        }`}
+                                        className={opcion(isActive)}
                                     >
                                         {category.name}
                                         <span className="ml-2 text-xs opacity-60">

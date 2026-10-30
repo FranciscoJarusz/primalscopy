@@ -12,6 +12,7 @@ import {
     type PremioRuleta,
 } from '@/lib/staking';
 import { BACKEND_URL } from '@/lib/backend';
+import { botonChico, campo, etiqueta, opcion, panel, titulo } from './comun';
 
 const TIPOS = [
     { id: 'nft', nombre: 'NFT' },
@@ -57,14 +58,6 @@ type Borrador = (Omit<Premio, 'amount' | 'weight' | 'stock'> & {
     stock: string;
 })[];
 
-const campo =
-    'w-full bg-lightblue text-darkblue placeholder-darkblue/50 font-medium text-base leading-normal! rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-yellow';
-const etiqueta = 'flex flex-col gap-1 text-sm text-lightblue/80';
-const botonChico =
-    'bg-lightblue text-darkblue font-accent uppercase text-sm rounded-md px-3 pb-1 cursor-pointer hover:bg-yellow active:scale-97 transition-all duration-300 disabled:opacity-40';
-const panel =
-    'flex flex-col gap-4 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50';
-const titulo = 'font-accent uppercase text-yellow text-2xl';
 
 const fecha = (iso: string) =>
     new Date(iso).toLocaleString('en-US', {
@@ -321,11 +314,7 @@ export default function StakingWheelsAdmin({
                                 setGuardado(false);
                                 setSimulacion(null);
                             }}
-                            className={`font-accent uppercase text-sm rounded-md px-3 pb-1 cursor-pointer transition-all duration-300 ${
-                                elegida === id
-                                    ? 'bg-yellow text-darkblue'
-                                    : 'bg-blue text-lightblue hover:text-yellow'
-                            }`}
+                            className={opcion(elegida === id)}
                         >
                             {nombreDe(id)}
                         </button>

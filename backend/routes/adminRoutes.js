@@ -131,6 +131,36 @@ router.delete('/bios/:address', (req, res) => {
     if (!profiles.clearBio(req.params.address)) return res.status(404).json({ error: 'That wallet has no bio.' });
     res.json({ ok: true });
 });
+// Todas las wallets con Primals, y las que tienen apodo o FOG aunque ya no
+// tengan: el apodo y el saldo se pueden editar desde aca.
+router.get('/holders', async (req, res, next) => {
+    try {
+        const { conteo } = await require('../lib/collectionIndex').holders();
+        const apodos = nicknames.getAllNicknames();
+        const conFog = staking.walletsConFog();
+        const lista = [...new Set([...conteo.keys(), ...Object.keys(apodos), ...conFog])];
+        const saldos = staking.balancesDe(lista);
+        res.json(lista
+            .map(wallet => ({ wallet, primals: conteo.get(wallet) ?? 0, nickname: apodos[wallet] ?? null, fog: saldos.get(wallet) ?? 0 }))
+            .filter(h => h.primals > 0 || h.nickname || h.fog !== 0)
+            .sort((a, b) => b.primals - a.primals || b.fog - a.fog));
+    } catch (error) {
+        next(error);
+    }
+});
+const WALLET = /^0x[0-9a-fA-F]{40}$/;
+router.put('/nicknames/:address', (req, res) => {
+    if (!WALLET.test(req.params.address)) return res.status(400).json({ error: 'Invalid wallet.' });
+    const r = nicknames.setNickname(req.params.address, req.body?.nickname);
+    if (r.error) return res.status(400).json(r);
+    res.json(r);
+});
+router.put('/fog/:address', (req, res) => {
+    if (!WALLET.test(req.params.address)) return res.status(400).json({ error: 'Invalid wallet.' });
+    const monto = Number(req.body?.balance);
+    if (!Number.isInteger(monto) || monto < 0 || monto > 1e12) return res.status(400).json({ error: 'The balance must be a whole number, 0 or more.' });
+    res.json(staking.setBalance(req.params.address, monto, 'admin'));
+});
 router.delete('/nicknames/:address', (req, res) => {
     if (!nicknames.deleteNickname(req.params.address)) {
         return res.status(404).json({ error: 'That wallet has no nickname.' });

@@ -1196,6 +1196,33 @@ function refundFog(wallet, amount, reason) {
 
 const balanceDe = wallet => balanceOf(wallet).balance;
 
+const walletsConFog = () =>
+    [...new Set([...Object.keys(readWallets()), ...Object.values(activosLectura()).map(s => s.wallet)])];
+
+// Los saldos de muchas wallets de una vez, para la lista de holders del admin.
+function balancesDe(lista) {
+    const active = activosLectura();
+    const wallets = readWallets();
+    const cuenta = contador();
+    return new Map(lista.map(w => [w, balanceOf(w, active, wallets, cuenta).balance]));
+}
+
+// El admin deja el saldo en un monto exacto (por ejemplo, el FOG que alguien
+// tenia en Discord). La diferencia va a `earned` y queda en el historial como
+// un ajuste, que Economy muestra aparte.
+function setBalance(wallet, target, reason = 'admin') {
+    const key = wallet.toLowerCase();
+    const wallets = readWallets();
+    const totals = wallets[key] || { earned: 0, spent: 0 };
+    const delta = target - balanceOf(key, activosLectura(), wallets).balance;
+    if (delta !== 0) {
+        wallets[key] = { ...totals, earned: totals.earned + delta };
+        guardar(WALLETS_PATH, wallets);
+        appendHistory({ event: 'adjust', wallet: key, fog: delta, reason });
+    }
+    return { balance: target, delta };
+}
+
 const MIN_APE = 1;
 const WEI = 10n ** 18n;
 
@@ -1345,6 +1372,8 @@ function economy(now = Date.now()) {
                 sumar(sources, 'wheels', h.fog);
                 enVentana(h.at, 'granted', h.fog);
             }
+        } else if (h.event === 'adjust') {
+            sumar(sources, 'admin', h.fog);
         } else if (h.event === 'grant' && h.fog) {
             sumar(sources, origenDe(h.reason), h.fog);
             enVentana(h.at, 'granted', h.fog);
@@ -1449,6 +1478,9 @@ module.exports = {
     spendFog,
     refundFog,
     balanceDe,
+    balancesDe,
+    setBalance,
+    walletsConFog,
     giveItem,
     adminSummary,
     economy,

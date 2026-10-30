@@ -12,6 +12,7 @@ import {
     fecha,
     fog,
     lista,
+    opcion,
     panel,
     titulo,
     useQuien,
@@ -347,10 +348,6 @@ function Formulario({
     const cantidadMax = (kind: string) => premios.find((x) => x.id === kind)?.max ?? (kind === 'ape' ? 1000000 : 1);
     const conCantidad = (kind: string) => cantidadMax(kind) > 1;
     const mostrada = vista ?? (imagenActual ? imagenRaffle(imagenActual) : null);
-    const opcion = (activo: boolean) =>
-        `rounded-md px-3 pb-1 font-accent uppercase text-sm cursor-pointer transition-all duration-300 ${
-            activo ? 'bg-yellow text-darkblue' : 'bg-blue text-lightblue hover:text-yellow'
-        }`;
 
     return (
         <form
