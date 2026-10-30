@@ -112,7 +112,9 @@ function listTraits(req, res, next) {
 }
 
 // POST /api/admin/traits  (multipart)
-// campos: category, directory, name (opcional), overwrite (opcional)
+// campos: category, directory, name (opcional), overwrite (opcional),
+// replace (opcional): el archivo existente al que se le cambia la imagen,
+// conservando el nombre para que drops y customizaciones sigan apuntando a el.
 function uploadTrait(req, res, next) {
     try {
         if (!req.file) {
@@ -125,6 +127,30 @@ function uploadTrait(req, res, next) {
             : assertSafeSegment(req.body.directory, 'directory');
 
         const extension = path.extname(req.file.originalname).toLowerCase();
+
+        if (req.body.replace) {
+            const file = assertImageFileName(req.body.replace);
+            const target = resolveInsideTraits(category, directory, file);
+            if (!fs.existsSync(target)) {
+                throw new AdminError(404, `${category}/${directory}/${file} doesn't exist.`);
+            }
+            const actual = path.extname(file).toLowerCase();
+            if (extension !== actual) {
+                throw new AdminError(400, `The new image has to be ${actual} like the current one.`);
+            }
+            fs.writeFileSync(target, req.file.buffer);
+            generarAhora(`${category}/${directory}/${file}`);
+            return res.json({
+                message: 'Image replaced.',
+                trait: {
+                    file,
+                    name: file.replace(IMAGE_EXTENSION_REGEX, ''),
+                    url: `/assets/traits/${category}/${directory}/${file}`,
+                    sizeBytes: req.file.size
+                }
+            });
+        }
+
         // El nombre visible del trait sale del campo "name" si viene, y si no
         // del nombre original del archivo.
         const baseName = (req.body.name || path.basename(req.file.originalname, extension)).trim();

@@ -2,6 +2,32 @@ import { useState, type ReactNode } from 'react';
 import { FiChevronDown } from 'react-icons/fi';
 import { useApodos, walletCorta } from '@/lib/nicknames';
 import { APECHAIN } from '@/lib/cultomizer/contracts';
+import { BACKEND_URL } from '@/lib/backend';
+
+// Cambia la imagen de un trait sin cambiarle el nombre: los drops y las
+// customizaciones guardadas siguen apuntando a la misma URL.
+export async function cambiarImagenTrait(
+    token: string,
+    url: string,
+    archivo: File
+) {
+    const [, , , category, directory, file] = url.split('/');
+    const form = new FormData();
+    form.append('category', category);
+    form.append('directory', directory);
+    form.append('replace', file);
+    form.append('file', archivo);
+    const r = await fetch(`${BACKEND_URL}/admin/traits`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+    }).catch(() => null);
+    const d = await r?.json().catch(() => ({}));
+    if (!r?.ok) throw new Error(d?.error || "Couldn't reach the server.");
+}
+
+export const extensionDe = (url: string) =>
+    url.slice(url.lastIndexOf('.')).toLowerCase();
 
 export const campo =
     'w-full bg-lightblue text-darkblue placeholder-darkblue/50 font-medium text-base leading-normal! rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-yellow';

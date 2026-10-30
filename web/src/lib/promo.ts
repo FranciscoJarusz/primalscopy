@@ -17,6 +17,8 @@ export type Canje = {
     amount: number;
     // Si el nombre lleva "s" en plural ("2 Forge rolls"; el FOG no).
     plural?: boolean;
+    // Un trait con drop: su URL, ya desbloqueado para la wallet.
+    trait?: string;
     // Una key o el Summon shard: lo que toco en la ruleta y la key, para
     // mostrar la animacion (ver components/staking/Ruleta.tsx).
     win?: Ganado;

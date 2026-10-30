@@ -9,6 +9,7 @@ import Confirmacion from '@/components/forge/Confirmacion';
 import StakeCompartir from '@/components/staking/StakeCompartir';
 import PaginasGrilla from '@/components/shared/PaginasGrilla';
 import { ICONO_FOG_CHICO } from '@/lib/staking';
+import { EVENTO_CANJE } from '@/lib/promo';
 import {
     useWalletSession,
     useNftOwnership,
@@ -134,14 +135,18 @@ function CustomizerContent() {
             return;
         }
         let vigente = true;
-        fetch(`${BACKEND_URL}/traits/me`, {
-            headers: { authorization: `Bearer ${walletSession.token}` },
-        })
-            .then((r) => (r.ok ? r.json() : null))
-            .then((d) => vigente && d && setTienda(d))
-            .catch(() => {});
+        const cargar = () =>
+            fetch(`${BACKEND_URL}/traits/me`, {
+                headers: { authorization: `Bearer ${walletSession.token}` },
+            })
+                .then((r) => (r.ok ? r.json() : null))
+                .then((d) => vigente && d && setTienda(d))
+                .catch(() => {});
+        cargar();
+        window.addEventListener(EVENTO_CANJE, cargar);
         return () => {
             vigente = false;
+            window.removeEventListener(EVENTO_CANJE, cargar);
         };
     }, [walletSession.token]);
 

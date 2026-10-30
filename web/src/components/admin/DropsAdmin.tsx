@@ -14,9 +14,11 @@ import PaginasGrilla from '@/components/shared/PaginasGrilla';
 import {
     botonChico,
     botonGuardar,
+    cambiarImagenTrait,
     campo,
     Desplegable,
     etiqueta,
+    extensionDe,
     fecha,
     fog,
     lista,
@@ -90,8 +92,8 @@ const partes = (url: string) => {
     const [, , , categoria = '', carpeta = ''] = url.split('/');
     return { categoria, carpeta };
 };
-const miniatura = (url: string) =>
-    `${BACKEND_BASE_URL}${miniaturaDeTrait(url, { tamano: 'grilla' })}`;
+const miniatura = (url: string, version?: number) =>
+    `${BACKEND_BASE_URL}${miniaturaDeTrait(url, { tamano: 'grilla', version })}`;
 
 function alcance(url: string) {
     const { categoria, carpeta } = partes(url);
@@ -235,6 +237,7 @@ export default function DropsAdmin({
             categorias={categorias}
             ocupados={ocupados}
             pedir={pedir}
+            token={token}
             alCambiar={cargar}
         />
     );
@@ -422,15 +425,31 @@ function Tarjeta({
     categorias,
     ocupados,
     pedir,
+    token,
     alCambiar,
 }: {
     drop: DropAdmin;
     categorias: Categoria[];
     ocupados: Set<string>;
     pedir: Pedir;
+    token: string;
     alCambiar: () => Promise<void>;
 }) {
     const [editando, setEditando] = useState(false);
+    const [version, setVersion] = useState<number>();
+    const imagenRef = useRef<HTMLInputElement>(null);
+
+    const cambiarImagen = async (archivo: File) => {
+        setOcupado(true);
+        setError(null);
+        try {
+            await cambiarImagenTrait(token, d.trait, archivo);
+            setVersion(Date.now());
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Couldn't change it.");
+        }
+        setOcupado(false);
+    };
     const [error, setError] = useState<string | null>(null);
     const [ocupado, setOcupado] = useState(false);
 
@@ -466,7 +485,7 @@ function Tarjeta({
         <article className={`${panel} gap-5`}>
             <div className="flex flex-wrap items-center gap-4">
                 <img
-                    src={miniatura(d.trait)}
+                    src={miniatura(d.trait, version)}
                     alt=""
                     className="size-20 shrink-0 rounded-xl bg-white/10 object-contain"
                 />
@@ -489,6 +508,25 @@ function Tarjeta({
                     >
                         {editando ? 'Close' : 'Edit'}
                     </button>
+                    <button
+                        onClick={() => imagenRef.current?.click()}
+                        disabled={ocupado}
+                        title={`Same name, it has to be ${extensionDe(d.trait)}`}
+                        className={botonChico}
+                    >
+                        Change image
+                    </button>
+                    <input
+                        ref={imagenRef}
+                        type="file"
+                        accept={extensionDe(d.trait)}
+                        className="hidden"
+                        onChange={(e) => {
+                            const archivo = e.target.files?.[0];
+                            if (archivo) cambiarImagen(archivo);
+                            e.target.value = '';
+                        }}
+                    />
                     {(d.status === 'live' || d.status === 'scheduled') && (
                         <button
                             onClick={() =>
@@ -736,7 +774,7 @@ function Formulario({
                                                 className="w-full h-full object-contain"
                                             />
                                         </span>
-                                        <span className="h-[18px] font-accent uppercase text-yellow text-xs sm:text-sm leading-none truncate text-center">
+                                        <span className="h-4.5 font-accent uppercase text-yellow text-xs sm:text-sm leading-none truncate text-center">
                                             {t.name}
                                         </span>
                                     </button>

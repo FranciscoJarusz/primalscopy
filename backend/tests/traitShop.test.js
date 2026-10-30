@@ -260,6 +260,44 @@ async function main() {
     r = await json(await pedir('POST', `${BASE}/api/traits/unlock`, { trait: sinVentas }, conToken(tokenNuevo)));
     check('respeta las copias', r.status === 409);
 
+    console.log('\nCodigos que regalan un trait');
+    r = await json(await fetch(`${BASE}/api/admin/promo`, { headers: admin }));
+    check('el trait con drop aparece como premio', r.rewards.some(p => p.id === `trait:${nuevaUrl}`), JSON.stringify(r.rewards));
+    check('uno sin drop no', !r.rewards.some(p => p.id === `trait:${sombreros[1].imageUrl}` && sombreros[1].imageUrl !== nuevaUrl));
+    r = await json(await pedir('POST', `${BASE}/api/admin/promo`, { code: 'TRAITGRATIS', reward: `trait:${nuevaUrl}`, maxUses: 5 }, admin));
+    check('el admin crea el codigo', r.code === 'TRAITGRATIS', JSON.stringify(r));
+    r = await json(await pedir('POST', `${BASE}/api/promo/redeem`, { code: 'TRAITGRATIS' }, conToken(tokenSinPrimals)));
+    check('cualquier wallet lo canjea', r.status === 200 && r.trait === nuevaUrl, JSON.stringify(r));
+    r = await json(await fetch(`${BASE}/api/traits/me`, { headers: conToken(tokenSinPrimals) }));
+    check('y queda desbloqueado aunque el drop termino', r.unlocked.includes(nuevaUrl), JSON.stringify(r));
+    r = await json(await pedir('POST', `${BASE}/api/promo/redeem`, { code: 'TRAITGRATIS' }, conToken(tokenOwner)));
+    check('quien ya lo tiene no gasta el codigo', r.status !== 200 && /already have/.test(r.error), JSON.stringify(r));
+    r = await json(await fetch(url, { headers: admin }));
+    check('no cuenta como vendido', r.drops.find(d => d.trait === nuevaUrl)?.sold === 1, JSON.stringify(r.drops));
+    const [, , cat2, dir2, file2] = nuevaUrl.split('/').slice(1);
+    r = await json(await pedir('PATCH', `${BASE}/api/admin/traits`, { category: cat2, directory: dir2, file: file2, newName: 'OTRO' }, admin));
+    const otraUrl = r.trait?.url;
+    r = await json(await fetch(`${BASE}/api/admin/promo`, { headers: admin }));
+    check('al renombrar, el codigo se muda', r.codes.find(c => c.code === 'TRAITGRATIS')?.reward === `trait:${otraUrl}`, JSON.stringify(r.codes));
+
+    console.log('\nCambiar la imagen');
+    const [, , , cat3, dir3, file3] = otraUrl.split('/');
+    const subir = async (nombre, contenido) => {
+        const form = new FormData();
+        form.append('category', cat3);
+        form.append('directory', dir3);
+        form.append('replace', file3);
+        form.append('file', new Blob([contenido]), nombre);
+        return json(await fetch(`${BASE}/api/admin/traits`, { method: 'POST', headers: admin, body: form }));
+    };
+    const original = fs.readFileSync(path.join(TMP, cat3, dir3, file3));
+    r = await subir('nuevo.png', original);
+    check('otro formato -> 400', r.status === 400 || r.status === 415, JSON.stringify(r));
+    r = await subir(`nuevo${path.extname(file3)}`, Buffer.concat([original, Buffer.from([0])]));
+    check('mismo formato: cambia la imagen y no el nombre', r.status === 200 && r.trait.url === otraUrl, JSON.stringify(r));
+    check('el archivo es el nuevo', fs.statSync(path.join(TMP, cat3, dir3, file3)).size === original.length + 1);
+    check('el drop sigue en el mismo trait', dropEn(await opciones(), otraUrl)?.price === 1000);
+
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });
     process.exit(fail ? 1 : 0);

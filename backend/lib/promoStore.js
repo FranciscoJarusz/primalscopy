@@ -54,7 +54,28 @@ function rewards() {
             plural: false,
             grant: (wallet, amount, code) => staking().giveItem(wallet, i.id, `promo:${code}`)
         }]);
-    return { ...FIJOS, ...Object.fromEntries(deLaTienda) };
+    // Los traits con drop, que son los unicos bloqueados: el codigo los
+    // desbloquea para la wallet como si los hubiera comprado.
+    const traits = require('./traitShopStore').readDrops().map(d => {
+        const [, , , categoria, , archivo] = d.trait.split('/');
+        return [`trait:${d.trait}`, {
+            label: `${archivo.replace(/\.[a-z0-9]+$/i, '')} trait (${categoria})`,
+            max: 1,
+            plural: false,
+            trait: d.trait,
+            grant: (wallet, amount, code) => require('./traitShopStore').grant(wallet, d.trait, `promo:${code}`)
+        }];
+    });
+    return { ...FIJOS, ...Object.fromEntries(deLaTienda), ...Object.fromEntries(traits) };
+}
+
+// Si se renombra un trait, los codigos que lo regalan pasan a la URL nueva.
+function moveTrait(from, to) {
+    const codes = read();
+    const viejos = Object.values(codes).filter(c => c.reward === `trait:${from}`);
+    if (viejos.length === 0) return;
+    for (const c of viejos) c.reward = `trait:${to}`;
+    write(codes);
 }
 
 function read() {
@@ -192,7 +213,11 @@ function redeem(wallet, rawCode) {
     const reward = rewards()[entry.reward];
     if (!reward) return { error: "That code's reward is no longer in the shop.", reason: 'unavailable' };
     const granted = reward.grant(key, entry.amount, entry.code);
-    if (granted?.error) return { error: `${granted.error} Try the code again later.`, reason: 'unavailable' };
+    if (granted?.error) {
+        return granted.final
+            ? { error: granted.error, reason: 'already-redeemed' }
+            : { error: `${granted.error} Try the code again later.`, reason: 'unavailable' };
+    }
     entry.redemptions.push({ wallet: key, at: new Date().toISOString() });
     write(codes);
 
@@ -202,6 +227,7 @@ function redeem(wallet, rawCode) {
         label: reward.label,
         amount: entry.amount,
         plural: reward.plural,
+        ...(reward.trait ? { trait: reward.trait } : {}),
         // Una ruleta: lo que toco y la key, para la animacion.
         ...(granted?.win ? { win: granted.win, item: granted.item } : {})
     };
@@ -218,4 +244,4 @@ function rewardTypes() {
     return Object.entries(rewards()).map(([id, { label, max, plural }]) => ({ id, label, max, plural }));
 }
 
-module.exports = { listCodes, createCode, setActive, setArchived, redeem, rewardTypes, grantReward, CODES_PATH };
+module.exports = { moveTrait, listCodes, createCode, setActive, setArchived, redeem, rewardTypes, grantReward, CODES_PATH };

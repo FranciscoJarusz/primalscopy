@@ -5,12 +5,12 @@ import React, {
     useRef,
     useState,
 } from 'react';
-import { FiLayers, FiTrash2 } from 'react-icons/fi';
+import { FiImage, FiLayers, FiTrash2 } from 'react-icons/fi';
 import { miniaturaDeTrait } from '@/lib/miniaturas';
 import { BACKEND_URL, BACKEND_BASE_URL } from '@/lib/backend';
 import DropsAdmin from './DropsAdmin';
 import PaginasGrilla from '@/components/shared/PaginasGrilla';
-import { botonChico } from './comun';
+import { botonChico, cambiarImagenTrait, extensionDe } from './comun';
 
 interface Trait {
     file: string;
@@ -115,6 +115,8 @@ export default function TraitsAdmin({ token }: { token: string }) {
     const [publisher, setPublisher] = useState<PublisherStatus | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const imagenInputRef = useRef<HTMLInputElement>(null);
+    const [aReemplazar, setAReemplazar] = useState<Trait | null>(null);
     // Los traits que tienen un drop, para marcarlos. Los carga DropsAdmin; al
     // renombrar un trait se lo vuelve a montar para que lea el nombre nuevo.
     const [drops, setDrops] = useState<Set<string>>(new Set());
@@ -285,6 +287,8 @@ export default function TraitsAdmin({ token }: { token: string }) {
         currentDirectory?.traits.filter((t) => drops.has(t.url)).length ?? 0;
     const iconoBorrar =
         'size-7 shrink-0 grid place-items-center rounded-md bg-red text-lightblue cursor-pointer hover:brightness-110 active:scale-97 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed';
+    const iconoImagen =
+        'size-7 shrink-0 grid place-items-center rounded-md bg-lightblue text-darkblue cursor-pointer hover:bg-yellow active:scale-97 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed';
 
     const uploadFiles = async (files: FileList | File[]) => {
         if (!activeCategory || !activeDirectory) return;
@@ -376,6 +380,21 @@ export default function TraitsAdmin({ token }: { token: string }) {
             notify('ok', `Renamed to "${newName.trim()}".`);
         } else {
             notify('error', body?.error || "Couldn't rename it.");
+        }
+        setBusy(false);
+    };
+
+    const handleReplace = async (trait: Trait, archivo: File) => {
+        setBusy(true);
+        try {
+            await cambiarImagenTrait(token, trait.url, archivo);
+            await loadTraits(token);
+            notify('ok', `Image of "${trait.name}" changed.`);
+        } catch (error) {
+            notify(
+                'error',
+                error instanceof Error ? error.message : "Couldn't change it."
+            );
         }
         setBusy(false);
     };
@@ -819,6 +838,21 @@ export default function TraitsAdmin({ token }: { token: string }) {
                                             event.target.value = '';
                                         }}
                                     />
+                                    <input
+                                        ref={imagenInputRef}
+                                        type="file"
+                                        className="hidden"
+                                        onChange={(event) => {
+                                            const archivo =
+                                                event.target.files?.[0];
+                                            if (archivo && aReemplazar)
+                                                handleReplace(
+                                                    aReemplazar,
+                                                    archivo
+                                                );
+                                            event.target.value = '';
+                                        }}
+                                    />
                                 </div>
                                 <p className="-mt-3 text-xs text-lightblue/50">
                                     {dragging
@@ -900,6 +934,31 @@ export default function TraitsAdmin({ token }: { token: string }) {
                                                                 className={`${botonChico} flex-1 min-w-0 truncate`}
                                                             >
                                                                 Rename
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const input =
+                                                                        imagenInputRef.current;
+                                                                    if (!input)
+                                                                        return;
+                                                                    setAReemplazar(
+                                                                        trait
+                                                                    );
+                                                                    input.accept =
+                                                                        extensionDe(
+                                                                            trait.file
+                                                                        );
+                                                                    input.click();
+                                                                }}
+                                                                disabled={busy}
+                                                                title={`Change the image (${extensionDe(trait.file)})`}
+                                                                aria-label={`Change the image of ${trait.name}`}
+                                                                className={
+                                                                    iconoImagen
+                                                                }
+                                                            >
+                                                                <FiImage className="size-3.5" />
                                                             </button>
                                                             <button
                                                                 type="button"

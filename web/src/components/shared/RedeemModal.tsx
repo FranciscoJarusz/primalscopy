@@ -102,6 +102,8 @@ export default function RedeemModal({ token, signIn, onCerrar }: Props) {
                                     : " They're saved to your wallet: use them on any Primal in the Forge.")}
                             {canje.reward === 'fog' &&
                                 " It's in your FOG balance: spend it in the staking shop."}
+                            {canje.trait &&
+                                " It's unlocked for your wallet: put it on your Primals in the Cultomizer."}
                         </p>
                         <div className="flex flex-col-reverse min-[420px]:flex-row min-[420px]:justify-end gap-3 mt-1">
                             <button
@@ -131,6 +133,16 @@ export default function RedeemModal({ token, signIn, onCerrar }: Props) {
                                         className="bg-yellow text-darkblue font-accent uppercase rounded-md px-4 pb-1.5 cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300"
                                     >
                                         Go to staking
+                                    </button>
+                                )}
+                            {canje.trait &&
+                                !window.location.pathname.startsWith('/cultomizer') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => goTo('/cultomizer/select')}
+                                        className="bg-yellow text-darkblue font-accent uppercase rounded-md px-4 pb-1.5 cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300"
+                                    >
+                                        Go to the Cultomizer
                                     </button>
                                 )}
                         </div>

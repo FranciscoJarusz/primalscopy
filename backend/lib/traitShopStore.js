@@ -27,8 +27,9 @@ const readDrops = () => readJson(DROPS_PATH, []);
 const readUnlocks = () => readJson(UNLOCKS_PATH, []);
 const error = (status, message) => ({ error: message, status });
 
+// Los que llegaron por un codigo no cuentan como vendidos: no gastan copias.
 function soldOf(trait, unlocks = readUnlocks()) {
-    return unlocks.filter(u => u.trait === trait).length;
+    return unlocks.filter(u => u.trait === trait && !u.via).length;
 }
 
 function statusOf(drop, sold, now = Date.now()) {
@@ -153,6 +154,18 @@ function unlock(wallet, url) {
     return { balance: charge.balance, unlocked: unlockedBy(key) };
 }
 
+// Un trait regalado con un codigo promocional: no importa si el drop esta
+// vivo, ni cobra, ni gasta copias.
+function grant(wallet, url, via) {
+    const key = String(wallet).toLowerCase();
+    if (!readDrops().some(d => d.trait === url)) return { error: "This trait isn't exclusive anymore." };
+    if (hasUnlocked(key, url)) return { error: 'You already have this trait.', final: true };
+    const unlocks = readUnlocks();
+    unlocks.push({ id: crypto.randomUUID(), wallet: key, trait: url, price: 0, via, at: new Date().toISOString() });
+    writeJson(UNLOCKS_PATH, unlocks);
+    return {};
+}
+
 function move(from, to) {
     if (from === to) return;
     const drops = readDrops();
@@ -163,6 +176,7 @@ function move(from, to) {
     if (unlocks.some(u => u.trait === from)) {
         writeJson(UNLOCKS_PATH, unlocks.map(u => (u.trait === from ? { ...u, trait: to } : u)));
     }
+    require('./promoStore').moveTrait(from, to);
 }
 
 function adminList() {
@@ -170,7 +184,7 @@ function adminList() {
     const now = Date.now();
     return {
         drops: readDrops().map(drop => {
-            const bought = unlocks.filter(u => u.trait === drop.trait);
+            const bought = unlocks.filter(u => u.trait === drop.trait && !u.via);
             return {
                 ...drop,
                 status: statusOf(drop, bought.length, now),
@@ -193,6 +207,8 @@ module.exports = {
     end,
     remove,
     unlock,
+    grant,
+    readDrops,
     move,
     adminList
 };
