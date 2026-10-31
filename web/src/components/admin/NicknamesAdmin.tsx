@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiArrowUpRight, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiArrowUpRight, FiCheck, FiCopy, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { getAddress } from 'viem';
 import { BACKEND_URL } from '@/lib/backend';
 import { walletCorta } from '@/lib/nicknames';
 import { ICONO_FOG_CHICO } from '@/lib/staking';
@@ -268,16 +269,19 @@ function Tarjeta({
                         </button>
                     </div>
                 )}
-                <a
-                    href={`/holder/${h.wallet}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={h.wallet}
-                    className="flex items-center gap-1 w-fit font-mono text-xs text-lightblue/60 hover:text-yellow transition-all duration-300"
-                >
-                    {walletCorta(h.wallet)}
-                    <FiArrowUpRight className="shrink-0 size-3" />
-                </a>
+                <div className="flex items-center gap-2">
+                    <a
+                        href={`/holder/${h.wallet}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={h.wallet}
+                        className="flex items-center gap-1 w-fit font-mono text-xs text-lightblue/60 hover:text-yellow transition-all duration-300"
+                    >
+                        {walletCorta(h.wallet)}
+                        <FiArrowUpRight className="shrink-0 size-3" />
+                    </a>
+                    <CopiarWallet wallet={h.wallet} />
+                </div>
             </div>
             <div className="border-t border-dashed border-lightblue/20" />
             <div className="flex flex-col gap-2 text-sm">
@@ -305,6 +309,37 @@ function Tarjeta({
                 )}
             </div>
         </li>
+    );
+}
+
+function CopiarWallet({ wallet }: { wallet: string }) {
+    const [copiada, setCopiada] = useState(false);
+    const copiar = () => {
+        let w = wallet;
+        try {
+            w = getAddress(wallet);
+        } catch {}
+        navigator.clipboard?.writeText(w);
+        setCopiada(true);
+        setTimeout(() => setCopiada(false), 1500);
+    };
+    return (
+        <button
+            type="button"
+            onClick={copiar}
+            aria-label="Copy the address"
+            title="Copy the address"
+            className="shrink-0 inline-flex items-center gap-1 text-xs text-lightblue/60 hover:text-yellow cursor-pointer transition-all duration-300"
+        >
+            {copiada ? (
+                <>
+                    <FiCheck className="size-3.5 text-green-300" />
+                    <span className="text-green-300">Copied</span>
+                </>
+            ) : (
+                <FiCopy className="size-3.5" />
+            )}
+        </button>
     );
 }
 
@@ -376,15 +411,18 @@ function Bios({ token }: { token: string }) {
                                 <span className="text-sm text-lightblue whitespace-pre-line wrap-break-word">
                                     {b.bio}
                                 </span>
-                                <a
-                                    href={`/holder/${b.address}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 w-fit font-mono text-xs text-lightblue/60 hover:text-yellow transition-all duration-300 truncate"
-                                >
-                                    {b.address}
-                                    <FiArrowUpRight className="shrink-0 w-3 h-3" />
-                                </a>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <a
+                                        href={`/holder/${b.address}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1 w-fit font-mono text-xs text-lightblue/60 hover:text-yellow transition-all duration-300 truncate"
+                                    >
+                                        {b.address}
+                                        <FiArrowUpRight className="shrink-0 w-3 h-3" />
+                                    </a>
+                                    <CopiarWallet wallet={b.address} />
+                                </div>
                             </div>
                             <button
                                 onClick={() => borrar(b)}
