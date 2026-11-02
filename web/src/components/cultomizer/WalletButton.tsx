@@ -232,7 +232,7 @@ export default function WalletButton({ dato = 'primals', abrir = false }: { dato
             <button
                 onClick={() => open()}
                 disabled={!montado || isConnecting}
-                className={`${montado ? '' : 'invisible '}bg-lightblue text-darkblue uppercase text-base sm:text-lg font-accent px-3 sm:px-4 pt-0.5 pb-1.5 rounded-[10px] cursor-pointer hover:bg-yellow active:scale-97 transition-all duration-300`}
+                className={`${montado ? '' : 'invisible '}bg-lightblue text-darkblue uppercase text-base sm:text-lg font-accent px-3 sm:px-4 pt-0.5 pb-1.5 rounded-[10px] cursor-pointer max-sm:disabled:opacity-60 hover:bg-yellow active:scale-97 transition-all duration-300`}
             >
                 {/* Los dos textos en la misma celda: el boton mide siempre lo
                     del mas largo y no empuja al resto del header al cambiar. */}
@@ -245,7 +245,7 @@ export default function WalletButton({ dato = 'primals', abrir = false }: { dato
                     <span
                         className={`col-start-1 row-start-1 ${montado && isConnecting ? '' : 'invisible'}`}
                     >
-                        Connecting...
+                        Connect<span className="hidden sm:inline">ing...</span>
                     </span>
                 </span>
             </button>
