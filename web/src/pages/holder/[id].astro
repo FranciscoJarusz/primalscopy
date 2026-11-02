@@ -2,6 +2,7 @@
 import LandingLayout from '@/layouts/LandingLayout.astro';
 import PerfilIsland from '@/components/explore/PerfilIsland';
 import { backendAbsoluto } from '@/lib/backend';
+import { esBuscador } from '@/lib/bots';
 import { walletCorta } from '@/lib/nicknames';
 import type { Perfil } from '@/lib/explore';
 
@@ -20,8 +21,8 @@ const nombre = perfil ? perfil.nickname ?? walletCorta(perfil.wallet) : id;
 const descripcion = perfil
     ? `${perfil.tokens.length} Primals · ${perfil.fog.balance.toLocaleString('en-US')} FOG · ${perfil.fog.training} training.`
     : 'A Primal Cult holder.';
-const tarjeta = `${backend}/explore/og/holder/${perfil?.wallet ?? id}.png`;
-fetch(tarjeta).catch(() => {});
+const tarjeta = `${backend}/explore/og/holder/${perfil?.wallet ?? id}.jpg`;
+if (!esBuscador(Astro.request)) fetch(tarjeta).catch(() => {});
 ---
 
 <LandingLayout

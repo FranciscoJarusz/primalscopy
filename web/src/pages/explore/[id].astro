@@ -2,6 +2,7 @@
 import LandingLayout from '@/layouts/LandingLayout.astro';
 import FichaPrimal from '@/components/explore/Ficha';
 import { backendAbsoluto } from '@/lib/backend';
+import { esBuscador } from '@/lib/bots';
 import type { Ficha } from '@/lib/explore';
 
 export const prerender = false;
@@ -15,8 +16,8 @@ const respuesta = await fetch(`${backend}/explore/primal/${id}`).catch(() => nul
 if (respuesta?.status === 404) return Astro.redirect('/explore');
 const ficha: Ficha | null = respuesta?.ok ? await respuesta.json().catch(() => null) : null;
 
-const tarjeta = `${backend}/explore/og/primal/${id}.png`;
-fetch(tarjeta).catch(() => {});
+const tarjeta = `${backend}/explore/og/primal/${id}.jpg`;
+if (!esBuscador(Astro.request)) fetch(tarjeta).catch(() => {});
 
 const rasgos = ficha?.attributes.map((a) => a.value).join(', ');
 const descripcion = ficha

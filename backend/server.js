@@ -167,6 +167,7 @@ app.listen(PORT, () => {
     startStakingJob();
     startRaffleJob();
     backup.startBackupJob();
+    require('./lib/ogCards').startPoda();
     require('./lib/transferIndex').startTransferIndex();
     primalThumbs.habilitarPrecalentado();
     primalThumbs.precalentar(Object.values(stakingStore.trainingByPeriod()).flat());

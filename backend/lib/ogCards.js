@@ -90,17 +90,66 @@ async function apilar(bloques, separacion) {
     return { altos, total: altos.reduce((a, b) => a + b, 0) + separacion * (bloques.length - 1) };
 }
 
+// Las tarjetas se guardan en JPEG: un PNG de 1200x630 con fotos pesa ~0,5 MB y
+// el JPEG ~80 KB. La carpeta es una cache con tope: se borran las menos usadas.
+const TOPE_BYTES = 400 * 1024 * 1024;
+const PODAR_CADA_MS = 6 * 60 * 60 * 1000;
+
 async function guardar(nombre, datos, generar) {
     const clave = crypto.createHash('sha1').update(JSON.stringify(datos)).digest('hex').slice(0, 12);
-    const destino = path.join(DIR, `${nombre}-${clave}.png`);
-    if (fs.existsSync(destino)) return destino;
-    const png = await generar();
+    const destino = path.join(DIR, `${nombre}-${clave}.jpg`);
+    if (fs.existsSync(destino)) {
+        const ahora = new Date();
+        try { fs.utimesSync(destino, ahora, ahora); } catch { }
+        return destino;
+    }
+    const jpg = await sharp(await generar()).flatten({ background: '#000000' }).jpeg({ quality: 86, mozjpeg: true }).toBuffer();
     fs.mkdirSync(DIR, { recursive: true });
     for (const viejo of fs.readdirSync(DIR)) {
         if (viejo.startsWith(`${nombre}-`)) fs.rmSync(path.join(DIR, viejo), { force: true });
     }
-    writeAtomic(destino, png);
+    writeAtomic(destino, jpg);
     return destino;
+}
+
+function podar(tope = TOPE_BYTES) {
+    let archivos;
+    try {
+        archivos = fs.readdirSync(DIR);
+    } catch {
+        return { borrados: 0, liberados: 0 };
+    }
+    let borrados = 0;
+    let liberados = 0;
+    const quedan = [];
+    for (const nombre of archivos) {
+        const ruta = path.join(DIR, nombre);
+        let stat;
+        try { stat = fs.statSync(ruta); } catch { continue; }
+        if (!stat.isFile()) continue;
+        if (!nombre.endsWith('.jpg')) {
+            fs.rmSync(ruta, { force: true });
+            borrados++;
+            liberados += stat.size;
+        } else {
+            quedan.push({ ruta, size: stat.size, usado: stat.mtimeMs });
+        }
+    }
+    let total = quedan.reduce((n, a) => n + a.size, 0);
+    for (const a of quedan.sort((x, y) => x.usado - y.usado)) {
+        if (total <= tope) break;
+        fs.rmSync(a.ruta, { force: true });
+        total -= a.size;
+        borrados++;
+        liberados += a.size;
+    }
+    if (borrados) console.log(`[og] cache podada: ${borrados} archivos, ${Math.round(liberados / 1048576)} MB liberados`);
+    return { borrados, liberados };
+}
+
+function startPoda() {
+    podar();
+    setInterval(() => podar(), PODAR_CADA_MS).unref();
 }
 
 async function conImagenALaIzquierda(tokenId, lineas, pie) {
@@ -187,4 +236,4 @@ async function tarjetaPagina({ titulo, subtitulo, primals }) {
     return sharp(await fondo()).composite(capas).png().toBuffer();
 }
 
-module.exports = { tarjetaPrimal, tarjetaHolder, tarjetaPagina };
+module.exports = { tarjetaPrimal, tarjetaHolder, tarjetaPagina, guardar, podar, startPoda };

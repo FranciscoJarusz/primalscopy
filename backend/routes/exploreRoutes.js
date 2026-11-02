@@ -192,10 +192,10 @@ router.get('/holder/:id', async (req, res) => {
 
 function enviarTarjeta(res, archivo) {
     res.set('Cache-Control', 'public, max-age=3600');
-    res.type('image/png').sendFile(archivo);
+    res.type('image/jpeg').sendFile(archivo);
 }
 
-router.get('/og/holder/:id.png', async (req, res) => {
+router.get(['/og/holder/:id.jpg', '/og/holder/:id.png'], async (req, res) => {
     const wallet = walletDe(String(req.params.id));
     if (!wallet) return res.status(404).end();
     try {
@@ -206,7 +206,7 @@ router.get('/og/holder/:id.png', async (req, res) => {
     }
 });
 
-router.get('/og/primal/:id.png', async (req, res) => {
+router.get(['/og/primal/:id.jpg', '/og/primal/:id.png'], async (req, res) => {
     const id = req.params.id;
     if (!TOKEN_ID_REGEX.test(id)) return res.status(404).end();
     try {
