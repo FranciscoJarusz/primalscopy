@@ -30,3 +30,6 @@ Thumbs.db
 
 # Salida de los procesos de dev.ps1
 .logs/
+
+# Originales de arte de Trout: pesan demasiado para el repo; el sitio usa las versiones livianas de web/public/packs
+originales/

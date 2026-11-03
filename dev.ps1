@@ -1,5 +1,7 @@
-# Levanta todo el entorno local: backend y sitio Astro.
+# Levanta todo el entorno local: backend, sitio Astro y anvil (la cadena de
+# prueba para los pagos en APE).
 #   .\dev.ps1          levanta todo
+#   .\dev.ps1 ape 0x.. le carga 1000 APE de prueba a esa wallet en anvil
 #   .\dev.ps1 stop     cierra todo
 #   .\dev.ps1 share    backend + sitio detras de un link publico de Cloudflare,
 #                      sin poder publicar nada en produccion.
@@ -8,14 +10,16 @@
 #                      Ctrl+C corta el link.
 #   .\dev.ps1 rebuild  pasa lo que tenes en el 4321 al link (la copia del 4322)
 #   .\dev.ps1 tunnel   abre solo el link (link nuevo), con el resto ya levantado
-#   .\dev.ps1 logs backend   la salida de un proceso (backend, web o share)
+#   .\dev.ps1 logs backend   la salida de un proceso (backend, web, share o anvil)
 #
 # No se abre ninguna ventana: cada proceso corre oculto y su salida queda en
 # .logs\<nombre>.log. Para cortarlos, .\dev.ps1 stop.
 param([string]$accion = "start", [string]$cual = "")
 
 $root    = $PSScriptRoot
-$puertos = 3001, 4321, 4322
+$puertos = 3001, 4321, 4322, 8545
+$foundry = "$env:USERPROFILE\.foundry\bin"
+$rpc     = 'http://127.0.0.1:8545'
 
 function Ocupado($p) { [bool](Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue) }
 # Mata el arbol entero desde arriba: matando solo el que escucha, el nodemon
@@ -51,8 +55,17 @@ function Lanzar($nombre, $comando) {
 
 if ($accion -eq "logs") {
   $archivo = "$logs\$cual.log"
-  if (-not $cual -or -not (Test-Path $archivo)) { Write-Host "Uso: .\dev.ps1 logs <backend|web|share>"; return }
+  if (-not $cual -or -not (Test-Path $archivo)) { Write-Host "Uso: .\dev.ps1 logs <backend|web|share|anvil>"; return }
   Get-Content $archivo -Tail 40 -Wait
+  return
+}
+
+if ($accion -eq "ape") {
+  if ($cual -notmatch '^0x[0-9a-fA-F]{40}$') { Write-Host "Uso: .\dev.ps1 ape 0x<wallet>"; return }
+  if (-not (Ocupado 8545)) { Write-Host "Anvil no esta corriendo: .\dev.ps1 primero."; return }
+  & "$foundry\cast.exe" rpc anvil_setBalance $cual 0x3635C9ADC5DEA00000 --rpc-url $rpc | Out-Null
+  & "$foundry\cast.exe" rpc anvil_mine 0x1 --rpc-url $rpc | Out-Null
+  Write-Host "1000 APE de prueba para $cual. En MetaMask, red 'Anvil (local)'."
   return
 }
 
@@ -136,11 +149,15 @@ if ($accion -eq "share" -or $accion -eq "tunnel") {
   return
 }
 
-# Backend (3001) y sitio Astro (4321)
+# Backend (3001), sitio Astro (4321) y anvil (8545)
 if (-not (Ocupado 3001)) { Lanzar backend "cd '$root\backend'; npm run dev" }
 if (-not (Ocupado 4321)) { Lanzar web "cd '$root\web'; npm run dev" }
+if (-not (Ocupado 8545) -and (Test-Path "$foundry\anvil.exe")) {
+  Lanzar anvil "& '$foundry\anvil.exe' --host 127.0.0.1 --port 8545 --chain-id 31337 --state '$logs\anvil.json' --state-interval 10"
+}
 
 Write-Host ""
 Write-Host "Sitio:    http://localhost:4321"
 Write-Host "Raffles:  http://localhost:4321/raffles"
 Write-Host "Backend:  http://localhost:3001"
+Write-Host "Anvil:    $rpc  (APE de prueba: .\dev.ps1 ape 0x...)"
