@@ -20,6 +20,7 @@ import PendientesAdmin from './PendientesAdmin';
 import EntregasAdmin from './EntregasAdmin';
 import EconomiaAdmin from './EconomiaAdmin';
 import BadgesAdmin from './BadgesAdmin';
+import PacksAdmin from './PacksAdmin';
 
 const PANELES: Record<string, (props: { token: string }) => ReactNode> = {
     traits: TraitsAdmin,
@@ -32,6 +33,7 @@ const PANELES: Record<string, (props: { token: string }) => ReactNode> = {
     deliveries: EntregasAdmin,
     economy: EconomiaAdmin,
     badges: BadgesAdmin,
+    packs: PacksAdmin,
 };
 
 function seccionDeLaUrl() {

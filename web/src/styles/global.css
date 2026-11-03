@@ -15,6 +15,11 @@
     --color-yellow: #fdf468;
     --color-red: #c20e35;
 
+    --color-mw-champagne: #aea35d;
+    --color-mw-mist: #dcd7b7;
+    --color-mw-fog: #6e6c5c;
+    --color-mw-bayou: #1b1804;
+
     --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
     --font-accent: 'Sunzone', ui-sans-serif, system-ui, sans-serif;
 
@@ -84,6 +89,23 @@ body {
     scrollbar-width: auto;
     scrollbar-color: #bfdbfe #090746;
     overflow-x: clip;
+}
+
+html:not([data-packs]) [data-si-packs],
+html[data-packs] [data-no-packs],
+html[data-anuncio-cerrado] [data-anuncio-packs] {
+    display: none !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    @view-transition {
+        navigation: auto;
+    }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 0.25s;
 }
 
 html.anim-pendiente [data-anim]:not([data-anim='intro']),

@@ -16,6 +16,7 @@ const staking = require('../lib/stakingStore');
 const { verifyStakes, refreshVaultNow } = require('../lib/stakingJob');
 const wheels = require('../lib/stakingWheels');
 const raffles = require('../lib/raffleStore');
+const packs = require('../lib/packsStore');
 const traitShop = require('../lib/traitShopStore');
 const backup = require('../lib/backup');
 const transfers = require('../lib/transferIndex');
@@ -288,6 +289,31 @@ router.post('/trait-drops', (req, res) => {
 router.put('/trait-drops/:id', (req, res) => conDrop(res, traitShop.update(req.params.id, req.body)));
 router.post('/trait-drops/:id/end', (req, res) => conDrop(res, traitShop.end(req.params.id)));
 router.delete('/trait-drops/:id', (req, res) => conDrop(res, traitShop.remove(req.params.id)));
+
+router.get('/packs', (req, res) => res.json(packs.adminSummary()));
+router.patch('/packs/config', (req, res) => {
+    const result = packs.updateConfig(req.body || {});
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json(packs.adminSummary());
+});
+router.post('/packs/chosen/draw', (req, res) => {
+    const result = packs.sortearChosen();
+    if (result.error) return res.status(result.status || 400).json({ error: result.error });
+    res.json(packs.adminSummary());
+});
+router.delete('/packs/chosen/draw', (req, res) => {
+    packs.reiniciarSorteoChosen();
+    res.json(packs.adminSummary());
+});
+router.put('/packs/players/:wallet/disqualified', (req, res) => {
+    const result = packs.setDisqualified(req.params.wallet, req.body?.disqualified !== false, req.body?.reason);
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json(packs.adminSummary());
+});
+router.delete('/packs/players/:wallet/social', (req, res) => {
+    if (!profiles.clearSocial(req.params.wallet)) return res.status(404).json({ error: 'That wallet has no X or Discord.' });
+    res.json(packs.adminSummary());
+});
 
 router.get('/raffles', (req, res) => res.json(raffles.adminList()));
 router.post('/raffles', (req, res) => conRaffle(res, raffles.create(req.body || {})));

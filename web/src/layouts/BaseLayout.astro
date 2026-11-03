@@ -61,6 +61,12 @@ const imagen = new URL(image ?? "/og.png", Astro.site).href;
          para que no aparezca y desaparezca. Si el JS no llega a sacar la
          clase, se saca sola: el contenido nunca queda invisible. -->
     <script is:inline>
+      try {
+        if (localStorage.getItem("primal_packs_abierto") === "1") document.documentElement.setAttribute("data-packs", "");
+        if (localStorage.getItem("primal_anuncio_mudwater_cerrado") === "1") document.documentElement.setAttribute("data-anuncio-cerrado", "");
+      } catch {}
+    </script>
+    <script is:inline>
       if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
         document.documentElement.classList.add("anim-pendiente");
         setTimeout(function () {

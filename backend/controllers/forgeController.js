@@ -442,6 +442,9 @@ async function registerPayment(req, res) {
                 if (require('../lib/stakingStore').isPurchase(txHash)) {
                     throw httpError(409, 'That payment was already used to buy FOG.', 'already-used');
                 }
+                if (require('../lib/packsStore').isExtraPayment(txHash)) {
+                    throw httpError(409, 'That payment was already used for an extra pack.', 'already-used');
+                }
             };
             yaComprado();
             const payment = await verifyPayment(txHash, req.walletAddress, config);

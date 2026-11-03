@@ -6,6 +6,7 @@ export const ADMIN_SECCIONES = [
     { id: 'economy', nombre: 'Economy', href: '/admin/economy' },
     { id: 'deliveries', nombre: 'Deliveries', href: '/admin/deliveries' },
     { id: 'raffles', nombre: 'Raffles', href: '/admin/raffles' },
+    { id: 'packs', nombre: 'Packs', href: '/admin/packs' },
     { id: 'shop', nombre: 'Shop', href: '/admin/shop' },
     { id: 'staking', nombre: 'Staking', href: '/admin/staking' },
     { id: 'promo', nombre: 'Codes', href: '/admin/promo' },

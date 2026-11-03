@@ -25,6 +25,7 @@ import {
 import { rarezaDe } from './rareza';
 import { abrirCanje } from '@/lib/promo';
 import PagarConFog from './PagarConFog';
+import CompraCompleta from '@/components/shared/CompraCompleta';
 
 export default function Roll() {
     const tokenId = useSearchParam('tokenId') ?? '';
@@ -420,6 +421,22 @@ export default function Roll() {
                         There are no take backs.
                     </p>
                 </Confirmacion>
+            )}
+
+            {forge.pagado && (
+                <CompraCompleta
+                    imagen={imagen}
+                    titular="+1 Paid roll"
+                    texto="Your roll is paid. If you leave now, it stays saved for your next roll."
+                    principal={{
+                        texto: 'Roll now',
+                        alTocar: () => {
+                            forge.cerrarPagado();
+                            forge.rollear();
+                        },
+                    }}
+                    onCerrar={forge.cerrarPagado}
+                />
             )}
 
             {(forge.forjado || (preview && status)) && (

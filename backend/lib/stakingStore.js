@@ -637,6 +637,11 @@ function readActive() {
     return readJson(ACTIVE_PATH, {});
 }
 
+function isStaking(wallet, now = Date.now()) {
+    const key = String(wallet).toLowerCase();
+    return Object.values(readActive()).some(s => s.wallet === key && !isFinished(s, now));
+}
+
 function readWallets() {
     return readJson(WALLETS_PATH, {});
 }
@@ -1256,6 +1261,9 @@ function buyFog(wallet, payment) {
     if (require('./forgeStore').getPayment(hash)) {
         return { error: 'That payment was already used in the Forge.', code: 'already-used', status: 409 };
     }
+    if (require('./packsStore').isExtraPayment(hash)) {
+        return { error: 'That payment was already used for an extra pack.', code: 'already-used', status: 409 };
+    }
 
     const { fogPerApe } = getConfig().fogSale;
     const fog = Number(BigInt(payment.valueWei) * BigInt(fogPerApe) / WEI);
@@ -1463,6 +1471,7 @@ module.exports = {
     publicConfig,
     trainingByPeriod,
     readActive,
+    isStaking,
     startStakes,
     unstake,
     applyVerification,

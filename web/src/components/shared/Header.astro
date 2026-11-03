@@ -8,9 +8,13 @@ export type Seccion = {
     href: string;
     id: string;
     oculta?: boolean;
+    soloConPacks?: boolean;
 };
 
-export const SECCIONES: Seccion[] = [{ id: 'home', nombre: 'Home', href: '/' }];
+export const SECCIONES: Seccion[] = [
+    { id: 'home', nombre: 'Home', href: '/' },
+    { id: 'packs', nombre: 'Mudwater', href: '/mudwater', soloConPacks: true },
+];
 
 export const HUB: Seccion[] = [
     { id: 'cultomizer', nombre: 'Cultomizer', href: '/cultomizer' },
@@ -46,10 +50,12 @@ const clase = (id: string) =>
     id === activo
         ? 'text-yellow'
         : 'text-lightblue hover:text-yellow transition-all duration-300';
+const conPacks = (s: Seccion) =>
+    s.soloConPacks && s.id !== activo ? { 'data-si-packs': '' } : {};
 ---
 
 <header
-    class="sticky top-3 sm:top-4 z-30 flex items-center justify-between gap-x-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-10 lg:py-5"
+    class="sticky top-3 sm:top-4 z-30 [view-transition-name:header] flex items-center justify-between gap-x-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-10 lg:py-5"
     data-header
 >
     <div
@@ -71,17 +77,24 @@ const clase = (id: string) =>
         </a>
     </div>
 
-    <nav class="hidden lg:flex items-center justify-center gap-6 xl:gap-10 text-xl uppercase font-accent text-lightblue mb-1">
+    <nav class="hidden lg:flex items-center justify-center gap-5 xl:gap-7 min-[1440px]:gap-10 text-lg xl:text-xl whitespace-nowrap uppercase font-accent text-lightblue mb-1">
         {secciones.map((s) => (
             <a
                 href={s.href}
-                class={
+                {...conPacks(s)}
+                class:list={[
+                    s.soloConPacks && 'relative',
                     s.id === activo
                         ? 'text-yellow'
-                        : 'hover:text-yellow transition-all duration-300'
-                }
+                        : 'hover:text-yellow transition-all duration-300',
+                ]}
             >
                 {s.nombre}
+                {s.soloConPacks && (
+                    <span class="absolute -top-3.5 -right-6 rounded-full bg-yellow text-darkblue font-sans font-bold text-[9px] leading-none px-1.5 py-0.5 tracking-wider">
+                        NEW
+                    </span>
+                )}
             </a>
         ))}
 
@@ -232,9 +245,15 @@ const clase = (id: string) =>
                     <a
                         href={s.href}
                         tabindex="-1"
+                        {...conPacks(s)}
                         class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
                     >
                         {s.nombre}
+                        {s.soloConPacks && (
+                            <span class="ml-2 align-middle rounded-full bg-yellow text-darkblue font-sans font-bold text-[10px] leading-none px-1.5 py-0.5 tracking-wider">
+                                NEW
+                            </span>
+                        )}
                     </a>
                 ))}
 
@@ -298,7 +317,46 @@ const clase = (id: string) =>
     </div>
 </header>
 
+{activo === 'home' && (
+    <div
+        data-si-packs
+        data-anuncio-packs
+        class="relative z-20 mt-3 sm:mt-4"
+    >
+        <div class="relative flex sm:flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-2 rounded-2xl sm:rounded-[30px] bg-black ring-1 ring-mw-champagne/60 pl-5 pr-12 py-2.5 sm:py-3 text-center shadow-lg shadow-darkblue/50">
+            <p class="text-sm sm:text-base text-mw-mist">
+                <span class="font-accent uppercase text-[#d8cc8c] sm:mr-2">
+                    Primal Cult × Mudwater
+                </span>
+                <span class="hidden sm:inline xl:hidden">
+                    Open free packs every day.
+                </span>
+                <span class="hidden xl:inline">
+                    Open free packs every day. The top of the leaderboard wins
+                    Mudwater packs.
+                </span>
+            </p>
+            <a
+                href="/mudwater"
+                class="shrink-0 bg-[#d8cc8c] text-black font-accent uppercase rounded-md px-3 pb-1.5 hover:bg-[#efe7bd] active:scale-97 transition-all duration-300"
+            >
+                Rip packs
+            </a>
+            <button
+                type="button"
+                data-anuncio-cerrar
+                aria-label="Close"
+                class="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 text-2xl leading-none text-mw-champagne hover:text-[#efe7bd] cursor-pointer transition-all duration-300"
+            >
+                ×
+            </button>
+        </div>
+    </div>
+)}
+
 <script>
+    import { iniciarAnuncioPacks } from '@/lib/anuncioPacks';
+    iniciarAnuncioPacks();
     const header = document.querySelector<HTMLElement>('[data-header]');
     if (header) {
         const boton =

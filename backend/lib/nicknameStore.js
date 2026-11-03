@@ -76,6 +76,7 @@ function deleteNickname(address) {
 }
 
 module.exports = {
+    validate,
     getNickname,
     getAllNicknames,
     listNicknames,

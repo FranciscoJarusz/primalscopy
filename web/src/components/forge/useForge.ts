@@ -32,6 +32,7 @@ export function useForge(tokenId: string, sessionToken: string | null) {
     const [fase, setFase] = useState<FasePago | null>(null);
     // Se quedo con una opcion: Roll.tsx muestra el popup del Primal nuevo.
     const [forjado, setForjado] = useState(false);
+    const [pagado, setPagado] = useState(false);
     const { address } = useAccount();
     const cobra = status?.payment.required === true;
 
@@ -70,6 +71,7 @@ export function useForge(tokenId: string, sessionToken: string | null) {
             if (hash) {
                 try {
                     await informar(address, hash, sessionToken);
+                    if (!cancelado) setPagado(true);
                 } catch (err) {
                     if (!cancelado)
                         setAviso({ ok: false, texto: mensaje(err, 'Payment not accepted.') });
@@ -134,6 +136,8 @@ export function useForge(tokenId: string, sessionToken: string | null) {
                 setFase('registrando');
                 setPaidRolls(await informar(address, hash, sessionToken));
                 setFase(null);
+                setPagado(true);
+                return;
             }
 
             const { r, data } = await pedir('roll', { keep });
@@ -199,6 +203,8 @@ export function useForge(tokenId: string, sessionToken: string | null) {
         fase,
         forjado,
         cerrarForjado: () => setForjado(false),
+        pagado,
+        cerrarPagado: () => setPagado(false),
         rollear,
         elegir,
         descartar,

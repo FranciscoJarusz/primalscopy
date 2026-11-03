@@ -16,16 +16,6 @@ router.get('/nicknames', (req, res) => {
 });
 
 router.put('/nickname', requireWallet, async (req, res) => {
-    let balance;
-    try {
-        balance = await ownership.getPrimalBalance(req.walletAddress);
-    } catch {
-        return res.status(503).json({ error: "Couldn't check your Primals right now. Try again in a few seconds." });
-    }
-    if (balance < 1) {
-        return res.status(403).json({ error: 'You need at least one Primal to set a nickname.' });
-    }
-
     const result = nicknames.setNickname(req.walletAddress, req.body?.nickname);
     if (result.error) return res.status(400).json({ error: result.error });
     res.json(result);
@@ -34,6 +24,8 @@ router.put('/nickname', requireWallet, async (req, res) => {
 router.put('/', requireWallet, async (req, res) => {
     const { value, error } = profiles.validate(req.body);
     if (error) return res.status(400).json({ error });
+    const tomada = profiles.socialTomada(req.walletAddress, value);
+    if (tomada) return res.status(409).json({ error: tomada });
 
     const wallet = req.walletAddress.toLowerCase();
     const elegidos = [...new Set([value.avatar, ...value.featured].filter(Boolean))];

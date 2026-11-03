@@ -1,4 +1,4 @@
-// Prueba los apodos: que haga falta la sesion firmada y un Primal, las reglas
+// Prueba los apodos: que haga falta la sesion firmada (no un Primal), las reglas
 // de formato y unicidad, y el borrado desde el admin.
 //
 // Correr con: npm test
@@ -85,7 +85,7 @@ async function main() {
 
     console.log('\n--- Guardar ---');
     check('sin sesion no se puede', (await put('Trout', null)).status === 401);
-    check('sin Primals no se puede', (await put('Nadie', sinPrimalsToken)).status === 403);
+    check('sin Primals tambien se puede (para los packs)', (await put('Nadie', sinPrimalsToken)).ok);
     check('muy corto se rechaza', (await put('ab', holderToken)).status === 400);
     check('con espacios se rechaza', (await put('el trout', holderToken)).status === 400);
     check('con emoji se rechaza', (await put('trout🔥', holderToken)).status === 400);
@@ -105,7 +105,7 @@ async function main() {
     const admin = { authorization: `Bearer ${ADMIN}` };
     r = await fetch(`${BASE}/api/admin/nicknames`, { headers: admin });
     const lista = await r.json();
-    check('el admin ve la lista', r.ok && lista.length === 2 && lista.every(n => n.updatedAt));
+    check('el admin ve la lista', r.ok && lista.length === 3 && lista.every(n => n.updatedAt));
     check('sin token de admin no', (await fetch(`${BASE}/api/admin/nicknames`)).status === 401);
     r = await fetch(`${BASE}/api/admin/nicknames/${holder.address}`, { method: 'DELETE', headers: admin });
     check('el admin borra un apodo', r.ok && !(clave in (await nicknames())));

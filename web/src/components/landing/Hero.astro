@@ -9,7 +9,7 @@
             into legend.
         </p>
 
-        <div class="font-accent uppercase flex flex-wrap gap-2.5 items-center">
+        <div class="font-accent uppercase flex flex-wrap gap-2.5 items-center in-data-packs:pt-12 lg:in-data-packs:pt-10">
             <a
                 href="#primal-cult"
                 class="bg-yellow text-darkblue px-6 pt-2 pb-3.5 rounded-[10px] hover:scale-102 active:scale-97 transition-all duration-300"
@@ -17,7 +17,25 @@
                 Join the cult
             </a>
             <a
+                href="/mudwater"
+                data-si-packs
+                class="group relative isolate text-[#e5dba5] px-6 pt-2 pb-3.5 rounded-[10px] hover:scale-102 active:scale-97 transition-all duration-300"
+            >
+                <img
+                    src="/packs/packs-boton.webp"
+                    alt=""
+                    aria-hidden="true"
+                    class="pointer-events-none absolute left-1/2 bottom-[40%] -z-10 w-17 sm:w-19 max-w-none -translate-x-1/2 origin-bottom group-hover:-translate-y-1.5 group-hover:scale-105 transition-all duration-300 motion-reduce:transition-none"
+                />
+                <span
+                    aria-hidden="true"
+                    class="absolute inset-0 rounded-[10px] bg-black ring-2 ring-inset ring-[#d8cc8c] shadow-lg shadow-darkblue/50"
+                ></span>
+                <span class="relative">Rip packs</span>
+            </a>
+            <a
                 href="#roadmap"
+                data-no-packs
                 class="inset-ring-2 inset-ring-yellow text-yellow px-6 pt-2 pb-3.5 rounded-[10px] hover:bg-yellow hover:text-darkblue active:scale-97 transition-all duration-300"
             >
                 Explore roadmap
@@ -31,6 +49,7 @@
             <img
                 src="/images/landing/hero.webp"
                 alt="Primal Cult hero"
+                fetchpriority="high"
                 class="h-auto w-full object-cover object-center drop-shadow-2xl drop-shadow-darkblue/50"
             />
         </picture>

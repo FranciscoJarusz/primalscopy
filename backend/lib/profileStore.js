@@ -68,8 +68,27 @@ function clearBio(address) {
     return true;
 }
 
+function socialTomada(address, { x, discord }) {
+    const key = String(address).toLowerCase();
+    for (const [otra, p] of Object.entries(load())) {
+        if (otra === key) continue;
+        if (x && p.x?.toLowerCase() === x.toLowerCase()) return 'That X account is already linked to another wallet.';
+        if (discord && p.discord === discord) return 'That Discord account is already linked to another wallet.';
+    }
+    return null;
+}
+
+function clearSocial(address) {
+    const key = String(address || '').toLowerCase();
+    const data = load();
+    if (!data[key]?.x && !data[key]?.discord) return false;
+    data[key] = { ...data[key], x: '', discord: '' };
+    writeJson(PROFILES_PATH, data);
+    return true;
+}
+
 function allProfiles() {
     return load();
 }
 
-module.exports = { allProfiles, getProfile, validate, setProfile, listBios, clearBio, MAX_BIO, MAX_FEATURED };
+module.exports = { allProfiles, getProfile, validate, setProfile, listBios, clearBio, socialTomada, clearSocial, MAX_BIO, MAX_FEATURED };

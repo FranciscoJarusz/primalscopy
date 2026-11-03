@@ -1,0 +1,12 @@
+---
+import CultomizerLayout from '@/layouts/CultomizerLayout.astro';
+import Packs from '@/components/packs/Packs';
+import EstiloMudwater from '@/components/packs/EstiloMudwater.astro';
+---
+
+<CultomizerLayout image="/og/mudwater.jpg" title="Rip Packs - Primal Cult x Mudwater" description="Open Primal Cult packs every day, climb the leaderboard and win Mudwater packs." activo="packs">
+    <EstiloMudwater />
+    <div class="min-h-dvh">
+        <Packs client:only="react" />
+    </div>
+</CultomizerLayout>

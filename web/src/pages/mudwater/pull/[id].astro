@@ -1,0 +1,52 @@
+---
+import CultomizerLayout from '@/layouts/CultomizerLayout.astro';
+import EstiloMudwater from '@/components/packs/EstiloMudwater.astro';
+import PackCompartido from '@/components/packs/PackCompartido';
+import { backendAbsoluto } from '@/lib/backend';
+import { esBuscador } from '@/lib/bots';
+import { RAREZAS, ORDEN_RAREZAS, type CartaPack, type Categoria, type Rareza } from '@/lib/packs';
+
+export const prerender = false;
+
+const { id = '' } = Astro.params;
+if (!/^[0-9a-f-]{36}$/i.test(id)) return Astro.redirect('/mudwater');
+
+const backend = backendAbsoluto(Astro.url);
+const respuesta = await fetch(`${backend}/packs/pull/${id}`).catch(() => null);
+if (!respuesta?.ok) return Astro.redirect('/mudwater');
+const pull: {
+    points: number;
+    nickname: string | null;
+    cards: { id: number; name: string; category: Categoria; rarity: Rareza }[];
+} = await respuesta.json();
+
+const tarjeta = `${backend}/packs/og/${id}.jpg`;
+if (!esBuscador(Astro.request)) fetch(tarjeta).catch(() => {});
+
+const cartas: CartaPack[] = pull.cards.map((c) => {
+    const archivo = `MW${String(c.id).padStart(2, '0')}.webp`;
+    return {
+        id: c.id,
+        nombre: `#${c.id} ${c.name}`,
+        categoria: c.category,
+        rareza: c.rarity,
+        imagen: `/packs/cards/${archivo}`,
+        miniatura: `/packs/cards/sm/${archivo}`,
+    };
+});
+const conteo = ORDEN_RAREZAS.map((r) => [r, pull.cards.filter((c) => c.rarity === r).length] as const)
+    .filter(([, n]) => n)
+    .map(([r, n]) => `${n} ${RAREZAS[r].nombre}`)
+    .join(', ');
+const quien = pull.nickname ?? 'Someone';
+---
+
+<CultomizerLayout
+    title={`${quien}'s pull - Primal Cult x Mudwater`}
+    description={`${quien} ripped a Primal Cult pack: ${conteo}. +${pull.points} points. Open yours every day.`}
+    activo="packs"
+    image={tarjeta}
+>
+    <EstiloMudwater />
+    <PackCompartido cartas={cartas} puntos={pull.points} apodo={pull.nickname} />
+</CultomizerLayout>

@@ -1,0 +1,57 @@
+<link rel="preconnect" href="https://use.typekit.net" crossorigin />
+<link rel="stylesheet" href="https://use.typekit.net/kvk1siu.css" />
+
+<style is:global>
+    @font-face {
+        font-family: 'Gardein Acento';
+        src: url('https://use.typekit.net/af/82fb59/000000000000000077572936/31/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3') format('woff2');
+        font-weight: 400;
+        font-display: swap;
+        ascent-override: 105%;
+        descent-override: 0%;
+        line-gap-override: 0%;
+    }
+    @font-face {
+        font-family: 'Gardein Acento';
+        src: url('https://use.typekit.net/af/ae7434/000000000000000077572938/31/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3') format('woff2');
+        font-weight: 700;
+        font-display: swap;
+        ascent-override: 105%;
+        descent-override: 0%;
+        line-gap-override: 0%;
+    }
+    html:root {
+        scrollbar-color: var(--color-mw-champagne) #000;
+    }
+    html body {
+        background-color: #000;
+    }
+    html ::selection {
+        background-color: var(--color-mw-champagne);
+        color: #000;
+    }
+    html body::before {
+        display: none;
+    }
+    [data-header],
+    footer,
+    [data-mudwater] {
+        --color-darkblue: #000;
+        --color-lightblue: var(--color-mw-mist);
+        --color-yellow: var(--color-mw-champagne);
+        --font-accent: 'Gardein Acento', 'gardein', serif;
+    }
+    [data-header] [data-fondo],
+    [data-header] [data-desplegable-panel] > div,
+    footer,
+    [data-mudwater] {
+        border: 1px solid rgb(174 163 93 / 0.6);
+        box-shadow:
+            inset 0 0 0 3px #000,
+            inset 0 0 0 4px rgb(174 163 93 / 0.25);
+    }
+    [data-header] a > img,
+    footer img {
+        filter: brightness(0) saturate(100%) invert(68%) sepia(25%) saturate(640%) hue-rotate(15deg) brightness(92%);
+    }
+</style>
