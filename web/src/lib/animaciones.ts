@@ -62,10 +62,14 @@ const tomados = new WeakSet<Element>();
 // El ScrollTrigger de cada parallax, para matarlo si React lo saca del DOM.
 const triggers = new Map<Element, ScrollTrigger>();
 
+const ANIMABLES = '[data-anim], [data-anim-stagger], [data-parallax]';
+const sinHidratar = (el: Element) =>
+    el.closest('astro-island') !== null && !Object.keys(el).some((k) => k.startsWith('__reactFiber$'));
+
 function nuevos<T extends Element>(lista: Iterable<T>) {
     const out: T[] = [];
     for (const el of lista) {
-        if (tomados.has(el)) continue;
+        if (tomados.has(el) || sinHidratar(el)) continue;
         tomados.add(el);
         out.push(el);
     }
@@ -192,6 +196,24 @@ function limpiar() {
 export function initAnimaciones(lenis: Lenis | null) {
     const listo = () =>
         document.documentElement.classList.remove('anim-pendiente');
+    const pendientes = () =>
+        [...document.querySelectorAll(`astro-island :is(${ANIMABLES})`)].some(sinHidratar);
+    let esperando = 0;
+    const listoSiHidrato = () => {
+        if (!pendientes()) return listo();
+        if (esperando) return;
+        const hasta = performance.now() + 5000;
+        const revisar = () => {
+            animar();
+            if (pendientes() && performance.now() < hasta) {
+                esperando = requestAnimationFrame(revisar);
+                return;
+            }
+            esperando = 0;
+            listo();
+        };
+        esperando = requestAnimationFrame(revisar);
+    };
 
     const mm = gsap.matchMedia();
     mm.add('(prefers-reduced-motion: no-preference)', () => {
@@ -203,11 +225,14 @@ export function initAnimaciones(lenis: Lenis | null) {
         reveal = observador({ ...FIN, x: 0, y: 0, duration: 0.9, ease: EASE, stagger: 0.12 });
         escalonado = observador({ ...FIN, y: 0, duration: 0.7, ease: 'power2.out', stagger: 0.08 });
         animar();
-        listo();
+        listoSiHidrato();
         requestAnimationFrame(alFondo);
         window.addEventListener('scroll', alFondo, { passive: true });
 
-        const observer = new MutationObserver(animar);
+        const observer = new MutationObserver(() => {
+            animar();
+            listoSiHidrato();
+        });
         observer.observe(document.body, { childList: true, subtree: true });
 
         // Si cambia el alto de la pagina (termino de cargar una lista, se
@@ -235,7 +260,7 @@ export function initAnimaciones(lenis: Lenis | null) {
     });
 
     // Con "reducir movimiento" no se anima nada, pero igual hay que mostrarlo.
-    listo();
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) listo();
 
     // Las imagenes que terminan de cargar corren el alto de la pagina.
     if (document.readyState === 'complete') ScrollTrigger.refresh();

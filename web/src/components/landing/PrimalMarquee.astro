@@ -63,8 +63,7 @@ const visibles = cantidad ? tokens.slice(0, cantidad) : tokens;
                             src={`/images/primals/${tokenId}.webp`}
                             alt={indice === 0 ? `Primal Cult #${tokenId}` : ''}
                             class="block size-(--primal-size) shrink-0 rounded-[10px] border-4 border-darkblue object-cover"
-                            loading={indice === 0 ? 'eager' : 'lazy'}
-                            fetchpriority={indice === 0 ? 'high' : 'auto'}
+                            loading="lazy"
                             decoding="async"
                         />
                     </picture>
@@ -82,7 +81,20 @@ const visibles = cantidad ? tokens.slice(0, cantidad) : tokens;
             e.target.toggleAttribute('data-pausado', !e.isIntersecting);
         }
     });
-    document.querySelectorAll('[data-marquee]').forEach((m) => observer.observe(m));
+    const cerca = new IntersectionObserver(
+        (entradas) => {
+            for (const e of entradas) {
+                if (!e.isIntersecting) continue;
+                cerca.unobserve(e.target);
+                e.target.querySelectorAll('img').forEach((img) => (img.loading = 'eager'));
+            }
+        },
+        { rootMargin: '600px 0px' }
+    );
+    document.querySelectorAll('[data-marquee]').forEach((m) => {
+        observer.observe(m);
+        cerca.observe(m);
+    });
 </script>
 
 <style>
