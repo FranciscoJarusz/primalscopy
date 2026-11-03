@@ -265,10 +265,12 @@ export default function Packs() {
         mio.extrasToday < extra.max;
 
     let accion: { texto: string; alTocar?: () => void } | null = null;
-    if (config.status === 'upcoming') accion = { texto: 'Opening soon' };
-    else if (config.status === 'ended') accion = { texto: 'Competition over' };
+    if (config.status === 'ended') accion = { texto: 'Competition over' };
     else if (conectando || session.status === 'signing')
         accion = { texto: 'Check your wallet...' };
+    else if (isConnected && session.status === 'needs-signature')
+        accion = { texto: 'Sign in', alTocar: entrar };
+    else if (config.status === 'upcoming') accion = { texto: 'Opening soon' };
     else if (!isConnected)
         accion = { texto: 'Connect wallet', alTocar: entrar };
     else if (session.status === 'needs-signature')
@@ -310,10 +312,12 @@ export default function Packs() {
                             Packs today
                         </p>
                         <p className="mw-titulo text-mw-champagne text-5xl leading-none mt-2 tabular-nums">
-                            {mio ? restantes : total}
-                            <span className="text-mw-fog text-2xl">
-                                /{total}
-                            </span>
+                            {mio ? restantes : '–'}
+                            {mio && (
+                                <span className="text-mw-fog text-2xl">
+                                    /{total}
+                                </span>
+                            )}
                         </p>
                     </div>
                     <div className="border-l border-mw-champagne/30 pl-6 text-sm uppercase tracking-wider flex flex-col gap-1">
