@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FiArrowLeft, FiArrowRight, FiArrowUpRight, FiDownload } from 'react-icons/fi';
 import {
     leerFicha,
@@ -8,7 +8,7 @@ import {
     type Ficha as Datos,
 } from '@/lib/explore';
 import { ZONAS } from '@/lib/zonas';
-import { fog, ICONO_FOG_CHICO } from '@/lib/staking';
+import { fog, ICONO_FOG_CHICO, miniaturaPrimal } from '@/lib/staking';
 import { useApodos, walletCorta } from '@/lib/nicknames';
 import { APECHAIN } from '@/lib/cultomizer/contracts';
 import { tierDe } from '@/components/forge/rareza';
@@ -34,6 +34,30 @@ const fecha = (iso: string) =>
 
 const porcentaje = (parte: number, total: number) =>
     `${((parte / total) * 100).toLocaleString('en-US', { maximumFractionDigits: 1 })}%`;
+
+function ImagenPrimal({ id, gif, alt }: { id: string; gif: string | null | undefined; alt: string }) {
+    const [listo, setListo] = useState(false);
+    const ref = useRef<HTMLImageElement>(null);
+    useEffect(() => {
+        if (ref.current?.complete && ref.current.naturalWidth) setListo(true);
+    }, []);
+    const clase = 'w-full aspect-square object-cover rounded-xl sm:rounded-2xl';
+    return (
+        <div className="relative">
+            <img src={miniaturaPrimal(id, 384)} alt={alt} fetchPriority="high" className={`${clase} bg-blue`} />
+            {gif && (
+                <img
+                    ref={ref}
+                    src={gif}
+                    alt=""
+                    aria-hidden="true"
+                    onLoad={() => setListo(true)}
+                    className={`absolute inset-0 ${clase} transition-all duration-300 ${listo ? 'opacity-100' : 'opacity-0'}`}
+                />
+            )}
+        </div>
+    );
+}
 
 function Enlace({
     href,
@@ -167,11 +191,7 @@ export default function Ficha({
 
             <div className="grid gap-5 sm:gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] items-start">
                 <div className={`${card} p-3! sm:p-4! flex flex-col gap-4`}>
-                    <img
-                        src={datos.image ?? ''}
-                        alt={datos.name ?? `Primal #${id}`}
-                        className="w-full aspect-square object-cover rounded-xl sm:rounded-2xl bg-blue"
-                    />
+                    <ImagenPrimal key={id} id={id} gif={datos.image} alt={datos.name ?? `Primal #${id}`} />
                     <div className="flex flex-wrap gap-2 px-1 pb-1">
                         <Enlace href={urlOpenSea(id)}>OpenSea</Enlace>
                         {(['gif', 'png'] as const).map((formato) => (

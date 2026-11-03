@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAccount } from 'wagmi';
 import { EVENTO_CANJE } from '@/lib/promo';
 import { FiMapPin, FiShoppingBag } from 'react-icons/fi';
-import { useUserNFTs, type Nft } from '@/hooks/cultomizer/useUserNFTs';
-import { useWalletSession } from '@/hooks/cultomizer/useWalletSession';
+import type { Nft } from '@/hooks/cultomizer/useUserNFTs';
+import { useNftsDe } from '@/hooks/cultomizer/useNftsDe';
+import { useSesion, useWalletActual } from '@/lib/sesion';
 import Cargando from '@/components/forge/Cargando';
 import { botonClaro } from '@/components/forge/estilos';
 import {
@@ -68,8 +68,8 @@ const CONTADOR =
 const botonFlotante = `${flotante} pointer-events-auto h-8 inline-flex items-center font-accent uppercase text-sm px-3 ${CENTRAR_ACCENT} cursor-pointer hover:text-yellow active:scale-97 transition-all duration-300`;
 
 export default function Staking() {
-    const session = useWalletSession();
-    const { nfts, isLoading, error, refreshNfts } = useUserNFTs();
+    const session = useSesion();
+    const { nfts, isLoading, error, refreshNfts } = useNftsDe(session.address);
 
     const [config, setConfig] = useState<ConfigStaking | null>(null);
     const [mio, setMio] = useState<MiStaking | null>(null);
@@ -535,7 +535,7 @@ function PanelVolver({
     alStakear,
 }: {
     config: ConfigStaking;
-    session: ReturnType<typeof useWalletSession>;
+    session: ReturnType<typeof useSesion>;
     pendientes: MiStaking['restake'];
     alEntrenar: (r: MiStaking) => void;
     alStakear: (info: Omit<Stakeado, 'primera'>) => void;
@@ -724,7 +724,7 @@ function Saldo({
     session,
     mio,
 }: {
-    session: ReturnType<typeof useWalletSession>;
+    session: ReturnType<typeof useSesion>;
     mio: MiStaking | null;
 }) {
     if (mio) {
@@ -792,7 +792,7 @@ function PanelZona({
 }: {
     config: ConfigStaking;
     dias: number;
-    session: ReturnType<typeof useWalletSession>;
+    session: ReturnType<typeof useSesion>;
     nfts: Nft[];
     cargando: boolean;
     error: string | null;
@@ -804,7 +804,7 @@ function PanelZona({
     alEntrenar: (r: MiStaking) => void;
     alStakear: (info: Omit<Stakeado, 'primera'>) => void;
 }) {
-    const { isConnected } = useAccount();
+    const isConnected = !!useWalletActual();
     const [elegidos, setElegidos] = useState<Set<string>>(new Set());
     const [ocupado, setOcupado] = useState(false);
     const [aviso, setAviso] = useState<Aviso | null>(null);

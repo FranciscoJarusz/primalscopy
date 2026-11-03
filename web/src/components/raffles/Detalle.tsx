@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useAppKit } from '@reown/appkit/react';
 import { useApodos, nombreWallet, walletCorta } from '@/lib/nicknames';
 import { fog, ICONO_FOG_CHICO, miniaturaPrimal } from '@/lib/staking';
 import { entrar, leerRaffle, type MiRaffles, type Raffle, type RaffleDetalle } from '@/lib/raffles';
@@ -231,7 +230,6 @@ function Tuyo({
     alCambiar: () => void;
     alComprarTickets: () => void;
 }) {
-    const { open } = useAppKit();
     const [ocupado, setOcupado] = useState(false);
     const [aviso, setAviso] = useState<Aviso | null>(null);
     const mia = mio?.entries[raffle.id];
@@ -247,7 +245,7 @@ function Tuyo({
                 </p>
                 {!cerrado && (
                     <button
-                        onClick={() => (conectada ? session.signIn() : open())}
+                        onClick={() => session.signIn()}
                         disabled={session.status === 'signing'}
                         className={`${principal} ${deshabilitable}`}
                     >

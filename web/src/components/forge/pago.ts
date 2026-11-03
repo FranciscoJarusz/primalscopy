@@ -5,13 +5,7 @@
 // esperar la confirmacion. Si la pestaña se cierra o se corta la conexion en el
 // medio, al volver a entrar se informa ese hash y el roll pagado aparece: la
 // plata ya salio, asi que nunca se pierde el registro de que se pago.
-import {
-    getAccount,
-    sendTransaction,
-    switchChain,
-    waitForTransactionReceipt,
-} from '@wagmi/core';
-import { wagmiConfig } from '@/lib/cultomizer/wallet';
+import { conectar } from '@/lib/sesion';
 import { BACKEND_URL } from './forge';
 import type { PaymentInfo } from './tipos';
 
@@ -56,6 +50,11 @@ export async function transferir(
     cobro: Cobro,
     prefijo = 'forge:pago'
 ): Promise<Hash> {
+    if (!(await conectar())) throw new PagoError('Connect your wallet first.');
+    const [{ getAccount, sendTransaction, switchChain }, { wagmiConfig }] = await Promise.all([
+        import('@wagmi/core'),
+        import('@/lib/cultomizer/wallet'),
+    ]);
     const cuenta = getAccount(wagmiConfig);
     if (!cuenta.address) throw new PagoError('Connect your wallet first.');
 
@@ -72,6 +71,10 @@ export async function transferir(
         return hash;
     } catch (err) {
         if (rechazado(err)) throw new PagoError('Payment cancelled.');
+        if (pendiente(err))
+            throw new PagoError(
+                'Your wallet has a pending request. Open it, approve or reject it, and try again.'
+            );
         throw new PagoError(
             err instanceof Error && 'shortMessage' in err
                 ? String((err as { shortMessage: unknown }).shortMessage)
@@ -81,6 +84,10 @@ export async function transferir(
 }
 
 export async function esperarConfirmacion(cobro: Cobro, hash: Hash) {
+    const [{ waitForTransactionReceipt }, { wagmiConfig }] = await Promise.all([
+        import('@wagmi/core'),
+        import('@/lib/cultomizer/wallet'),
+    ]);
     const receipt = await waitForTransactionReceipt(wagmiConfig, {
         hash,
         chainId: cobro.chainId as never,
@@ -137,6 +144,12 @@ export async function rollsPagados(sessionToken: string): Promise<number> {
     if (!r.ok) return 0;
     const data = await r.json();
     return data.paidRolls ?? 0;
+}
+
+function pendiente(err: unknown) {
+    const nombre = (err as { name?: string })?.name ?? '';
+    const texto = err instanceof Error ? err.message : '';
+    return nombre === 'ResourceUnavailableRpcError' || /resource not available|already pending/i.test(texto);
 }
 
 function rechazado(err: unknown) {

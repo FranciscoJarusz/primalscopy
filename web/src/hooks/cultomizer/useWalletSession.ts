@@ -14,154 +14,43 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useSignMessage } from "wagmi";
 import { BACKEND_URL } from "@/lib/backend";
+import {
+  firmar,
+  olvidar,
+  ponerWallet,
+  useSesionDe,
+  type SessionStatus,
+} from "@/lib/sesion";
 
-// Una clave por wallet: si el usuario cambia de cuenta en MetaMask no queremos
-// que arrastre la sesion de la anterior.
-const storageKey = (address: string) =>
-  `cultomizer_session_${address.toLowerCase()}`;
-
-function readStoredToken(address?: string): string | null {
-  if (!address || typeof window === "undefined") return null;
-  try {
-    return localStorage.getItem(storageKey(address));
-  } catch {
-    return null;
-  }
-}
-
-function storeToken(address: string, token: string | null) {
-  if (typeof window === "undefined") return;
-  try {
-    if (token) localStorage.setItem(storageKey(address), token);
-    else localStorage.removeItem(storageKey(address));
-  } catch {
-    /* storage lleno o bloqueado */
-  }
-}
-
-export type SessionStatus =
-  "disconnected" | "checking" | "needs-signature" | "ready" | "signing";
+export type { SessionStatus };
 
 export function useWalletSession() {
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
+  const sesion = useSesionDe(isConnected ? address : null);
 
-  const [token, setToken] = useState<string | null>(null);
-  const [status, setStatus] = useState<SessionStatus>("disconnected");
-  const [error, setError] = useState<string | null>(null);
-
-  // Valida contra el backend el token guardado para esta wallet. No alcanza
-  // con que exista en localStorage: pudo haber vencido o el server pudo haber
-  // rotado el secreto.
   useEffect(() => {
-    let cancelled = false;
-
-    if (!isConnected || !address) {
-      setToken(null);
-      setStatus("disconnected");
-      return;
-    }
-
-    const stored = readStoredToken(address);
-    if (!stored) {
-      setToken(null);
-      setStatus("needs-signature");
-      return;
-    }
-
-    setStatus("checking");
-    fetch(`${BACKEND_URL}/auth/me`, {
-      headers: { authorization: `Bearer ${stored}` },
-    })
-      .then(async (response) => {
-        if (cancelled) return;
-        if (!response.ok) {
-          storeToken(address, null);
-          setToken(null);
-          setStatus("needs-signature");
-          return;
-        }
-        const data = await response.json();
-        // La sesion guardada podria ser de otra wallet si alguien toco
-        // el localStorage a mano.
-        if (data.address?.toLowerCase() !== address.toLowerCase()) {
-          storeToken(address, null);
-          setToken(null);
-          setStatus("needs-signature");
-          return;
-        }
-        setToken(stored);
-        setStatus("ready");
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setToken(null);
-        setStatus("needs-signature");
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    if (isConnected && address) ponerWallet(address);
   }, [address, isConnected]);
 
   const signIn = useCallback(async (): Promise<string | null> => {
     if (!address) return null;
-    setError(null);
-    setStatus("signing");
-    try {
-      const nonceResponse = await fetch(`${BACKEND_URL}/auth/nonce`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ address }),
-      });
-      if (!nonceResponse.ok)
-        throw new Error(
-          (await nonceResponse.json()).error ||
-            "Couldn't start the signature check.",
-        );
-      const { nonce, message } = await nonceResponse.json();
-
-      // El mensaje se firma tal cual viene del backend, sin tocarlo: el
-      // server verifica contra su propia copia.
-      const signature = await signMessageAsync({ message });
-
-      const verifyResponse = await fetch(`${BACKEND_URL}/auth/verify`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nonce, signature }),
-      });
-      if (!verifyResponse.ok)
-        throw new Error(
-          (await verifyResponse.json()).error ||
-            "Couldn't verify the signature.",
-        );
-
-      const session = await verifyResponse.json();
-      storeToken(address, session.token);
-      setToken(session.token);
-      setStatus("ready");
-      return session.token as string;
-    } catch (err: unknown) {
-      // Que el usuario cancele la firma en la wallet es lo normal, no un
-      // error que valga la pena mostrar en rojo.
-      const message =
-        err instanceof Error ? err.message : "Fallo la verificacion.";
-      const userRejected = /user rejected|denied|rejected the request/i.test(
-        message,
-      );
-      setError(userRejected ? null : message);
-      setStatus("needs-signature");
-      return null;
-    }
+    return firmar(address, (message) => signMessageAsync({ message }));
   }, [address, signMessageAsync]);
 
   const signOut = useCallback(() => {
-    if (address) storeToken(address, null);
-    setToken(null);
-    setStatus(isConnected ? "needs-signature" : "disconnected");
-  }, [address, isConnected]);
+    if (address) olvidar(address);
+  }, [address]);
 
-  return { address, isConnected, token, status, error, signIn, signOut };
+  return {
+    address,
+    isConnected,
+    token: sesion.token,
+    status: (isConnected && address ? sesion.status : "disconnected") as SessionStatus,
+    error: sesion.error,
+    signIn,
+    signOut,
+  };
 }
 
 export type OwnershipState =

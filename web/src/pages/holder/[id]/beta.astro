@@ -18,7 +18,7 @@ const nombre = perfil ? perfil.nickname ?? walletCorta(perfil.wallet) : id;
 ---
 
 <LandingLayout title={`${nombre} (beta) - Primal Cult`} activo="explore" noindex>
-    <main class="mt-10 sm:mt-14">
+    <main class="mt-10 sm:mt-14 min-h-dvh">
         <PerfilBetaIsland client:only="react" id={id} inicial={perfil} />
     </main>
 </LandingLayout>

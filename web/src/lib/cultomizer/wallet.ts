@@ -7,10 +7,13 @@
 // memoria. Si cada isla armara la suya, conectarte en una no se veria en la otra.
 
 import { createAppKit } from "@reown/appkit/react";
+import { OptionsController } from "@reown/appkit-controllers";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { apeChain, mainnet, defineChain } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
+import { getAccount, signMessage, watchAccount } from "@wagmi/core";
 import { avisarWalletLista } from "@/lib/walletLista";
+import { estadoDe, firmar, ponerWallet, verificar } from "@/lib/sesion";
 
 // El projectId decide, entre otras cosas, desde que dominios se permite parear
 // por WalletConnect. Produccion usa un proyecto propio de cloud.reown.com, con
@@ -38,6 +41,8 @@ const anvilLocal = defineChain({
   testnet: true,
 });
 
+const conSocial = import.meta.env.PUBLIC_WALLET_SOCIAL === "1";
+
 // ApeChain primero: es donde vive la coleccion.
 const networks: [AppKitNetwork, ...AppKitNetwork[]] = import.meta.env.DEV
   ? [apeChain, mainnet, anvilLocal]
@@ -62,6 +67,8 @@ const url =
 
 // createAppKit se llama una sola vez por carga de pagina. Como este modulo es
 // unico, importarlo desde varias islas no lo duplica.
+OptionsController.setEnableBaseAccount(false);
+
 export const appKit = createAppKit({
   adapters: [wagmiAdapter],
   networks,
@@ -72,13 +79,32 @@ export const appKit = createAppKit({
     url,
     icons: ["https://primalcult.xyz/favicon.svg"],
   },
+  enableCoinbase: false,
+  enableBaseAccount: false,
   features: {
     analytics: false,
-    // Apagados por el tema del projectId ajeno: son remoteFeatures y dependen
-    // de la configuracion del dashboard, que no controlamos.
-    email: false,
-    socials: false,
+    // Solo con PUBLIC_WALLET_SOCIAL=1: necesitan el projectId propio y
+    // activarlos en el dashboard de Reown.
+    email: conSocial,
+    socials: conSocial ? ["google", "x", "discord", "apple"] : false,
   },
+});
+
+watchAccount(wagmiConfig, {
+  onChange: (cuenta, antes) => {
+    if (cuenta.status === "connected" && cuenta.address) ponerWallet(cuenta.address);
+    else if (cuenta.status === "disconnected" && antes.status !== "disconnected") ponerWallet(null);
+  },
+});
+
+appKit.subscribeEvents(async (e) => {
+  if (e.data.event !== "CONNECT_SUCCESS") return;
+  const wallet = getAccount(wagmiConfig).address;
+  if (!wallet) return;
+  ponerWallet(wallet);
+  await verificar(wallet);
+  if (estadoDe(wallet).status === "needs-signature")
+    firmar(wallet, (message) => signMessage(wagmiConfig, { message }));
 });
 
 avisarWalletLista();

@@ -3,7 +3,7 @@
 // verifica y acredita el FOG con la tasa del admin.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseEther } from 'viem';
-import { useWalletSession } from '@/hooks/cultomizer/useWalletSession';
+import { useSesion } from '@/lib/sesion';
 import {
     fog,
     informarCompra,
@@ -58,10 +58,10 @@ const PILAS = [
     ],
 ];
 
-type Session = ReturnType<typeof useWalletSession>;
+type Session = ReturnType<typeof useSesion>;
 
 export default function Store() {
-    const session = useWalletSession();
+    const session = useSesion();
     const [config, setConfig] = useState<ConfigStaking | null>(null);
     const [fallo, setFallo] = useState(false);
     const [mio, setMio] = useState<MiStaking | null>(null);

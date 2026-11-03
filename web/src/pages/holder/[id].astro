@@ -31,7 +31,7 @@ if (!esBuscador(Astro.request)) fetch(tarjeta).catch(() => {});
   activo="explore"
   image={tarjeta}
 >
-    <main class="mt-10 sm:mt-14">
+    <main class="mt-10 sm:mt-14 min-h-dvh">
         <PerfilIsland client:only="react" id={id} inicial={perfil} />
     </main>
 </LandingLayout>

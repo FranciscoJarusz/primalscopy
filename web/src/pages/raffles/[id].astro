@@ -23,5 +23,7 @@ const imagen = raffle?.image ? imagenRaffle(raffle.image) : undefined;
 ---
 
 <CultomizerLayout title={titulo} description={descripcion} activo="raffles" image={imagen}>
-    <DetalleIsland client:only="react" id={id} inicial={raffle} />
+    <div class="min-h-dvh">
+        <DetalleIsland client:only="react" id={id} inicial={raffle} />
+    </div>
 </CultomizerLayout>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useWalletActual } from '@/lib/sesion';
 import { FiArrowUpRight, FiCheck, FiEdit2, FiLink } from 'react-icons/fi';
 import { leerPerfil, type Perfil as Datos } from '@/lib/explore';
 import { fog, ICONO_FOG_CHICO, leerMapa, nombreInsignia } from '@/lib/staking';
@@ -54,7 +54,7 @@ export default function Perfil({
     id: string;
     inicial: Datos | null;
 }) {
-    const { address } = useAccount();
+    const address = useWalletActual() ?? undefined;
     const [datos, setDatos] = useState<Datos | null>(inicial);
     const [error, setError] = useState<string | null>(null);
     const [entrenando, setEntrenando] = useState<Map<number, number>>(

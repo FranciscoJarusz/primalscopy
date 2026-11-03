@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useWalletSession } from '@/hooks/cultomizer/useWalletSession';
+import { useSesion } from '@/lib/sesion';
 import { EVENTO_NICKNAME, NICKNAME_FORMATO, type DetalleNickname } from '@/lib/nicknames';
 import { guardarPerfil, type DatosPerfil, type Perfil } from '@/lib/explore';
 import { miniaturaPrimal } from '@/lib/staking';
@@ -56,7 +56,7 @@ export default function EditarPerfil({
     onGuardado: (nickname: string | null, datos: DatosPerfil) => void;
     onCerrar: () => void;
 }) {
-    const session = useWalletSession();
+    const session = useSesion();
     const [nickname, setNickname] = useState(perfil.nickname ?? '');
     const [avatar, setAvatar] = useState(perfil.profile.avatar);
     const [destacados, setDestacados] = useState(perfil.profile.featured);

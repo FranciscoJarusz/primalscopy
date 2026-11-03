@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FiMinus, FiPlus } from 'react-icons/fi';
-import { useWalletSession } from '@/hooks/cultomizer/useWalletSession';
+import { useSesion } from '@/lib/sesion';
 import { EVENTO_CANJE } from '@/lib/promo';
 import { fog, iconoPremio, ICONO_FOG_CHICO } from '@/lib/staking';
 import { comprarTickets, imagenRaffle, leerMisRaffles, type MiRaffles, type Raffle } from '@/lib/raffles';
@@ -8,7 +8,7 @@ import { leerAvatares } from '@/lib/explore';
 import Confirmacion from '@/components/forge/Confirmacion';
 import Mensaje, { type Aviso } from '@/components/staking/Mensaje';
 
-export type Session = ReturnType<typeof useWalletSession>;
+export type Session = ReturnType<typeof useSesion>;
 
 export const ICONO_TICKET = iconoPremio({ id: 'raffle-ticket' });
 export const URGENTE = 3600000;
@@ -99,7 +99,7 @@ export function useEsperandoSorteo(raffles: Raffle[], alTerminar: () => void) {
 }
 
 export function useMio() {
-    const session = useWalletSession();
+    const session = useSesion();
     const [mio, setMio] = useState<MiRaffles | null>(null);
 
     const recargar = useCallback(async () => {

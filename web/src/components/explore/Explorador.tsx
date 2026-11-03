@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useWalletActual } from '@/lib/sesion';
 import { FiChevronDown, FiSearch, FiSliders, FiX } from 'react-icons/fi';
 import {
     leerColeccion,
@@ -184,7 +184,7 @@ function Categoria({
 }
 
 export default function Explorador() {
-    const { address } = useAccount();
+    const address = useWalletActual() ?? undefined;
     const apodos = useApodos();
     const [coleccion, setColeccion] = useState<Coleccion | null>(null);
     const [error, setError] = useState<string | null>(null);

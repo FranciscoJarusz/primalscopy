@@ -32,7 +32,7 @@ const JWT_SECRET = (process.env.WALLET_JWT_SECRET || '').trim();
 const APP_DOMAIN = (process.env.APP_DOMAIN || 'primalcult.xyz').trim();
 
 const NONCE_TTL_MS = 5 * 60 * 1000;        // 5 minutos para firmar
-const SESSION_TTL_SECONDS = 24 * 60 * 60;  // 24 horas de sesion
+const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;  // 7 dias de sesion
 
 // Si no hay secreto, toda la autenticacion queda deshabilitada. Es deliberado,
 // mismo criterio que el panel de admin: prefiero que no funcione a que quede
