@@ -5,7 +5,7 @@ import { readEnvValue } from '@/lib/env';
 export const prerender = false;
 
 const BURN_ADDRESS = '0x000000000000000000000000000000000000dead';
-const INITIAL_VALUE = 987.12;
+const INITIAL_VALUE = 1013.95;
 
 // Transaccion de prueba (1 APE) que no es una quema real y no debe contarse.
 const EXCLUDED_TX_HASHES = new Set([
@@ -23,65 +23,45 @@ const PRIMAL_SENDERS = new Set(
         .filter(Boolean)
 );
 
-const PAGE_SIZE = 1000;
-const MAX_PAGES = 10;
-
-function readApiKey() {
-    return readEnvValue('APESCAN_API_KEY');
-}
+const EXPLORADOR = 'https://apechain.calderaexplorer.xyz/api/v2';
+const MAX_PAGES = 100;
 
 export const GET: APIRoute = async () => {
-    const apiKey = readApiKey();
-    if (!apiKey || PRIMAL_SENDERS.size === 0)
+    if (PRIMAL_SENDERS.size === 0)
         return json({ value: INITIAL_VALUE, live: false });
 
     try {
         let totalWei = 0n;
 
         for (const sender of PRIMAL_SENDERS) {
-            for (let page = 1; page <= MAX_PAGES; page += 1) {
-                const query = new URLSearchParams({
-                    chainid: '33139',
-                    module: 'account',
-                    action: 'txlist',
-                    address: sender,
-                    startblock: '0',
-                    endblock: '99999999',
-                    page: String(page),
-                    offset: String(PAGE_SIZE),
-                    sort: 'desc',
-                    apikey: apiKey,
-                });
-                const response = await fetch(
-                    `https://api.etherscan.io/v2/api?${query}`
-                );
+            const base = `${EXPLORADOR}/addresses/${sender}/transactions?filter=from`;
+            let url: string | null = base;
+            for (let page = 0; url && page < MAX_PAGES; page += 1) {
+                const response: Response = await fetch(url);
                 if (!response.ok)
-                    throw new Error(`ApeScan respondio ${response.status}`);
+                    throw new Error(`El explorador respondio ${response.status}`);
+                const payload: {
+                    items?: { to?: { hash?: string }; hash?: string; status?: string; value?: string }[];
+                    next_page_params?: Record<string, string> | null;
+                } = await response.json();
+                if (!Array.isArray(payload.items))
+                    throw new Error('El explorador no devolvio transacciones');
 
-                const payload = await response.json();
-                if (!Array.isArray(payload.result)) {
-                    if (page === 1)
-                        throw new Error('ApeScan no devolvio transacciones');
-                    break;
-                }
-
-                for (const transaction of payload.result) {
-                    const to = String(transaction.to || '').toLowerCase();
-                    const isSuccessful =
-                        String(transaction.isError || '0') === '0';
+                for (const transaction of payload.items) {
+                    const to = String(transaction.to?.hash || '').toLowerCase();
                     const hash = String(transaction.hash || '').toLowerCase();
-
                     if (
-                        !isSuccessful ||
+                        transaction.status !== 'ok' ||
                         to !== BURN_ADDRESS ||
                         EXCLUDED_TX_HASHES.has(hash)
                     )
                         continue;
-
                     totalWei += BigInt(transaction.value || '0');
                 }
 
-                if (payload.result.length < PAGE_SIZE) break;
+                url = payload.next_page_params
+                    ? `${base}&${new URLSearchParams(payload.next_page_params)}`
+                    : null;
             }
         }
 
