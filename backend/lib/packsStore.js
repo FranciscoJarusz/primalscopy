@@ -154,6 +154,7 @@ function extrasDe(wallet, hoy) {
     return Object.values(leerExtras()).filter(e => e.wallet === wallet && e.day === hoy).length;
 }
 
+const comprasDeExtras = () => Object.values(leerExtras()).filter(e => e.valueWei);
 const isExtraPayment = txHash => Boolean(leerExtras()[String(txHash).toLowerCase()]);
 
 function extraPublico(config) {
@@ -494,6 +495,8 @@ function adminSummary(now = Date.now()) {
 }
 
 module.exports = {
+    PACKS_DIR,
+    comprasDeExtras,
     CARTAS_POR_PACK,
     getConfig,
     publicConfig,

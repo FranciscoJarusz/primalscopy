@@ -7,7 +7,7 @@ import { botonChico, fecha, fog, lista, opcion, panel, titulo, useQuien } from '
 
 type Total = { count: number; apeWei: string };
 type Pago = {
-    kind: 'forge' | 'fog';
+    kind: 'forge' | 'fog' | 'pack';
     at: string;
     wallet: string;
     valueWei: string;
@@ -18,7 +18,7 @@ type Pago = {
     fog?: number;
 };
 type Datos = {
-    totals: Record<'all' | 'days30' | 'days7', { forge: Total; fog: Total }>;
+    totals: Record<'all' | 'days30' | 'days7', { forge: Total; fog: Total; pack?: Total }>;
     wallets: number;
     payments: Pago[];
     more: number;
@@ -35,7 +35,14 @@ const FILTROS = [
     { id: 'all', nombre: 'All' },
     { id: 'forge', nombre: 'Forge' },
     { id: 'fog', nombre: 'FOG' },
+    { id: 'pack', nombre: 'Packs' },
 ] as const;
+const VACIO: Total = { count: 0, apeWei: '0' };
+const ETIQUETA = {
+    forge: { nombre: 'Forge', clase: 'bg-yellow/15 text-yellow' },
+    fog: { nombre: 'FOG', clase: 'bg-lightblue/10 text-lightblue' },
+    pack: { nombre: 'Pack', clase: 'bg-[#9060f5]/25 text-[#c9b2ff]' },
+} as const;
 
 function Linea({ nombre, t, unidad }: { nombre: string; t: Total; unidad: [string, string] }) {
     return (
@@ -88,15 +95,17 @@ export default function PagosApe({ token }: { token: string }) {
             <div className="grid gap-3 md:grid-cols-3">
                 {PERIODOS.map(({ id, nombre }) => {
                     const t = datos.totals[id];
+                    const pack = t.pack ?? VACIO;
                     return (
                         <div key={id} className="flex flex-col gap-3 rounded-xl bg-lightblue/5 border border-lightblue/10 px-4 pt-3 pb-4">
                             <p className="text-lightblue/70 text-xs uppercase tracking-wider">{nombre}</p>
                             <p className="font-accent text-yellow text-4xl leading-none tabular-nums pb-1">
-                                {ape(BigInt(t.forge.apeWei) + BigInt(t.fog.apeWei))} <span className="text-xl">APE</span>
+                                {ape(BigInt(t.forge.apeWei) + BigInt(t.fog.apeWei) + BigInt(pack.apeWei))} <span className="text-xl">APE</span>
                             </p>
                             <dl className="flex flex-col gap-1 text-sm border-t border-lightblue/10 pt-3">
                                 <Linea nombre="Forge rolls" t={t.forge} unidad={['roll', 'rolls']} />
                                 <Linea nombre="FOG bought" t={t.fog} unidad={['purchase', 'purchases']} />
+                                <Linea nombre="Extra packs" t={pack} unidad={['pack', 'packs']} />
                             </dl>
                         </div>
                     );
@@ -138,14 +147,14 @@ export default function PagosApe({ token }: { token: string }) {
                                 <span className="text-lightblue truncate">{quien(p.wallet)}</span>
                                 <span className="flex items-center gap-2 min-w-0 row-start-3 col-span-3 sm:row-start-auto sm:col-span-1">
                                     <span
-                                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${
-                                            p.kind === 'fog' ? 'bg-lightblue/10 text-lightblue' : 'bg-yellow/15 text-yellow'
-                                        }`}
+                                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${ETIQUETA[p.kind].clase}`}
                                     >
-                                        {p.kind === 'fog' ? 'FOG' : 'Forge'}
+                                        {ETIQUETA[p.kind].nombre}
                                     </span>
                                     <span className="text-lightblue/80 truncate">
-                                        {p.kind === 'fog'
+                                        {p.kind === 'pack'
+                                            ? 'Extra pack'
+                                            : p.kind === 'fog'
                                             ? `${fog(p.fog ?? 0)} FOG`
                                             : p.tokenId
                                               ? `Roll on #${p.tokenId}`

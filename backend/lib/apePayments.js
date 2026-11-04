@@ -1,4 +1,5 @@
-// Todo lo que entro en APE: los rolls del Forge pagados y las compras de FOG.
+// Todo lo que entro en APE: los rolls del Forge pagados, las compras de FOG y
+// los sobres extra de los packs.
 // Los rolls con codigo o con FOG no movieron APE y no estan.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -24,7 +25,14 @@ function pagosEnApe() {
         txHash: c.txHash,
         fog: c.fog
     }));
-    return [...forge, ...fog].sort((a, b) => b.at.localeCompare(a.at));
+    const packs = require('./packsStore').comprasDeExtras().map(e => ({
+        kind: 'pack',
+        at: e.at,
+        wallet: e.wallet,
+        valueWei: e.valueWei,
+        txHash: e.txHash
+    }));
+    return [...forge, ...fog, ...packs].sort((a, b) => b.at.localeCompare(a.at));
 }
 
 function resumen(limite = 200, now = Date.now()) {
@@ -35,7 +43,11 @@ function resumen(limite = 200, now = Date.now()) {
     });
     const periodo = desde => {
         const lista = pagos.filter(p => Date.parse(p.at) >= desde);
-        return { forge: total(lista.filter(p => p.kind === 'forge')), fog: total(lista.filter(p => p.kind === 'fog')) };
+        return {
+            forge: total(lista.filter(p => p.kind === 'forge')),
+            fog: total(lista.filter(p => p.kind === 'fog')),
+            pack: total(lista.filter(p => p.kind === 'pack'))
+        };
     };
     return {
         totals: {
