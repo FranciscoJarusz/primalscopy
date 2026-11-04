@@ -486,7 +486,7 @@ export default function Packs() {
                             spot.
                         </p>
                     )}
-                    <ol className="mt-5 flex flex-col">
+                    <ol className="mt-5 -mx-3 px-3 flex flex-col max-h-130 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:var(--color-mw-champagne)_transparent]">
                         {ranking?.top.map((f) =>
                             f.rank === 1 ? (
                                 <li
