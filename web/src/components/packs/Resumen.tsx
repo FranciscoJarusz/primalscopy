@@ -16,7 +16,7 @@ function enlaceX(id: string, puntos: number) {
 
 ${window.location.origin}/mudwater/pull/${id}
 
-#CultNeverDies #PrimalCult`
+#CultNeverDies #PrimalCult @primal_cult`
     );
     return tweet.href;
 }
