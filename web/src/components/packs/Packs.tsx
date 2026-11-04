@@ -470,11 +470,12 @@ export default function Packs() {
             </section>
 
             <div className="grid lg:grid-cols-3 gap-6">
-                <section className={`${panel} lg:col-span-2`}>
+                <section className={`${panel} lg:col-span-2 flex flex-col`}>
                     <div className="flex items-baseline justify-between gap-4">
                         <h2 className={subtitulo}>Leaderboard</h2>
                         {ranking && ranking.players > 0 && (
                             <span className="text-sm uppercase tracking-wider text-mw-fog">
+                                Top {ranking.limit ?? 100} ·{' '}
                                 {ranking.players.toLocaleString('en-US')}{' '}
                                 {ranking.players === 1 ? 'player' : 'players'}
                             </span>
@@ -486,7 +487,10 @@ export default function Packs() {
                             spot.
                         </p>
                     )}
-                    <ol className="mt-5 -mx-3 px-3 flex flex-col max-h-130 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:var(--color-mw-champagne)_transparent]">
+                    <ol
+                        data-lenis-prevent
+                        className="mt-5 -mx-3 px-3 flex flex-col max-h-130 lg:max-h-none lg:min-h-100 lg:grow lg:basis-0 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:var(--color-mw-champagne)_transparent]"
+                    >
                         {ranking?.top.map((f) =>
                             f.rank === 1 ? (
                                 <li

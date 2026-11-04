@@ -186,6 +186,7 @@ export function configCompartida() {
 }
 export interface Ranking {
     players: number;
+    limit?: number;
     top: FilaRanking[];
     chosen: FilaChosen[];
 }

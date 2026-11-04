@@ -192,6 +192,7 @@ function leaderboard(now = Date.now()) {
     const ganador = getConfig().chosenRaffle?.winner ?? null;
     return {
         players: todos.length,
+        limit: TOP_PUBLICO,
         top: todos.slice(0, TOP_PUBLICO).map(f => ({ ...f, nickname: apodos[f.wallet] ?? null })),
         chosen: participantesChosen().map(p => ({ ...p, winner: p.wallet === ganador })),
     };
