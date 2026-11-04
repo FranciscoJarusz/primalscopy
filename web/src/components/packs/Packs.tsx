@@ -487,7 +487,7 @@ export default function Packs() {
                         </p>
                     )}
                     <ol className="mt-5 flex flex-col">
-                        {ranking?.top.slice(0, 10).map((f) =>
+                        {ranking?.top.map((f) =>
                             f.rank === 1 ? (
                                 <li
                                     key={f.wallet}
