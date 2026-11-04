@@ -37,11 +37,17 @@ const FILTROS = [
     { id: 'fog', nombre: 'FOG' },
 ] as const;
 
-function Celda({ t }: { t: Total }) {
+function Linea({ nombre, t, unidad }: { nombre: string; t: Total; unidad: [string, string] }) {
     return (
-        <td className="py-2 text-right text-lightblue">
-            {ape(t.apeWei)} <span className="text-lightblue/50">· {fog(t.count)}</span>
-        </td>
+        <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-lightblue/70">{nombre}</dt>
+            <dd className="text-lightblue tabular-nums text-right">
+                {ape(t.apeWei)} APE{' '}
+                <span className="text-lightblue/50">
+                    · {fog(t.count)} {t.count === 1 ? unidad[0] : unidad[1]}
+                </span>
+            </dd>
+        </div>
     );
 }
 
@@ -79,34 +85,25 @@ export default function PagosApe({ token }: { token: string }) {
                     Refresh
                 </button>
             </div>
-            <table className="w-full text-sm">
-                <thead className="text-lightblue/70 text-xs uppercase text-left">
-                    <tr>
-                        <th className="font-normal pb-2"></th>
-                        <th className="font-normal pb-2 text-right">Forge rolls</th>
-                        <th className="font-normal pb-2 text-right">FOG bought</th>
-                        <th className="font-normal pb-2 text-right">Total APE</th>
-                    </tr>
-                </thead>
-                <tbody className="tabular-nums">
-                    {PERIODOS.map(({ id, nombre }) => {
-                        const t = datos.totals[id];
-                        return (
-                            <tr key={id} className="border-t border-lightblue/15">
-                                <td className="py-2 text-white">{nombre}</td>
-                                <Celda t={t.forge} />
-                                <Celda t={t.fog} />
-                                <td className="py-2 text-right text-yellow">
-                                    {ape(BigInt(t.forge.apeWei) + BigInt(t.fog.apeWei))}
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
+            <div className="grid gap-3 md:grid-cols-3">
+                {PERIODOS.map(({ id, nombre }) => {
+                    const t = datos.totals[id];
+                    return (
+                        <div key={id} className="flex flex-col gap-3 rounded-xl bg-lightblue/5 border border-lightblue/10 px-4 pt-3 pb-4">
+                            <p className="text-lightblue/70 text-xs uppercase tracking-wider">{nombre}</p>
+                            <p className="font-accent text-yellow text-4xl leading-none tabular-nums pb-1">
+                                {ape(BigInt(t.forge.apeWei) + BigInt(t.fog.apeWei))} <span className="text-xl">APE</span>
+                            </p>
+                            <dl className="flex flex-col gap-1 text-sm border-t border-lightblue/10 pt-3">
+                                <Linea nombre="Forge rolls" t={t.forge} unidad={['roll', 'rolls']} />
+                                <Linea nombre="FOG bought" t={t.fog} unidad={['purchase', 'purchases']} />
+                            </dl>
+                        </div>
+                    );
+                })}
+            </div>
             <p className="text-lightblue/70 text-sm">
-                APE · number of payments. {fog(datos.wallets)} {datos.wallets === 1 ? 'wallet has' : 'wallets have'} paid.
-                Rolls paid with a code or with FOG aren't here.
+                {fog(datos.wallets)} {datos.wallets === 1 ? 'wallet has' : 'wallets have'} paid in total. Rolls paid with a code or with FOG aren't counted.
             </p>
 
             <div className="flex flex-wrap gap-2 border-t border-lightblue/15 pt-4">
@@ -116,47 +113,64 @@ export default function PagosApe({ token }: { token: string }) {
                         onClick={() => setFiltro(f.id)}
                         className={opcion(filtro === f.id)}
                     >
-                        {f.nombre}
+                        {f.nombre} ({fog(f.id === 'all' ? datos.payments.length : datos.payments.filter((p) => p.kind === f.id).length)})
                     </button>
                 ))}
             </div>
             {visibles.length === 0 ? (
                 <p className="text-lightblue/70 text-sm">No payments yet.</p>
             ) : (
-                <ul data-scroll-propio className={`${lista} flex flex-col`}>
-                    {visibles.map((p) => (
-                        <li
-                            key={p.txHash}
-                            className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2 text-sm border-t border-lightblue/15 first:border-t-0"
-                        >
-                            <span className="text-lightblue/60 w-28 shrink-0">{fecha(p.at)}</span>
-                            <span className="flex-1 min-w-40 text-lightblue">
-                                {quien(p.wallet)}
-                                <span className="text-lightblue/60">
-                                    {' · '}
-                                    {p.kind === 'fog'
-                                        ? `bought ${fog(p.fog ?? 0)} FOG`
-                                        : p.tokenId
-                                          ? `Forge roll on #${p.tokenId}`
-                                          : 'Forge roll, not used yet'}
-                                    {p.chainId === 31337 && ' · local test'}
+                <div className="flex flex-col">
+                    <div className="hidden sm:grid grid-cols-[9.5rem_minmax(0,1fr)_minmax(0,1fr)_6rem_1rem] gap-x-4 pb-2 pr-2 text-lightblue/70 text-xs uppercase tracking-wider">
+                        <span>Date</span>
+                        <span>Wallet</span>
+                        <span>What</span>
+                        <span className="text-right">APE</span>
+                        <span />
+                    </div>
+                    <ul data-scroll-propio className={`${lista} flex flex-col`}>
+                        {visibles.map((p) => (
+                            <li
+                                key={p.txHash}
+                                className="grid grid-cols-[minmax(0,1fr)_auto_1rem] sm:grid-cols-[9.5rem_minmax(0,1fr)_minmax(0,1fr)_6rem_1rem] items-center gap-x-4 gap-y-1 py-2.5 text-sm border-t border-lightblue/15"
+                            >
+                                <span className="text-lightblue/60 whitespace-nowrap col-span-3 sm:col-span-1">{fecha(p.at)}</span>
+                                <span className="text-lightblue truncate">{quien(p.wallet)}</span>
+                                <span className="flex items-center gap-2 min-w-0 row-start-3 col-span-3 sm:row-start-auto sm:col-span-1">
+                                    <span
+                                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${
+                                            p.kind === 'fog' ? 'bg-lightblue/10 text-lightblue' : 'bg-yellow/15 text-yellow'
+                                        }`}
+                                    >
+                                        {p.kind === 'fog' ? 'FOG' : 'Forge'}
+                                    </span>
+                                    <span className="text-lightblue/80 truncate">
+                                        {p.kind === 'fog'
+                                            ? `${fog(p.fog ?? 0)} FOG`
+                                            : p.tokenId
+                                              ? `Roll on #${p.tokenId}`
+                                              : 'Roll, not used yet'}
+                                        {p.chainId === 31337 && ' · local test'}
+                                    </span>
                                 </span>
-                            </span>
-                            <span className="text-yellow tabular-nums">{ape(p.valueWei)} APE</span>
-                            {p.chainId !== 31337 && (
-                                <a
-                                    href={`${APECHAIN.explorador}/tx/${p.txHash}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="View on ApeScan"
-                                    className="text-lightblue/60 hover:text-yellow transition-all duration-300"
-                                >
-                                    <FiArrowUpRight />
-                                </a>
-                            )}
-                        </li>
-                    ))}
-                </ul>
+                                <span className="text-yellow tabular-nums text-right whitespace-nowrap">{ape(p.valueWei)} APE</span>
+                                {p.chainId !== 31337 ? (
+                                    <a
+                                        href={`${APECHAIN.explorador}/tx/${p.txHash}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="View on ApeScan"
+                                        className="text-lightblue/60 hover:text-yellow transition-all duration-300"
+                                    >
+                                        <FiArrowUpRight />
+                                    </a>
+                                ) : (
+                                    <span />
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             )}
             {datos.more > 0 && (
                 <p className="text-lightblue/70 text-sm">Showing the last {fog(datos.payments.length)}; {fog(datos.more)} older ones aren't listed.</p>
