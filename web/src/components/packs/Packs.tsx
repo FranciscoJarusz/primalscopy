@@ -1,4 +1,11 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import {
+    lazy,
+    Suspense,
+    useCallback,
+    useEffect,
+    useState,
+    type ReactNode,
+} from 'react';
 import { PiFireFill } from 'react-icons/pi';
 import { conectarYFirmar, useSesionDe, useWalletActual } from '@/lib/sesion';
 import {
@@ -110,7 +117,7 @@ function Racha({ dias, hoy }: { dias: number; hoy: boolean }) {
             aria-label={texto}
             className={`w-12 shrink-0 flex items-center justify-end gap-1 leading-none transition-all duration-300 ${hoy ? 'text-mw-champagne' : 'text-mw-fog/60'}`}
         >
-            <PiFireFill className="size-4 shrink-0" />
+            co <PiFireFill className="size-4 shrink-0" />
             <span className="mw-titulo text-base tabular-nums">{dias}</span>
         </span>
     );
@@ -289,7 +296,7 @@ export default function Packs() {
         restantes === 0 &&
         mio.extrasToday < extra.max;
 
-    let accion: { texto: string; alTocar?: () => void } | null = null;
+    let accion: { texto: ReactNode; alTocar?: () => void } | null = null;
     if (config.status === 'ended') accion = { texto: 'Competition over' };
     else if (conectando || session.status === 'signing')
         accion = { texto: 'Check your wallet...' };
@@ -305,7 +312,13 @@ export default function Packs() {
     else if (mio.registered)
         accion =
             restantes === 0
-                ? { texto: 'Come back tomorrow' }
+                ? {
+                      texto: (
+                          <>
+                              New packs in <Reinicio />
+                          </>
+                      ),
+                  }
                 : {
                       texto: abriendo ? 'Ripping...' : 'Rip pack',
                       alTocar: abrir,
