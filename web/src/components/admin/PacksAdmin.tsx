@@ -149,6 +149,7 @@ export default function PacksAdmin({ token }: { token: string }) {
                     <div id="packs-resumen" className="flex flex-col gap-4 sm:gap-5">
                         <Numeros datos={datos} />
                         <Competencia datos={datos} ocupado={ocupado} configurar={configurar} />
+                        <AcreditarExtra ocupado={ocupado} pedir={pedir} />
                     </div>
                     <div id="packs-ranking">
                         <Jugadores datos={datos} ocupado={ocupado} pedir={pedir} />
@@ -158,7 +159,6 @@ export default function PacksAdmin({ token }: { token: string }) {
                     </div>
                     <div id="packs-chosen">
                         <SorteoChosen datos={datos} ocupado={ocupado} pedir={pedir} />
-                        <AcreditarExtra ocupado={ocupado} pedir={pedir} />
                     </div>
                 </>
             )}
