@@ -129,7 +129,7 @@ function ranking(now = Date.now()) {
     const valor = [...todos]
         .filter(([wallet, j]) => j.points > 0 && !fuera[wallet]?.disqualified)
         .sort(([, a], [, b]) => b.points - a.points || a.lastAt.localeCompare(b.lastAt))
-        .map(([wallet, j], i) => ({ rank: i + 1, wallet, points: j.points, packs: j.packs, streak: rachaDe(j.days, now).current }));
+        .map(([wallet, j], i) => ({ rank: i + 1, wallet, points: j.points, packs: j.packs, streak: rachaDe(j.days, now).current, today: Boolean(j.days[dia(now)]) }));
     cacheRanking = { clave, valor };
     return valor;
 }

@@ -1,6 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { PiFireFill } from 'react-icons/pi';
 import { conectarYFirmar, useSesionDe, useWalletActual } from '@/lib/sesion';
-import { esperarConfirmacion, pagoSinInformar, recordar, transferir } from '@/components/forge/pago';
+import {
+    esperarConfirmacion,
+    pagoSinInformar,
+    recordar,
+    transferir,
+} from '@/components/forge/pago';
 import CompraCompleta from '@/components/shared/CompraCompleta';
 import { EVENTO_NICKNAME, walletCorta } from '@/lib/nicknames';
 import {
@@ -95,6 +101,21 @@ function MarcaChosen({ fila }: { fila?: FilaChosen }) {
     );
 }
 
+function Racha({ dias, hoy }: { dias: number; hoy: boolean }) {
+    if (!dias) return <span className="w-12 shrink-0" />;
+    const texto = `${dias}-day streak${hoy ? '' : " · hasn't ripped today"}`;
+    return (
+        <span
+            title={texto}
+            aria-label={texto}
+            className={`w-12 shrink-0 flex items-center justify-end gap-1 leading-none transition-all duration-300 ${hoy ? 'text-mw-champagne' : 'text-mw-fog/60'}`}
+        >
+            <PiFireFill className="size-4 shrink-0" />
+            <span className="mw-titulo text-base tabular-nums">{dias}</span>
+        </span>
+    );
+}
+
 const NIVELES: { id: Nivel; nombre: string }[] = [
     { id: 'none', nombre: 'everyone' },
     { id: 'holder', nombre: 'holders' },
@@ -137,7 +158,9 @@ export default function Packs() {
                 setConfig(c);
             })
             .catch(() => setFallo(true));
-        const ocioso = window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 2000));
+        const ocioso =
+            window.requestIdleCallback ??
+            ((f: () => void) => setTimeout(f, 2000));
         const precargar = () => ocioso(() => precargar3D().catch(() => {}));
         if (document.readyState === 'complete') precargar();
         else window.addEventListener('load', precargar, { once: true });
@@ -184,7 +207,9 @@ export default function Packs() {
             .catch(() => {});
     }, [session.token, address]);
 
-    const restantes = mio ? Math.max(0, mio.limit - mio.openedToday) + (mio.bonusPacks ?? 0) : 0;
+    const restantes = mio
+        ? Math.max(0, mio.limit - mio.openedToday) + (mio.bonusPacks ?? 0)
+        : 0;
 
     const comprarExtra = async () => {
         if (!config?.extra || comprando) return;
@@ -340,7 +365,8 @@ export default function Packs() {
                         )}
                         {!!mio?.bonusPacks && (
                             <span className="text-mw-champagne">
-                                +{mio.bonusPacks} bonus {mio.bonusPacks === 1 ? 'pack' : 'packs'}
+                                +{mio.bonusPacks} bonus{' '}
+                                {mio.bonusPacks === 1 ? 'pack' : 'packs'}
                             </span>
                         )}
                         <span className="text-mw-fog">
@@ -438,13 +464,15 @@ export default function Packs() {
                         Mudwater pack.
                     </p>
                 )}
-                {(mio?.chosenWinner || (config.status === 'ended' && mio?.winner)) && session.token && (
-                    <Ganador
-                        mio={mio}
-                        token={session.token}
-                        alGuardar={setMio}
-                    />
-                )}
+                {(mio?.chosenWinner ||
+                    (config.status === 'ended' && mio?.winner)) &&
+                    session.token && (
+                        <Ganador
+                            mio={mio}
+                            token={session.token}
+                            alGuardar={setMio}
+                        />
+                    )}
                 {import.meta.env.DEV && (
                     <button
                         type="button"
@@ -508,7 +536,8 @@ export default function Packs() {
                                     <span className="flex-1 min-w-0">
                                         <span className="flex items-center gap-2.5 text-lg text-mw-mist">
                                             <span className="truncate">
-                                                {f.nickname ?? walletCorta(f.wallet)}
+                                                {f.nickname ??
+                                                    walletCorta(f.wallet)}
                                                 {f.wallet === yo && (
                                                     <span className="text-mw-fog">
                                                         {' '}
@@ -516,7 +545,9 @@ export default function Packs() {
                                                     </span>
                                                 )}
                                             </span>
-                                            <MarcaChosen fila={conChosen.get(f.wallet)} />
+                                            <MarcaChosen
+                                                fila={conChosen.get(f.wallet)}
+                                            />
                                         </span>
                                         <span className="mw-etiqueta text-[10px] text-mw-champagne">
                                             {config.status === 'ended'
@@ -525,6 +556,7 @@ export default function Packs() {
                                             · Prize: Mudwater pack
                                         </span>
                                     </span>
+                                    <Racha dias={f.streak} hoy={!!f.today} />
                                     <img
                                         src="/packs/mudlogo.webp"
                                         alt="Mudwater"
@@ -543,12 +575,16 @@ export default function Packs() {
                                         {f.rank}
                                     </span>
                                     <span className="flex-1 min-w-0 flex items-center gap-2.5 text-lg">
-                                        <span className="truncate">
-                                            {f.nickname ?? walletCorta(f.wallet)}
+                                        <span className="truncate relative -top-px">
+                                            {f.nickname ??
+                                                walletCorta(f.wallet)}
                                         </span>
-                                        <MarcaChosen fila={conChosen.get(f.wallet)} />
+                                        <MarcaChosen
+                                            fila={conChosen.get(f.wallet)}
+                                        />
                                     </span>
-                                    <span className="tabular-nums text-lg">
+                                    <Racha dias={f.streak} hoy={!!f.today} />
+                                    <span className="tabular-nums text-lg relative -top-px">
                                         {f.points.toLocaleString('en-US')}
                                     </span>
                                 </li>
@@ -561,12 +597,21 @@ export default function Packs() {
                                 {mio.rank}
                             </span>
                             <span className="flex-1 min-w-0 flex items-center gap-2.5 text-lg">
-                                <span className="truncate">
+                                <span className="truncate relative -top-px">
                                     {mio.nickname ?? 'You'}
                                 </span>
                                 {yo && <MarcaChosen fila={conChosen.get(yo)} />}
                             </span>
-                            <span className="tabular-nums text-lg">
+                            <Racha
+                                dias={mio.streak.current}
+                                hoy={
+                                    mio.openedToday > 0 ||
+                                    ranking?.top.some(
+                                        (f) => f.wallet === yo && f.today
+                                    ) === true
+                                }
+                            />
+                            <span className="tabular-nums text-lg relative -top-px">
                                 {mio.points.toLocaleString('en-US')}
                             </span>
                         </p>
@@ -638,7 +683,8 @@ export default function Packs() {
                                             <span
                                                 className={`flex-1 truncate text-lg ${c.winner ? 'text-[#ffe27a]' : c.wallet === yo ? 'text-mw-champagne' : 'text-mw-mist'}`}
                                             >
-                                                {c.nickname ?? walletCorta(c.wallet)}
+                                                {c.nickname ??
+                                                    walletCorta(c.wallet)}
                                             </span>
                                             {c.winner ? (
                                                 <span className="mw-etiqueta text-[10px] text-black bg-[#ffe27a] rounded-full px-2.5 py-0.5">
@@ -646,10 +692,15 @@ export default function Packs() {
                                                 </span>
                                             ) : (
                                                 <span className="text-sm text-mw-fog tabular-nums">
-                                                    {new Date(c.firstAt).toLocaleDateString('en-US', {
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                    })}
+                                                    {new Date(
+                                                        c.firstAt
+                                                    ).toLocaleDateString(
+                                                        'en-US',
+                                                        {
+                                                            month: 'short',
+                                                            day: 'numeric',
+                                                        }
+                                                    )}
                                                 </span>
                                             )}
                                         </li>
@@ -891,7 +942,9 @@ function Ganador({
         >
             <div>
                 <h2 className={subtitulo}>
-                    {mio.chosenWinner ? 'You won The Chosen raffle' : `You placed #${mio.rank}`}
+                    {mio.chosenWinner
+                        ? 'You won The Chosen raffle'
+                        : `You placed #${mio.rank}`}
                 </h2>
                 <p className="mt-1 text-mw-mist/70">
                     Mudwater packs are sent on Solana. Add the Solana wallet

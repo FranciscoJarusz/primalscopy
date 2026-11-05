@@ -112,6 +112,7 @@ export interface FilaRanking {
     points: number;
     packs: number;
     streak: number;
+    today?: boolean;
 }
 
 export interface FilaChosen {
