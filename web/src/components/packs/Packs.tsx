@@ -117,7 +117,7 @@ function Racha({ dias, hoy }: { dias: number; hoy: boolean }) {
             aria-label={texto}
             className={`w-12 shrink-0 flex items-center justify-end gap-1 leading-none transition-all duration-300 ${hoy ? 'text-mw-champagne' : 'text-mw-fog/60'}`}
         >
-            co <PiFireFill className="size-4 shrink-0" />
+            <PiFireFill className="size-4 shrink-0" />
             <span className="mw-titulo text-base tabular-nums">{dias}</span>
         </span>
     );
@@ -562,18 +562,22 @@ export default function Packs() {
                                                 fila={conChosen.get(f.wallet)}
                                             />
                                         </span>
-                                        <span className="mw-etiqueta text-[10px] text-mw-champagne">
+                                        <span className="mw-etiqueta block text-[10px] text-mw-champagne">
                                             {config.status === 'ended'
                                                 ? '1st place'
                                                 : 'Leading'}{' '}
-                                            · Prize: Mudwater pack
+                                            ·{' '}
+                                            <span className="hidden sm:inline">
+                                                Prize:{' '}
+                                            </span>
+                                            Mudwater pack
                                         </span>
                                     </span>
                                     <Racha dias={f.streak} hoy={!!f.today} />
                                     <img
                                         src="/packs/mudlogo.webp"
                                         alt="Mudwater"
-                                        className="h-6 sm:h-9 w-auto shrink-0 drop-shadow-[0_0_12px_rgb(174_163_93/0.35)]"
+                                        className="hidden sm:block h-9 w-auto shrink-0 drop-shadow-[0_0_12px_rgb(174_163_93/0.35)]"
                                     />
                                     <span className="tabular-nums text-lg mw-brass-texto">
                                         {f.points.toLocaleString('en-US')}
