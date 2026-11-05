@@ -17,6 +17,8 @@ const { verifyStakes, refreshVaultNow } = require('../lib/stakingJob');
 const wheels = require('../lib/stakingWheels');
 const raffles = require('../lib/raffleStore');
 const packs = require('../lib/packsStore');
+const { parseEther } = require('viem');
+const { treasuryConfig, verifyPayment } = require('../lib/forgePayments');
 const traitShop = require('../lib/traitShopStore');
 const backup = require('../lib/backup');
 const transfers = require('../lib/transferIndex');
@@ -295,6 +297,24 @@ router.patch('/packs/config', (req, res) => {
     const result = packs.updateConfig(req.body || {});
     if (result.error) return res.status(400).json({ error: result.error });
     res.json(packs.adminSummary());
+});
+router.post('/packs/extras', async (req, res) => {
+    const txHash = String(req.body?.txHash || '').trim().toLowerCase();
+    const wallet = String(req.body?.wallet || '').trim().toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(wallet)) return res.status(400).json({ error: 'Enter the wallet that paid.' });
+    const tesoro = treasuryConfig();
+    if (!tesoro) return res.status(503).json({ error: "Payments aren't set up." });
+    try {
+        const payment = await verifyPayment(txHash, wallet, tesoro, {
+            minWei: parseEther(String(packs.getConfig().extraPrice)),
+            what: 'an extra pack',
+        });
+        const result = packs.buyExtra(wallet, payment);
+        if (result.error) return res.status(result.status || 400).json({ error: result.error });
+        res.status(result.created ? 201 : 200).json({ ...packs.adminSummary(), credited: result.created ? 'new' : 'already' });
+    } catch (error) {
+        res.status(error.status || 500).json({ error: error.status ? error.message : "Couldn't check the payment." });
+    }
 });
 router.post('/packs/chosen/draw', (req, res) => {
     const result = packs.sortearChosen();

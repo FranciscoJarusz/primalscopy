@@ -88,11 +88,17 @@ export async function esperarConfirmacion(cobro: Cobro, hash: Hash) {
         import('@wagmi/core'),
         import('@/lib/cultomizer/wallet'),
     ]);
-    const receipt = await waitForTransactionReceipt(wagmiConfig, {
-        hash,
-        chainId: cobro.chainId as never,
-        confirmations: cobro.confirmations,
-    });
+    let receipt;
+    try {
+        receipt = await waitForTransactionReceipt(wagmiConfig, {
+            hash,
+            chainId: cobro.chainId as never,
+            confirmations: cobro.confirmations,
+            timeout: 60_000,
+        });
+    } catch {
+        return;
+    }
     if (receipt.status !== 'success') {
         throw new PagoError(
             'The payment failed on chain. Nothing was charged.'

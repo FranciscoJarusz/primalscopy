@@ -158,6 +158,7 @@ export default function PacksAdmin({ token }: { token: string }) {
                     </div>
                     <div id="packs-chosen">
                         <SorteoChosen datos={datos} ocupado={ocupado} pedir={pedir} />
+                        <AcreditarExtra ocupado={ocupado} pedir={pedir} />
                     </div>
                 </>
             )}
@@ -571,6 +572,36 @@ function Jugadores({
                     );
                 })}
             </ol>
+        </section>
+    );
+}
+
+function AcreditarExtra({ ocupado, pedir }: { ocupado: boolean; pedir: (ruta: string, init?: RequestInit) => Promise<boolean> }) {
+    const [wallet, setWallet] = useState('');
+    const [txHash, setTxHash] = useState('');
+    const [listo, setListo] = useState(false);
+    const acreditar = async () => {
+        setListo(false);
+        if (await pedir('/extras', { method: 'POST', body: JSON.stringify({ wallet, txHash }) })) {
+            setListo(true);
+            setWallet('');
+            setTxHash('');
+        }
+    };
+    return (
+        <section className={panel}>
+            <h2 className={titulo}>Credit an extra pack</h2>
+            <p className="text-lightblue/70 text-sm -mt-2">
+                If someone paid for an extra pack and it didn't show up, paste the wallet that paid and the transaction. The payment is checked on chain and the pack is added for today.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+                <input value={wallet} onChange={(e) => setWallet(e.target.value)} placeholder="Wallet (0x...)" className={`${campo} flex-1 min-w-0`} />
+                <input value={txHash} onChange={(e) => setTxHash(e.target.value)} placeholder="Transaction hash (0x...)" className={`${campo} flex-1 min-w-0`} />
+                <button type="button" disabled={ocupado || !wallet || !txHash} onClick={acreditar} className={botonChico}>
+                    Credit
+                </button>
+            </div>
+            {listo && <p className="text-green-400 text-sm">Extra pack credited.</p>}
         </section>
     );
 }
