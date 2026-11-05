@@ -44,7 +44,7 @@ type Datos = {
         rarities: Record<Rareza, { chance: number; points: number }>;
     };
     cardsByRarity: Record<Rareza, number>;
-    totals: { players: number; packs: number; today: number; playersToday: number; extras: number; extrasToday: number; extraApe: string };
+    totals: { players: number; packs: number; today: number; playersToday: number; extras: number; extrasToday: number; extraApe: string; gifted?: number };
     players: Jugador[];
     chosen: {
         entrants: { wallet: string; nickname: string | null; pulls: number; firstAt: string }[];
@@ -195,6 +195,7 @@ function Numeros({ datos }: { datos: Datos }) {
             ['Players', totals.players],
             ['Extras sold', totals.extras],
             ['APE from extras', Number(totals.extraApe).toLocaleString('en-US')],
+            ['Packs given', totals.gifted ?? 0],
         ]],
     ];
     return (
@@ -202,7 +203,7 @@ function Numeros({ datos }: { datos: Datos }) {
             {grupos.map(([grupo, filas]) => (
                 <div key={grupo} className="flex flex-col gap-3">
                     <h3 className={subtitulo}>{grupo}</h3>
-                    <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <dl className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
                         {filas.map(([nombre, valor]) => (
                             <div key={nombre} className="bg-blue rounded-xl px-4 py-3">
                                 <dt className="text-sm text-lightblue/70">{nombre}</dt>

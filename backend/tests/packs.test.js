@@ -183,6 +183,21 @@ async function main() {
     await config({ tiers: { none: 1, holder: 3, staker: 4 }, extraPrice: 20, extraMax: 2 });
     delete process.env.FORGE_TREASURY;
 
+    console.log('\nPacks de regalo');
+    check('caro recibe 2 packs de premio', packs.grantPacks(caro.address, 2, 'raffle:r1:prize:0').granted === 2 && packs.resumen(caro.address, { tier: 'none' }).bonusPacks === 2);
+    check('el mismo premio no se da dos veces', packs.grantPacks(caro.address, 2, 'raffle:r1:prize:0').granted === 0);
+    r = await json(await abrir('caro'));
+    check('primero usa el extra del dia', r.http === 200 && r.me.bonusPacks === 2 && r.me.openedToday === 3);
+    r = await json(await abrir('caro'));
+    check('despues abre uno de regalo', r.http === 200 && r.me.bonusPacks === 1 && r.me.openedToday === 3);
+    check('el regalo no vence al otro dia', packs.resumen(caro.address, { tier: 'none' }, manana).bonusPacks === 1);
+    check('tambien se da como premio de codigo o raffle', !require('../lib/promoStore').grantReward('pack', caro.address, 1, 'codigo1').error && packs.resumen(caro.address, { tier: 'none' }).bonusPacks === 2);
+    await abrir('caro');
+    await abrir('caro');
+    r = await json(await abrir('caro'));
+    check('sin regalos ni packs del dia no abre', r.http === 409 && r.reason === 'no-packs');
+    check('el admin ve los packs regalados', packs.adminSummary().totals.gifted === 3);
+
     console.log('\nRareza y config');
     check('chances que no suman 100 se rechazan', (await config({ rarities: { common: { chance: 100, points: 5 } } })).status === 400);
     r = await json(await config({ rarities: { common: { chance: 0, points: 5 }, uncommon: { chance: 0, points: 10 }, rare: { chance: 0, points: 25 }, epic: { chance: 0, points: 60 }, legendary: { chance: 10000, points: 200 }, chosen: { chance: 0, points: 500 } } }));

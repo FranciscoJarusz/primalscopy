@@ -90,6 +90,7 @@ export interface MiPacks {
     tier: Nivel | null;
     baseLimit: number;
     extrasToday: number;
+    bonusPacks?: number;
     limit: number;
     openedToday: number;
     points: number;

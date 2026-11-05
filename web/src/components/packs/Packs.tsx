@@ -184,7 +184,7 @@ export default function Packs() {
             .catch(() => {});
     }, [session.token, address]);
 
-    const restantes = mio ? Math.max(0, mio.limit - mio.openedToday) : 0;
+    const restantes = mio ? Math.max(0, mio.limit - mio.openedToday) + (mio.bonusPacks ?? 0) : 0;
 
     const comprarExtra = async () => {
         if (!config?.extra || comprando) return;
@@ -254,7 +254,7 @@ export default function Packs() {
     )[0];
     const yo = address?.toLowerCase();
     const conChosen = new Map(ranking?.chosen.map((c) => [c.wallet, c]));
-    const total = mio?.limit ?? config.tiers.none;
+    const total = mio ? mio.limit + (mio.bonusPacks ?? 0) : config.tiers.none;
     const extra = config.extra;
     const puedeExtra =
         !!extra &&
@@ -336,6 +336,11 @@ export default function Packs() {
                         {!!mio?.extrasToday && (
                             <span className="text-mw-champagne">
                                 +{mio.extrasToday} extra today
+                            </span>
+                        )}
+                        {!!mio?.bonusPacks && (
+                            <span className="text-mw-champagne">
+                                +{mio.bonusPacks} bonus {mio.bonusPacks === 1 ? 'pack' : 'packs'}
                             </span>
                         )}
                         <span className="text-mw-fog">

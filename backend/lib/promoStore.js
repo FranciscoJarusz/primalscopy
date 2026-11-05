@@ -37,6 +37,12 @@ const FIJOS = {
         plural: true,
         grant: (wallet, amount, code) => forge.addPromoCredits(wallet, code, amount)
     },
+    pack: {
+        label: 'Primal Cult pack',
+        max: 20,
+        plural: true,
+        grant: (wallet, amount, code) => require('./packsStore').grantPacks(wallet, amount, code)
+    },
     fog: {
         label: 'FOG',
         max: 1000000,

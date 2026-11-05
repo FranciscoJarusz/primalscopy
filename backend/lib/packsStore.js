@@ -13,6 +13,7 @@ const CONFIG_PATH = path.join(PACKS_DIR, 'config.json');
 const OPENS_PATH = path.join(PACKS_DIR, 'opens.jsonl');
 const PLAYERS_PATH = path.join(PACKS_DIR, 'players.json');
 const EXTRAS_PATH = path.join(PACKS_DIR, 'extras.json');
+const GIFTS_PATH = path.join(PACKS_DIR, 'gifts.json');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CHOSEN_ID = CARTAS.find(c => c.rarity === 'chosen')?.id ?? null;
@@ -72,12 +73,16 @@ function sumar(open) {
     aperturas.set(open.id, open);
     let j = indice.get(open.wallet);
     if (!j) {
-        j = { points: 0, packs: 0, days: {}, collection: {}, firstAt: open.at, lastAt: open.at };
+        j = { points: 0, packs: 0, days: {}, giftDays: {}, giftsUsed: 0, collection: {}, firstAt: open.at, lastAt: open.at };
         indice.set(open.wallet, j);
     }
     j.points += open.points;
     j.packs++;
     j.days[open.day] = (j.days[open.day] || 0) + 1;
+    if (open.gift) {
+        j.giftsUsed++;
+        j.giftDays[open.day] = (j.giftDays[open.day] || 0) + 1;
+    }
     for (const id of open.cards) j.collection[id] = (j.collection[id] || 0) + 1;
     if (open.points > 0) j.lastAt = open.at;
 }
@@ -154,6 +159,30 @@ function extrasDe(wallet, hoy) {
     return Object.values(leerExtras()).filter(e => e.wallet === wallet && e.day === hoy).length;
 }
 
+const leerRegalos = () => readJson(GIFTS_PATH, {});
+
+function regalosDe(wallet) {
+    const recibidos = Object.values(leerRegalos()).filter(g => g.wallet === wallet).length;
+    return Math.max(0, recibidos - (jugadores().get(wallet)?.giftsUsed || 0));
+}
+
+function grantPacks(wallet, amount, ref) {
+    const key = wallet.toLowerCase();
+    const regalos = leerRegalos();
+    const at = new Date().toISOString();
+    let nuevos = 0;
+    for (let i = 0; i < amount; i++) {
+        const id = `${ref}:${key}:${i}`;
+        if (regalos[id]) continue;
+        regalos[id] = { wallet: key, ref, at };
+        nuevos++;
+    }
+    if (nuevos) writeJson(GIFTS_PATH, regalos);
+    return { granted: nuevos };
+}
+
+const normalesDe = (j, hoy) => (j?.days[hoy] || 0) - (j?.giftDays?.[hoy] || 0);
+
 const comprasDeExtras = () => Object.values(leerExtras()).filter(e => e.valueWei);
 const isExtraPayment = txHash => Boolean(leerExtras()[String(txHash).toLowerCase()]);
 
@@ -218,7 +247,8 @@ function resumen(wallet, { tier = null } = {}, now = Date.now()) {
         baseLimit: baseDe(config, tier),
         extrasToday: extrasDe(key, dia(now)),
         limit: baseDe(config, tier) + extrasDe(key, dia(now)),
-        openedToday: j?.days[dia(now)] || 0,
+        openedToday: normalesDe(j, dia(now)),
+        bonusPacks: regalosDe(key),
         points: j?.points || 0,
         packs: j?.packs || 0,
         rank: fila?.rank ?? null,
@@ -251,9 +281,10 @@ function open(wallet, { tier = null } = {}, now = Date.now()) {
         return { error: 'Set a nickname and your X or Discord first.', reason: 'not-registered', status: 409 };
     }
     const hoy = dia(now);
-    const usados = jugadores().get(key)?.days[hoy] || 0;
+    const usados = normalesDe(jugadores().get(key), hoy);
     const base = baseDe(config, tier);
-    if (usados >= base + extrasDe(key, hoy)) {
+    const regalo = usados >= base + extrasDe(key, hoy);
+    if (regalo && !regalosDe(key)) {
         return { error: "You've opened all your packs for today.", reason: 'no-packs', status: 409 };
     }
 
@@ -265,7 +296,8 @@ function open(wallet, { tier = null } = {}, now = Date.now()) {
         day: hoy,
         cards: cartas.map(c => c.id),
         points: cartas.reduce((s, c) => s + config.rarities[c.rarity].points, 0),
-        extra: usados >= base,
+        extra: !regalo && usados >= base,
+        ...(regalo ? { gift: true } : {}),
     };
     appendJsonLine(OPENS_PATH, entrada);
     sumar(entrada);
@@ -487,6 +519,7 @@ function adminSummary(now = Date.now()) {
             playersToday: [...jugadores().values()].filter(j => j.days[hoy]).length,
             extras: extras.length,
             extrasToday: extras.filter(e => e.day === hoy).length,
+            gifted: Object.keys(leerRegalos()).length,
             extraApe: formatEther(extras.reduce((s, e) => s + BigInt(e.valueWei || 0), 0n)),
         },
         players: filas,
@@ -506,6 +539,7 @@ module.exports = {
     open,
     puedeComprarExtra,
     buyExtra,
+    grantPacks,
     isExtraPayment,
     sortearChosen,
     reiniciarSorteoChosen,
