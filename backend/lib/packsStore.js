@@ -73,12 +73,13 @@ function sumar(open) {
     aperturas.set(open.id, open);
     let j = indice.get(open.wallet);
     if (!j) {
-        j = { points: 0, packs: 0, days: {}, giftDays: {}, giftsUsed: 0, collection: {}, firstAt: open.at, lastAt: open.at };
+        j = { points: 0, packs: 0, days: {}, pointsByDay: {}, giftDays: {}, giftsUsed: 0, collection: {}, firstAt: open.at, lastAt: open.at };
         indice.set(open.wallet, j);
     }
     j.points += open.points;
     j.packs++;
     j.days[open.day] = (j.days[open.day] || 0) + 1;
+    j.pointsByDay[open.day] = (j.pointsByDay[open.day] || 0) + open.points;
     if (open.gift) {
         j.giftsUsed++;
         j.giftDays[open.day] = (j.giftDays[open.day] || 0) + 1;
@@ -488,6 +489,40 @@ function reiniciarSorteoChosen() {
     return { ok: true };
 }
 
+function porDia(extras) {
+    const dias = new Map();
+    const fila = d => {
+        if (!dias.has(d)) dias.set(d, { day: d, players: 0, newPlayers: 0, packs: 0, extras: 0, wallets: [] });
+        return dias.get(d);
+    };
+    const compras = new Map();
+    for (const e of extras) {
+        if (!e.day) continue;
+        fila(e.day).extras++;
+        const k = `${e.day}|${e.wallet}`;
+        compras.set(k, (compras.get(k) || 0) + 1);
+    }
+    for (const [wallet, j] of jugadores()) {
+        const suyos = Object.keys(j.days).sort();
+        suyos.forEach((d, i) => {
+            const f = fila(d);
+            f.players++;
+            f.packs += j.days[d];
+            if (i === 0) f.newPlayers++;
+            f.wallets.push({
+                wallet,
+                isNew: i === 0,
+                packs: j.days[d],
+                points: j.pointsByDay[d] || 0,
+                extras: compras.get(`${d}|${wallet}`) || 0,
+                daysPlayed: i + 1,
+            });
+        });
+    }
+    for (const f of dias.values()) f.wallets.sort((a, b) => b.isNew - a.isNew || b.points - a.points);
+    return [...dias.values()].sort((a, b) => b.day.localeCompare(a.day));
+}
+
 function adminSummary(now = Date.now()) {
     const config = getConfig();
     const fuera = leerJugadores();
@@ -523,6 +558,7 @@ function adminSummary(now = Date.now()) {
             extraApe: formatEther(extras.reduce((s, e) => s + BigInt(e.valueWei || 0), 0n)),
         },
         players: filas,
+        daily: porDia(extras),
         chosen: { entrants: participantesChosen(), raffle: config.chosenRaffle ?? null },
     };
 }

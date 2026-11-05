@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { FiChevronDown } from 'react-icons/fi';
 import { BACKEND_URL } from '@/lib/backend';
 import type { Rareza } from '@/lib/packs';
 import {
@@ -46,6 +47,7 @@ type Datos = {
     cardsByRarity: Record<Rareza, number>;
     totals: { players: number; packs: number; today: number; playersToday: number; extras: number; extrasToday: number; extraApe: string; gifted?: number };
     players: Jugador[];
+    daily?: { day: string; players: number; newPlayers: number; packs: number; extras: number; wallets?: JugadorDia[] }[];
     chosen: {
         entrants: { wallet: string; nickname: string | null; pulls: number; firstAt: string }[];
         raffle: { winner: string; drawnAt: string; entrants: number } | null;
@@ -148,6 +150,7 @@ export default function PacksAdmin({ token }: { token: string }) {
                 <>
                     <div id="packs-resumen" className="flex flex-col gap-4 sm:gap-5">
                         <Numeros datos={datos} />
+                        <PorDia datos={datos} />
                         <Competencia datos={datos} ocupado={ocupado} configurar={configurar} />
                         <AcreditarExtra ocupado={ocupado} pedir={pedir} />
                     </div>
@@ -603,6 +606,63 @@ function AcreditarExtra({ ocupado, pedir }: { ocupado: boolean; pedir: (ruta: st
                 </button>
             </div>
             {listo && <p className="text-green-400 text-sm">Extra pack credited.</p>}
+        </section>
+    );
+}
+
+type JugadorDia = { wallet: string; isNew: boolean; packs: number; points: number; extras: number; daysPlayed: number };
+
+function PorDia({ datos }: { datos: Datos }) {
+    const dias = datos.daily ?? [];
+    const [abierto, setAbierto] = useState<string | null>(null);
+    const quien = useQuien();
+    if (!dias.length) return null;
+    const nombreDia = (d: string) =>
+        new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+    return (
+        <section className={panel}>
+            <h2 className={titulo}>By day</h2>
+            <p className="text-lightblue/70 text-sm -mt-2">
+                Days in UTC. New are wallets that opened their first pack that day.
+            </p>
+            <ol className={`${lista} flex flex-col`} data-scroll-propio>
+                {dias.map((d) => (
+                    <li key={d.day} className="py-4 border-b border-lightblue/15 last:border-0">
+                        <button
+                            type="button"
+                            onClick={() => setAbierto(abierto === d.day ? null : d.day)}
+                            aria-expanded={abierto === d.day}
+                            className="w-full flex flex-wrap items-center gap-x-4 gap-y-1 text-left cursor-pointer"
+                        >
+                            <span className="font-accent uppercase text-yellow min-w-32 leading-none relative -top-[0.19em]">{nombreDia(d.day)}</span>
+                            <span className="flex-1 min-w-48 text-sm text-lightblue/80">
+                                {d.newPlayers} new · {d.players - d.newPlayers} returning · {fog(d.packs)} packs
+                                {d.extras > 0 && ` · ${d.extras} ${d.extras === 1 ? 'extra' : 'extras'}`}
+                            </span>
+                            <span className="font-accent text-yellow leading-none relative -top-[0.19em]">
+                                {fog(d.players)} {d.players === 1 ? 'player' : 'players'}
+                            </span>
+                            <FiChevronDown
+                                className={`size-5 text-lightblue transition-all duration-300 ${abierto === d.day ? 'rotate-180' : ''}`}
+                            />
+                        </button>
+                        {abierto === d.day && (
+                            <ul className="flex flex-col mt-4 mb-1 rounded-xl bg-white/10 px-4 py-1 text-sm text-lightblue/80">
+                                {(d.wallets ?? []).map((w) => (
+                                    <li key={w.wallet} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-3 border-t border-white/10 first:border-0">
+                                        <span className="flex-1 min-w-48 text-lightblue">{quien(w.wallet)}</span>
+                                        {w.isNew && <span className="font-accent uppercase text-yellow leading-none relative -top-[0.19em]">New</span>}
+                                        <span>
+                                            {w.packs} {w.packs === 1 ? 'pack' : 'packs'}
+                                            {w.extras > 0 && ` (${w.extras} extra)`} · {fog(w.points)} pts · day {w.daysPlayed}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </li>
+                ))}
+            </ol>
         </section>
     );
 }

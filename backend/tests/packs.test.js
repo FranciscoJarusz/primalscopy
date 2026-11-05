@@ -197,6 +197,9 @@ async function main() {
     r = await json(await abrir('caro'));
     check('sin regalos ni packs del dia no abre', r.http === 409 && r.reason === 'no-packs');
     check('el admin ve los packs regalados', packs.adminSummary().totals.gifted === 3);
+    r = packs.adminSummary();
+    check('el admin ve jugadores por dia', r.daily.length >= 1 && r.daily[0].players >= 1 && r.daily.reduce((n, d) => n + d.newPlayers, 0) === r.totals.players && r.daily.reduce((n, d) => n + d.packs, 0) === r.totals.packs);
+    check('cada dia lista sus jugadores y marca los nuevos', r.daily.every(d => d.wallets.length === d.players && d.wallets.filter(w => w.isNew).length === d.newPlayers && d.wallets.reduce((n, w) => n + w.packs, 0) === d.packs));
 
     console.log('\nRareza y config');
     check('chances que no suman 100 se rechazan', (await config({ rarities: { common: { chance: 100, points: 5 } } })).status === 400);
