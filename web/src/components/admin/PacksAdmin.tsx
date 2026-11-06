@@ -31,6 +31,7 @@ type Jugador = {
     firstAt: string;
     lastAt: string;
     disqualified: { at: string; reason: string } | null;
+    adjust?: { points: number; reason: string; at: string } | null;
     solana: { address: string; at: string } | null;
 };
 type Datos = {
@@ -41,6 +42,7 @@ type Datos = {
         tiers: { none: number; holder: number; staker: number };
         extraPrice: number;
         extraMax: number;
+        extraBoost?: number;
         winners: number | null;
         rarities: Record<Rareza, { chance: number; points: number }>;
     };
@@ -368,6 +370,7 @@ function Reglas({ datos, ocupado, configurar }: Props) {
     });
     const [precioExtra, setPrecioExtra] = useState(String(config.extraPrice));
     const [maxExtra, setMaxExtra] = useState(String(config.extraMax));
+    const [boostExtra, setBoostExtra] = useState(String(config.extraBoost ?? 0));
     const [rarezas, setRarezas] = useState(() =>
         Object.fromEntries(RAREZAS.map((r) => [r, { chance: String(config.rarities[r].chance / 100), points: String(config.rarities[r].points) }]))
     );
@@ -389,6 +392,7 @@ function Reglas({ datos, ocupado, configurar }: Props) {
                             tiers: { none: Number(niveles.none), holder: Number(niveles.holder), staker: Number(niveles.staker) },
                             extraPrice: Number(precioExtra),
                             extraMax: Number(maxExtra),
+                            extraBoost: Number(boostExtra),
                             rarities: Object.fromEntries(
                                 RAREZAS.map((r) => [r, { chance: Math.round(Number(rarezas[r].chance) * 100), points: Number(rarezas[r].points) }])
                             ),
@@ -422,8 +426,8 @@ function Reglas({ datos, ocupado, configurar }: Props) {
                             ))}
                         </div>
                     </Tarjeta>
-                    <Tarjeta nombre="Extra packs" texto="Bought with APE on top of the free ones.">
-                        <div className="grid grid-cols-2 gap-3 w-full">
+                    <Tarjeta nombre="Extra packs" texto="Bought with APE on top of the free ones. Better odds multiplies the chance of Rare, Epic and Legendary in them; Commons make up the difference.">
+                        <div className="grid grid-cols-3 gap-3 w-full">
                             <label className={etiqueta}>
                                 Price (APE)
                                 <input type="number" min={0} step="0.1" value={precioExtra} onChange={(e) => setPrecioExtra(e.target.value)} className={campo} />
@@ -431,6 +435,10 @@ function Reglas({ datos, ocupado, configurar }: Props) {
                             <label className={etiqueta}>
                                 Max per day
                                 <input type="number" min={0} max={10} value={maxExtra} onChange={(e) => setMaxExtra(e.target.value)} className={campo} />
+                            </label>
+                            <label className={etiqueta}>
+                                Better odds (%)
+                                <input type="number" min={0} max={300} value={boostExtra} onChange={(e) => setBoostExtra(e.target.value)} className={campo} />
                             </label>
                         </div>
                     </Tarjeta>
@@ -470,6 +478,7 @@ function Jugadores({
     const quien = useQuien();
     const [buscar, setBuscar] = useState('');
     const [motivo, setMotivo] = useState<Record<string, string>>({});
+    const [ajuste, setAjuste] = useState<Record<string, { points: string; reason: string }>>({});
     const [abierto, setAbierto] = useState<string | null>(null);
 
     const filas = useMemo(() => {
@@ -519,6 +528,53 @@ function Jugadores({
                                         {p.streak.best}) · first pack {fecha(p.firstAt)} · last points {fecha(p.lastAt)}
                                     </p>
                                     {p.solana && <p className="break-all">Solana: {p.solana.address}</p>}
+                                    {p.adjust && (
+                                        <p>
+                                            Points adjusted by {p.adjust.points > 0 ? '+' : ''}
+                                            {fog(p.adjust.points)} on {fecha(p.adjust.at)}
+                                            {p.adjust.reason && `: ${p.adjust.reason}`}
+                                        </p>
+                                    )}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-lightblue">Add or take away points:</span>
+                                        <input
+                                            type="number"
+                                            step={1}
+                                            value={ajuste[p.wallet]?.points ?? String(p.adjust?.points ?? 0)}
+                                            onChange={(e) => setAjuste((a) => ({ ...a, [p.wallet]: { reason: a[p.wallet]?.reason ?? p.adjust?.reason ?? '', points: e.target.value } }))}
+                                            title="Added to the points from packs. Negative takes points away, 0 removes the adjustment."
+                                            className={`${campo} max-w-32`}
+                                        />
+                                        <input
+                                            value={ajuste[p.wallet]?.reason ?? p.adjust?.reason ?? ''}
+                                            onChange={(e) => setAjuste((a) => ({ ...a, [p.wallet]: { points: a[p.wallet]?.points ?? String(p.adjust?.points ?? 0), reason: e.target.value } }))}
+                                            placeholder="Why (optional)"
+                                            className={`${campo} max-w-xs`}
+                                        />
+                                        <button
+                                            type="button"
+                                            disabled={ocupado}
+                                            onClick={() =>
+                                                pedir(`/players/${p.wallet}/adjust`, {
+                                                    method: 'PUT',
+                                                    body: JSON.stringify({
+                                                        points: Number(ajuste[p.wallet]?.points ?? p.adjust?.points ?? 0),
+                                                        reason: ajuste[p.wallet]?.reason ?? p.adjust?.reason ?? '',
+                                                    }),
+                                                })
+                                            }
+                                            className={botonChico}
+                                        >
+                                            Save points
+                                        </button>
+                                        <span className="text-sm text-lightblue/70">
+                                            {(() => {
+                                                const nuevo = Math.trunc(Number(ajuste[p.wallet]?.points ?? p.adjust?.points ?? 0)) || 0;
+                                                const dePacks = p.points - (p.adjust?.points ?? 0);
+                                                return `${fog(dePacks)} from packs ${nuevo < 0 ? '−' : '+'} ${fog(Math.abs(nuevo))} = ${fog(dePacks + nuevo)} pts`;
+                                            })()}
+                                        </span>
+                                    </div>
                                     {p.disqualified && (
                                         <p>
                                             Disqualified {fecha(p.disqualified.at)}

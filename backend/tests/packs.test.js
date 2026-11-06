@@ -242,6 +242,14 @@ async function main() {
     check('y no puede abrir', (await json(await abrir('beto'))).reason === 'disqualified');
     await pedir('PUT', `/api/admin/packs/players/${beto.address}/disqualified`, { disqualified: false }, admin);
     check('se le saca la descalificacion', (await json(await fetch(`${BASE}/api/packs/leaderboard`))).players === 3);
+    const puntosBeto = r => r.top.find(f => f.wallet === beto.address.toLowerCase())?.points;
+    const antesAjuste = puntosBeto(await json(await fetch(`${BASE}/api/packs/leaderboard`)));
+    r = await json(await pedir('PUT', `/api/admin/packs/players/${beto.address}/adjust`, { points: -1, reason: 'prueba' }, admin));
+    check('el admin resta puntos', r.http === 200 && r.players.find(p => p.wallet === beto.address.toLowerCase()).adjust.points === -1);
+    check('el ranking muestra el total ajustado', puntosBeto(await json(await fetch(`${BASE}/api/packs/leaderboard`))) === antesAjuste - 1);
+    check('puntos invalidos se rechazan', (await pedir('PUT', `/api/admin/packs/players/${beto.address}/adjust`, { points: 1.5 }, admin)).status === 400);
+    r = await json(await pedir('PUT', `/api/admin/packs/players/${beto.address}/adjust`, { points: 0 }, admin));
+    check('0 saca el ajuste', r.players.find(p => p.wallet === beto.address.toLowerCase()).adjust === null && puntosBeto(await json(await fetch(`${BASE}/api/packs/leaderboard`))) === antesAjuste);
     r = await json(await pedir('DELETE', `/api/admin/packs/players/${beto.address}/social`, undefined, admin));
     check('el admin libera su Discord', r.http === 200 && r.players.find(p => p.wallet === beto.address.toLowerCase()).discord === '');
 
@@ -278,6 +286,16 @@ async function main() {
     check('el admin ve la Solana del ganador', r.players.find(p => p.wallet === primero).solana.address === sol);
     r = await json(await config({ status: 'open' }));
     check('reabrir saca la fecha vieja', r.status === 'open' && r.config.endsAt === null);
+
+    console.log('\nExtras con mejores chances');
+    const reglas = { rarities: { common: { chance: 5490 }, uncommon: { chance: 2500 }, rare: { chance: 1200 }, epic: { chance: 600 }, legendary: { chance: 200 }, chosen: { chance: 10 } }, extraBoost: 50 };
+    const conBoost = packs.chancesDe(reglas, true);
+    check('el extra sube rare, epic y legendary', conBoost.rare === 1800 && conBoost.epic === 900 && conBoost.legendary === 300);
+    check('The Chosen no cambia', conBoost.chosen === 10);
+    check('sigue sumando 100%', Object.values(conBoost).reduce((s, n) => s + n, 0) === 10000);
+    check('los gratis no cambian', packs.chancesDe(reglas, false).rare === 1200);
+    r = await json(await config({ extraBoost: 500 }));
+    check('boost fuera de rango se rechaza', r.http === 400);
 
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });

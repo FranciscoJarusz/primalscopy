@@ -29,6 +29,7 @@ const DEFAULTS = {
     tiers: { none: 1, holder: 3, staker: 4 },
     extraPrice: 20,
     extraMax: 2,
+    extraBoost: 50,
     winners: null,
     rarities: {
         common: { chance: 5490, points: 5 },
@@ -120,6 +121,8 @@ function registro(wallet) {
     return { nickname: nicknames.getNickname(wallet), x: perfil?.x || '', discord: perfil?.discord || '' };
 }
 
+const puntosDe = (j, jugador) => (j?.points || 0) + (jugador?.adjust?.points || 0);
+
 const registrado = r => Boolean(r.nickname && (r.x || r.discord));
 
 function ranking(now = Date.now()) {
@@ -128,9 +131,10 @@ function ranking(now = Date.now()) {
     if (cacheRanking?.clave === clave) return cacheRanking.valor;
     const fuera = leerJugadores();
     const valor = [...todos]
-        .filter(([wallet, j]) => j.points > 0 && !fuera[wallet]?.disqualified)
-        .sort(([, a], [, b]) => b.points - a.points || a.lastAt.localeCompare(b.lastAt))
-        .map(([wallet, j], i) => ({ rank: i + 1, wallet, points: j.points, packs: j.packs, streak: rachaDe(j.days, now).current, today: Boolean(j.days[dia(now)]) }));
+        .map(([wallet, j]) => [wallet, j, puntosDe(j, fuera[wallet])])
+        .filter(([wallet, , puntos]) => puntos > 0 && !fuera[wallet]?.disqualified)
+        .sort(([, a, pa], [, b, pb]) => pb - pa || a.lastAt.localeCompare(b.lastAt))
+        .map(([wallet, j, puntos], i) => ({ rank: i + 1, wallet, points: puntos, packs: j.packs, streak: rachaDe(j.days, now).current, today: Boolean(j.days[dia(now)]) }));
     cacheRanking = { clave, valor };
     return valor;
 }
@@ -194,6 +198,7 @@ function extraPublico(config) {
         price: String(config.extraPrice),
         priceWei: parseEther(String(config.extraPrice)).toString(),
         max: config.extraMax,
+        boost: config.extraBoost || 0,
         treasury: tesoro.treasury,
         chainId: tesoro.chainId,
         confirmations: tesoro.confirmations,
@@ -250,7 +255,7 @@ function resumen(wallet, { tier = null } = {}, now = Date.now()) {
         limit: baseDe(config, tier) + extrasDe(key, dia(now)),
         openedToday: normalesDe(j, dia(now)),
         bonusPacks: regalosDe(key),
-        points: j?.points || 0,
+        points: puntosDe(j, jugador),
         packs: j?.packs || 0,
         rank: fila?.rank ?? null,
         streak: rachaDe(j?.days || {}, now),
@@ -263,10 +268,28 @@ function resumen(wallet, { tier = null } = {}, now = Date.now()) {
     };
 }
 
-function sortearCarta(config) {
-    const rarezas = RAREZAS.filter(r => config.rarities[r].chance > 0 && CARTAS.some(c => c.rarity === r));
-    let n = crypto.randomInt(rarezas.reduce((s, r) => s + config.rarities[r].chance, 0));
-    const rareza = rarezas.find(r => (n -= config.rarities[r].chance) < 0);
+const CON_BOOST = ['rare', 'epic', 'legendary'];
+
+function chancesDe(config, extra) {
+    const chances = Object.fromEntries(RAREZAS.map(r => [r, config.rarities[r].chance]));
+    if (!extra || !(config.extraBoost > 0)) return chances;
+    let sumado = 0;
+    for (const r of CON_BOOST) {
+        const nueva = Math.round(chances[r] * (1 + config.extraBoost / 100));
+        sumado += nueva - chances[r];
+        chances[r] = nueva;
+    }
+    const quita = Math.min(sumado, chances.common);
+    chances.common -= quita;
+    if (quita < sumado) chances.uncommon = Math.max(0, chances.uncommon - (sumado - quita));
+    return chances;
+}
+
+function sortearCarta(config, extra = false) {
+    const chances = chancesDe(config, extra);
+    const rarezas = RAREZAS.filter(r => chances[r] > 0 && CARTAS.some(c => c.rarity === r));
+    let n = crypto.randomInt(rarezas.reduce((s, r) => s + chances[r], 0));
+    const rareza = rarezas.find(r => (n -= chances[r]) < 0);
     const opciones = CARTAS.filter(c => c.rarity === rareza);
     return opciones[crypto.randomInt(opciones.length)];
 }
@@ -289,7 +312,8 @@ function open(wallet, { tier = null } = {}, now = Date.now()) {
         return { error: "You've opened all your packs for today.", reason: 'no-packs', status: 409 };
     }
 
-    const cartas = Array.from({ length: CARTAS_POR_PACK }, () => sortearCarta(config));
+    const pagado = !regalo && usados >= base;
+    const cartas = Array.from({ length: CARTAS_POR_PACK }, () => sortearCarta(config, pagado));
     const entrada = {
         at: new Date(now).toISOString(),
         id: crypto.randomUUID(),
@@ -297,7 +321,7 @@ function open(wallet, { tier = null } = {}, now = Date.now()) {
         day: hoy,
         cards: cartas.map(c => c.id),
         points: cartas.reduce((s, c) => s + config.rarities[c.rarity].points, 0),
-        extra: !regalo && usados >= base,
+        extra: pagado,
         ...(regalo ? { gift: true } : {}),
     };
     appendJsonLine(OPENS_PATH, entrada);
@@ -410,6 +434,11 @@ function updateConfig(cambios = {}, now = Date.now()) {
         if (n === null) return { error: 'Extra packs per day must be between 0 and 10.' };
         siguiente.extraMax = n;
     }
+    if ('extraBoost' in cambios) {
+        const n = intEntre(cambios.extraBoost, 0, 300);
+        if (n === null) return { error: 'Better odds must be between 0% and 300%.' };
+        siguiente.extraBoost = n;
+    }
     if ('winners' in cambios) {
         if (cambios.winners === null || cambios.winners === '') siguiente.winners = null;
         else {
@@ -442,6 +471,21 @@ function setDisqualified(wallet, disqualified, reason = '', now = Date.now()) {
     const jugador = { ...todos[key] };
     if (disqualified) jugador.disqualified = { at: new Date(now).toISOString(), reason: String(reason).slice(0, 200) };
     else delete jugador.disqualified;
+    todos[key] = jugador;
+    writeJson(PLAYERS_PATH, todos);
+    version++;
+    return { ok: true };
+}
+
+function setAdjust(wallet, points, reason = '', now = Date.now()) {
+    const key = String(wallet || '').toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(key)) return { error: 'Invalid wallet.' };
+    const cantidad = intEntre(points, -1000000, 1000000);
+    if (cantidad === null) return { error: 'Invalid points.' };
+    const todos = leerJugadores();
+    const jugador = { ...todos[key] };
+    if (cantidad === 0) delete jugador.adjust;
+    else jugador.adjust = { points: cantidad, reason: String(reason).slice(0, 200), at: new Date(now).toISOString() };
     todos[key] = jugador;
     writeJson(PLAYERS_PATH, todos);
     version++;
@@ -532,7 +576,8 @@ function adminSummary(now = Date.now()) {
         wallet,
         rank: orden.get(wallet) ?? null,
         ...registro(wallet),
-        points: j.points,
+        points: puntosDe(j, fuera[wallet]),
+        adjust: fuera[wallet]?.adjust ?? null,
         packs: j.packs,
         days: Object.keys(j.days).length,
         streak: rachaDe(j.days, now),
@@ -577,11 +622,13 @@ module.exports = {
     buyExtra,
     grantPacks,
     isExtraPayment,
+    chancesDe,
     sortearChosen,
     reiniciarSorteoChosen,
     register,
     setSolana,
     updateConfig,
     setDisqualified,
+    setAdjust,
     adminSummary,
 };

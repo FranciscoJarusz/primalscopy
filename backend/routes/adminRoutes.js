@@ -330,6 +330,11 @@ router.put('/packs/players/:wallet/disqualified', (req, res) => {
     if (result.error) return res.status(400).json({ error: result.error });
     res.json(packs.adminSummary());
 });
+router.put('/packs/players/:wallet/adjust', (req, res) => {
+    const result = packs.setAdjust(req.params.wallet, req.body?.points, req.body?.reason);
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json(packs.adminSummary());
+});
 router.delete('/packs/players/:wallet/social', (req, res) => {
     if (!profiles.clearSocial(req.params.wallet)) return res.status(404).json({ error: 'That wallet has no X or Discord.' });
     res.json(packs.adminSummary());

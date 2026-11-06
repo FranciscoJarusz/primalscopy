@@ -73,6 +73,7 @@ export interface ConfigPacks {
         price: string;
         priceWei: string;
         max: number;
+        boost: number;
         treasury: `0x${string}`;
         chainId: number;
         confirmations: number;

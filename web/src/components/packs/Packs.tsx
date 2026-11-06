@@ -461,6 +461,8 @@ export default function Packs() {
                                     carry over, and you can buy up to{' '}
                                     {extra.max} every day ({mio.extrasToday}/
                                     {extra.max} today).
+                                    {extra.boost > 0 &&
+                                        ` They have ${extra.boost}% more chance of Rare, Epic and Legendary cards.`}
                                 </p>
                             )}
                         </div>
