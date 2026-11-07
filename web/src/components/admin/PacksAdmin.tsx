@@ -47,6 +47,7 @@ type Datos = {
         rarities: Record<Rareza, { chance: number; points: number }>;
     };
     cardsByRarity: Record<Rareza, number>;
+    pulledByRarity?: Record<Rareza, { count: number; expected: number }>;
     totals: { players: number; packs: number; today: number; playersToday: number; extras: number; extrasToday: number; extraApe: string; gifted?: number };
     players: Jugador[];
     daily?: { day: string; players: number; newPlayers: number; packs: number; extras: number; wallets?: JugadorDia[] }[];
@@ -220,6 +221,22 @@ function Numeros({ datos }: { datos: Datos }) {
                     </dl>
                 </div>
             ))}
+            {datos.pulledByRarity && (
+                <div className="flex flex-col gap-3">
+                    <h3 className={subtitulo}>Cards pulled</h3>
+                    <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                        {RAREZAS.map((r) => (
+                            <div key={r} className="bg-blue rounded-xl px-4 py-3">
+                                <dt className="text-sm text-lightblue/70 capitalize">{r}</dt>
+                                <dd className="font-accent text-yellow text-2xl">{fog(datos.pulledByRarity![r].count)}</dd>
+                                <dd className="text-sm text-lightblue/70">
+                                    Expected {datos.pulledByRarity![r].expected.toLocaleString('en-US')}
+                                </dd>
+                            </div>
+                        ))}
+                    </dl>
+                </div>
+            )}
         </section>
     );
 }

@@ -587,11 +587,28 @@ function adminSummary(now = Date.now()) {
         solana: fuera[wallet]?.solana ?? null,
     })).sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity) || b.points - a.points);
     const porRareza = Object.fromEntries(RAREZAS.map(r => [r, CARTAS.filter(c => c.rarity === r).length]));
+    const rarezaDe = new Map(CARTAS.map(c => [c.id, c.rarity]));
+    const probabilidades = [false, true].map(extra => {
+        const chances = chancesDe(config, extra);
+        const validas = RAREZAS.filter(r => chances[r] > 0 && porRareza[r] > 0);
+        const total = validas.reduce((s, r) => s + chances[r], 0);
+        return Object.fromEntries(RAREZAS.map(r => [r, total && validas.includes(r) ? chances[r] / total : 0]));
+    });
+    const sacadas = Object.fromEntries(RAREZAS.map(r => [r, { count: 0, expected: 0 }]));
+    for (const a of aperturas.values()) {
+        for (const id of a.cards) {
+            const r = rarezaDe.get(id);
+            if (r) sacadas[r].count++;
+        }
+        for (const r of RAREZAS) sacadas[r].expected += probabilidades[a.extra ? 1 : 0][r] * a.cards.length;
+    }
+    for (const r of RAREZAS) sacadas[r].expected = Math.round(sacadas[r].expected * 10) / 10;
     const extras = Object.values(leerExtras());
     return {
         config,
         status: estado(config, now),
         cardsByRarity: porRareza,
+        pulledByRarity: sacadas,
         totals: {
             players: filas.length,
             packs: filas.reduce((s, f) => s + f.packs, 0),

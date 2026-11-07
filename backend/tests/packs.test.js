@@ -217,6 +217,9 @@ async function main() {
     check('y beto queda en el sorteo', r.me.chosenEntered === true);
     r = await json(await fetch(`${BASE}/api/admin/packs`, { headers: admin }));
     check('el admin ve a beto como participante una sola vez', r.chosen.entrants.length === 1 && r.chosen.entrants[0].pulls === 1 && r.chosen.entrants[0].wallet === beto.address.toLowerCase());
+    const sacadas = r.pulledByRarity;
+    check('el admin cuenta las cartas sacadas por rareza', sacadas.chosen.count === 5 && Object.values(sacadas).reduce((s, x) => s + x.count, 0) === r.totals.packs * 5, JSON.stringify(sacadas));
+    check('y cuantas se esperaban segun las chances', sacadas.chosen.expected === r.totals.packs * 5 && sacadas.common.expected === 0, JSON.stringify(sacadas));
     r = await json(await pedir('POST', '/api/admin/packs/chosen/draw', {}, admin));
     check('el sorteo elige a beto', r.http === 200 && r.chosen.raffle.winner === beto.address.toLowerCase());
     r = await json(await fetch(`${BASE}/api/packs/leaderboard`));
