@@ -30,7 +30,8 @@ function pagosEnApe() {
         at: e.at,
         wallet: e.wallet,
         valueWei: e.valueWei,
-        txHash: e.txHash
+        txHash: e.txHash,
+        source: e.source ?? null
     }));
     return [...forge, ...fog, ...packs].sort((a, b) => b.at.localeCompare(a.at));
 }

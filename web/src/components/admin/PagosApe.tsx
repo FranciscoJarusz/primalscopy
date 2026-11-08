@@ -16,6 +16,7 @@ type Pago = {
     status?: string;
     tokenId?: string | null;
     fog?: number;
+    source?: 'admin' | 'recovered' | null;
 };
 type Datos = {
     totals: Record<'all' | 'days30' | 'days7', { forge: Total; fog: Total; pack?: Total }>;
@@ -153,7 +154,11 @@ export default function PagosApe({ token }: { token: string }) {
                                     </span>
                                     <span className="text-lightblue/80 truncate">
                                         {p.kind === 'pack'
-                                            ? 'Extra pack'
+                                            ? p.source === 'admin'
+                                              ? 'Extra pack · credited by hand'
+                                              : p.source === 'recovered'
+                                                ? 'Extra pack · found by the site'
+                                                : 'Extra pack'
                                             : p.kind === 'fog'
                                             ? `${fog(p.fog ?? 0)} FOG`
                                             : p.tokenId

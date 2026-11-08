@@ -227,7 +227,13 @@ export async function acreditarExtra(token: string, txHash: string): Promise<MiP
     throw new ErrorPacks('The payment is taking long to confirm. Reload the page in a minute: your extra pack will show up.');
 }
 
-export const guardarSolana = (token: string, address: string) =>
+export const recuperarExtras = (token: string) =>
+    pedir<{ recovered: number; me: MiPacks }>('/extra/recover', token, {
+        method: 'POST',
+        body: '{}',
+    });
+
+export const guardarSolana =(token: string, address: string) =>
     pedir<{ solana: string }>('/solana', token, {
         method: 'PUT',
         body: JSON.stringify({ address }),

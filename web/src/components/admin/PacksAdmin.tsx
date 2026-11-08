@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FiChevronDown } from 'react-icons/fi';
 import { BACKEND_URL } from '@/lib/backend';
+import { APECHAIN } from '@/lib/cultomizer/contracts';
 import type { Rareza } from '@/lib/packs';
 import {
     botonChico,
@@ -51,6 +52,7 @@ type Datos = {
     totals: { players: number; packs: number; today: number; playersToday: number; extras: number; extrasToday: number; extraApe: string; gifted?: number };
     players: Jugador[];
     daily?: { day: string; players: number; newPlayers: number; packs: number; extras: number; wallets?: JugadorDia[] }[];
+    credited?: { txHash: string; wallet: string; at: string; valueWei: string; source: 'admin' | 'recovered' }[];
     chosen: {
         entrants: { wallet: string; nickname: string | null; pulls: number; firstAt: string }[];
         raffle: { winner: string; drawnAt: string; entrants: number } | null;
@@ -155,7 +157,7 @@ export default function PacksAdmin({ token }: { token: string }) {
                         <Numeros datos={datos} />
                         <PorDia datos={datos} />
                         <Competencia datos={datos} ocupado={ocupado} configurar={configurar} />
-                        <AcreditarExtra ocupado={ocupado} pedir={pedir} />
+                        <AcreditarExtra datos={datos} ocupado={ocupado} pedir={pedir} />
                     </div>
                     <div id="packs-ranking">
                         <Jugadores datos={datos} ocupado={ocupado} pedir={pedir} />
@@ -653,7 +655,9 @@ function Jugadores({
     );
 }
 
-function AcreditarExtra({ ocupado, pedir }: { ocupado: boolean; pedir: (ruta: string, init?: RequestInit) => Promise<boolean> }) {
+function AcreditarExtra({ datos, ocupado, pedir }: { datos: Datos; ocupado: boolean; pedir: (ruta: string, init?: RequestInit) => Promise<boolean> }) {
+    const quien = useQuien();
+    const acreditados = datos.credited ?? [];
     const [wallet, setWallet] = useState('');
     const [txHash, setTxHash] = useState('');
     const [listo, setListo] = useState(false);
@@ -669,7 +673,7 @@ function AcreditarExtra({ ocupado, pedir }: { ocupado: boolean; pedir: (ruta: st
         <section className={panel}>
             <h2 className={titulo}>Credit an extra pack</h2>
             <p className="text-lightblue/70 text-sm -mt-2">
-                If someone paid for an extra pack and it didn't show up, paste the wallet that paid and the transaction. The payment is checked on chain and the pack is added for today.
+                If someone paid for an extra pack and it didn't show up, paste the wallet that paid and the transaction. The payment is checked on chain and the pack is added for today. Players can also recover it themselves with "Check my payment" on the packs page.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
                 <input value={wallet} onChange={(e) => setWallet(e.target.value)} placeholder="Wallet (0x...)" className={`${campo} flex-1 min-w-0`} />
@@ -679,6 +683,31 @@ function AcreditarExtra({ ocupado, pedir }: { ocupado: boolean; pedir: (ruta: st
                 </button>
             </div>
             {listo && <p className="text-green-400 text-sm">Extra pack credited.</p>}
+            {acreditados.length > 0 && (
+                <div className="flex flex-col gap-2">
+                    <h3 className={etiqueta}>Credited after a lost payment ({fog(acreditados.length)})</h3>
+                    <ul data-scroll-propio className={`${lista} flex flex-col`}>
+                        {acreditados.map((e) => (
+                            <li
+                                key={e.txHash}
+                                className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[9.5rem_minmax(0,1fr)_auto_auto] items-center gap-x-4 gap-y-1 py-2.5 text-sm border-t border-lightblue/15"
+                            >
+                                <span className="text-lightblue/60 whitespace-nowrap col-span-2 sm:col-span-1">{fecha(e.at)}</span>
+                                <span className="text-lightblue truncate">{quien(e.wallet)}</span>
+                                <span className="text-lightblue/80 whitespace-nowrap">{e.source === 'admin' ? 'By hand' : 'Found by the site'}</span>
+                                <a
+                                    href={`${APECHAIN.explorador}/tx/${e.txHash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-lightblue/60 hover:text-lightblue underline underline-offset-4 whitespace-nowrap transition-all duration-300"
+                                >
+                                    Tx
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </section>
     );
 }

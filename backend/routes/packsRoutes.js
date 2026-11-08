@@ -7,6 +7,7 @@ const packShare = require('../lib/packShare');
 const transferIndex = require('../lib/transferIndex');
 const { getPrimalBalance } = require('../lib/nftOwnership');
 const { treasuryConfig, verifyPayment } = require('../lib/forgePayments');
+const pagosPerdidos = require('../lib/pagosPerdidos');
 
 const router = express.Router();
 
@@ -113,6 +114,30 @@ router.post('/extra', requireWallet, async (req, res) => {
         res.status(result.created ? 201 : 200).json({ me: result.me });
     } catch (error) {
         res.status(error.status || 500).json({ error: error.status ? error.message : "Couldn't check the payment.", code: error.code });
+    }
+});
+
+const ultimaBusqueda = new Map();
+const ESPERA_BUSQUEDA = 20_000;
+
+router.post('/extra/recover', requireWallet, async (req, res) => {
+    const wallet = req.walletAddress.toLowerCase();
+    const tesoro = treasuryConfig();
+    if (!tesoro) return res.status(503).json({ error: "Payments aren't set up.", reason: 'not-configured' });
+    const puede = packs.puedeComprarExtra(wallet);
+    if (puede.error && puede.reason !== 'max-extras') return responder(res, puede);
+    const antes = ultimaBusqueda.get(wallet) || 0;
+    if (Date.now() - antes < ESPERA_BUSQUEDA) {
+        return res.status(429).json({ error: 'Checking too often. Try again in a few seconds.', reason: 'too-soon' });
+    }
+    ultimaBusqueda.set(wallet, Date.now());
+    const tier = await nivel(req);
+    try {
+        const recovered = await pagosPerdidos.recuperarExtras(wallet, tesoro, { tier });
+        res.json({ recovered, me: packs.resumen(wallet, { tier }) });
+    } catch {
+        ultimaBusqueda.delete(wallet);
+        res.status(503).json({ error: "Couldn't check your payments right now. Try again in a minute.", reason: 'rpc-error' });
     }
 });
 

@@ -309,7 +309,7 @@ router.post('/packs/extras', async (req, res) => {
             minWei: parseEther(String(packs.getConfig().extraPrice)),
             what: 'an extra pack',
         });
-        const result = packs.buyExtra(wallet, payment);
+        const result = packs.buyExtra(wallet, payment, { source: 'admin' });
         if (result.error) return res.status(result.status || 400).json({ error: result.error });
         res.status(result.created ? 201 : 200).json({ ...packs.adminSummary(), credited: result.created ? 'new' : 'already' });
     } catch (error) {

@@ -32,7 +32,9 @@ import {
     leerMio,
     leerRanking,
     packDePrueba,
+    recuperarExtras,
     registrarse,
+    ErrorPacks,
     type CartaPack,
     type ConfigPacks,
     type FilaChosen,
@@ -129,6 +131,26 @@ const NIVELES: { id: Nivel; nombre: string }[] = [
     { id: 'staker', nombre: 'stakers' },
 ];
 const PAGO_EXTRA = 'packs:extra';
+const INTENTO_EXTRA = 'packs:extra-intento';
+const DIA_MS = 86_400_000;
+
+function intentoDe(wallet: string) {
+    try {
+        return Number(localStorage.getItem(`${INTENTO_EXTRA}:${wallet.toLowerCase()}`)) || 0;
+    } catch {
+        return 0;
+    }
+}
+
+function marcarIntento(wallet: string, activo: boolean) {
+    try {
+        const clave = `${INTENTO_EXTRA}:${wallet.toLowerCase()}`;
+        if (activo) localStorage.setItem(clave, String(Date.now()));
+        else localStorage.removeItem(clave);
+    } catch {
+        /* storage bloqueado */
+    }
+}
 
 export default function Packs() {
     const address = useWalletActual();
@@ -204,15 +226,58 @@ export default function Packs() {
     useEffect(() => {
         if (!session.token || !address) return;
         const hash = pagoSinInformar(address, PAGO_EXTRA);
-        if (!hash) return;
-        acreditarExtra(session.token, hash)
-            .then((m) => {
-                recordar(address, null, PAGO_EXTRA);
-                setMio(m);
-                setExtraComprado(true);
+        if (hash) {
+            acreditarExtra(session.token, hash)
+                .then((m) => {
+                    recordar(address, null, PAGO_EXTRA);
+                    marcarIntento(address, false);
+                    setMio(m);
+                    setExtraComprado(true);
+                })
+                .catch((e) => {
+                    if (e instanceof ErrorPacks && e.reason)
+                        recordar(address, null, PAGO_EXTRA);
+                });
+            return;
+        }
+        const intento = intentoDe(address);
+        if (!intento) return;
+        if (Date.now() - intento > DIA_MS) {
+            marcarIntento(address, false);
+            return;
+        }
+        recuperarExtras(session.token)
+            .then(({ recovered, me }) => {
+                setMio(me);
+                if (recovered) {
+                    marcarIntento(address, false);
+                    setExtraComprado(true);
+                }
             })
             .catch(() => {});
     }, [session.token, address]);
+
+    const [buscandoPago, setBuscandoPago] = useState(false);
+    const buscarPago = async () => {
+        if (!session.token || !address || buscandoPago) return;
+        setError(null);
+        setBuscandoPago(true);
+        try {
+            const { recovered, me } = await recuperarExtras(session.token);
+            setMio(me);
+            if (recovered) {
+                marcarIntento(address, false);
+                setExtraComprado(true);
+            } else
+                setError(
+                    "We didn't find a payment missing its pack. If you just paid, wait a minute and check again."
+                );
+        } catch (e) {
+            setError((e as Error).message);
+        } finally {
+            setBuscandoPago(false);
+        }
+    };
 
     const restantes = mio
         ? Math.max(0, mio.limit - mio.openedToday) + (mio.bonusPacks ?? 0)
@@ -226,14 +291,18 @@ export default function Packs() {
             const token = session.token ?? (await conectarYFirmar());
             if (!token || !address) return;
             const cobro = { required: true as const, ...config.extra };
+            marcarIntento(address, true);
             const hash = await transferir(cobro, PAGO_EXTRA);
             setComprando('Confirming payment...');
             await esperarConfirmacion(cobro, hash);
             const me = await acreditarExtra(token, hash);
             recordar(address, null, PAGO_EXTRA);
+            marcarIntento(address, false);
             setMio(me);
             setExtraComprado(true);
         } catch (e) {
+            if (address && (e as Error).message === 'Payment cancelled.')
+                marcarIntento(address, false);
             setError((e as Error).message);
         } finally {
             setComprando(null);
@@ -465,6 +534,22 @@ export default function Packs() {
                                         ` They have ${extra.boost}% more chance of Rare, Epic and Legendary cards.`}
                                 </p>
                             )}
+                            {extra &&
+                                config.status === 'open' &&
+                                mio?.registered &&
+                                !mio.disqualified &&
+                                restantes === 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={buscarPago}
+                                        disabled={buscandoPago}
+                                        className="text-mw-fog underline underline-offset-4 cursor-pointer hover:text-mw-champagne disabled:cursor-wait transition-all duration-300"
+                                    >
+                                        {buscandoPago
+                                            ? 'Checking your payments...'
+                                            : "Paid and didn't get your pack? Check my payment"}
+                                    </button>
+                                )}
                         </div>
                     )
                 )}

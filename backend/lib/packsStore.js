@@ -285,9 +285,14 @@ function chancesDe(config, extra) {
     return chances;
 }
 
-function sortearCarta(config, extra = false) {
+function sortearCarta(config, extra = false, { sinChosen = false } = {}) {
     const chances = chancesDe(config, extra);
+    if (sinChosen) chances.chosen = 0;
     const rarezas = RAREZAS.filter(r => chances[r] > 0 && CARTAS.some(c => c.rarity === r));
+    if (!rarezas.length) {
+        const resto = CARTAS.filter(c => c.rarity !== 'chosen');
+        return resto[crypto.randomInt(resto.length)];
+    }
     let n = crypto.randomInt(rarezas.reduce((s, r) => s + chances[r], 0));
     const rareza = rarezas.find(r => (n -= chances[r]) < 0);
     const opciones = CARTAS.filter(c => c.rarity === rareza);
@@ -313,7 +318,12 @@ function open(wallet, { tier = null } = {}, now = Date.now()) {
     }
 
     const pagado = !regalo && usados >= base;
-    const cartas = Array.from({ length: CARTAS_POR_PACK }, () => sortearCarta(config, pagado));
+    let tieneChosen = Boolean(CHOSEN_ID && jugadores().get(key)?.collection[CHOSEN_ID]);
+    const cartas = Array.from({ length: CARTAS_POR_PACK }, () => {
+        const carta = sortearCarta(config, pagado, { sinChosen: tieneChosen });
+        if (carta.rarity === 'chosen') tieneChosen = true;
+        return carta;
+    });
     const entrada = {
         at: new Date(now).toISOString(),
         id: crypto.randomUUID(),
@@ -342,7 +352,7 @@ function puedeComprarExtra(wallet, now = Date.now()) {
     return { ok: true };
 }
 
-function buyExtra(wallet, payment, { tier = null } = {}, now = Date.now()) {
+function buyExtra(wallet, payment, { tier = null, source = null } = {}, now = Date.now()) {
     const key = wallet.toLowerCase();
     const hash = payment.txHash.toLowerCase();
     const extras = leerExtras();
@@ -360,6 +370,7 @@ function buyExtra(wallet, payment, { tier = null } = {}, now = Date.now()) {
         valueWei: payment.valueWei,
         blockNumber: payment.blockNumber,
         at: new Date(now).toISOString(),
+        ...(source ? { source } : {}),
     };
     writeJson(EXTRAS_PATH, extras);
     return { me: resumen(key, { tier }, now), created: true };
@@ -621,6 +632,7 @@ function adminSummary(now = Date.now()) {
         },
         players: filas,
         daily: porDia(extras),
+        credited: extras.filter(e => e.source).sort((a, b) => b.at.localeCompare(a.at)),
         chosen: { entrants: participantesChosen(), raffle: config.chosenRaffle ?? null },
     };
 }

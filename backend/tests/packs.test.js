@@ -177,6 +177,28 @@ async function main() {
     check('por la ruta, un hash ya acreditado devuelve el resumen', r.http === 200 && r.me.extrasToday === 2);
     r = await json(await pedir('POST', '/api/packs/extra', { txHash: pago(3).txHash }, como(t.caro)));
     check('por la ruta, pasado el maximo no verifica el pago', r.http === 409 && r.reason === 'max-extras');
+
+    const perdidos = require('../lib/pagosPerdidos');
+    const cobros = require('../lib/forgePayments');
+    const buscarReal = perdidos.pagosAlTesoro;
+    const verificarReal = cobros.verifyPayment;
+    perdidos.pagosAlTesoro = async () => [
+        { txHash: pago(1).txHash, valueWei: '20000000000000000000' },
+        { txHash: pago(4).txHash, valueWei: '20000000000000000000' },
+        { txHash: pago(5).txHash, valueWei: '1000000000000000000' },
+    ];
+    cobros.verifyPayment = async txHash => ({ txHash, wallet: caro.address, valueWei: '20000000000000000000', blockNumber: '1' });
+    r = await json(await pedir('POST', '/api/packs/extra/recover', {}, como(t.caro)));
+    check('recupera solo el pago sin registrar y con el precio', r.http === 200 && r.recovered === 1 && r.me.extrasToday === 3, JSON.stringify(r));
+    check('no se puede buscar seguido', (await pedir('POST', '/api/packs/extra/recover', {}, como(t.caro))).status === 429);
+    check('el admin ve el recuperado', packs.adminSummary().credited.some(e => e.txHash === pago(4).txHash && e.source === 'recovered'));
+    check('economy lo marca', require('../lib/apePayments').resumen().payments.find(p => p.txHash === pago(4).txHash)?.source === 'recovered');
+    perdidos.pagosAlTesoro = buscarReal;
+    cobros.verifyPayment = verificarReal;
+    const extrasPath = path.join(packs.PACKS_DIR, 'extras.json');
+    const sinRecuperado = JSON.parse(fs.readFileSync(extrasPath, 'utf8'));
+    delete sinRecuperado[pago(4).txHash];
+    fs.writeFileSync(extrasPath, JSON.stringify(sinRecuperado));
     r = await json(await config({ tiers: { none: 2, holder: 5, staker: 7 }, extraPrice: 10, extraMax: 1 }));
     check('el admin cambia niveles y extras', r.http === 200 && r.config.tiers.staker === 7 && r.config.extraPrice === 10 && r.config.extraMax === 1);
     check('niveles fuera de rango se rechazan', (await config({ tiers: { none: 99 } })).status === 400);
@@ -213,12 +235,15 @@ async function main() {
     console.log('\nThe Chosen');
     await config({ rarities: { common: { chance: 0, points: 5 }, uncommon: { chance: 0, points: 10 }, rare: { chance: 0, points: 25 }, epic: { chance: 0, points: 60 }, legendary: { chance: 0, points: 200 }, chosen: { chance: 10000, points: 500 } } });
     r = await json(await abrir('beto'));
-    check('con 100% Chosen sale la carta 53', r.http === 200 && r.pack.cards.every(c => c === 53) && r.pack.points === 2500, JSON.stringify(r.pack));
+    check('con 100% Chosen sale la carta 53 una sola vez por pack', r.http === 200 && r.pack.cards.filter(c => c === 53).length === 1 && r.pack.cards.length === 5, JSON.stringify(r.pack));
     check('y beto queda en el sorteo', r.me.chosenEntered === true);
+    packs.grantPacks(beto.address, 1, 'test:chosen-repetida');
+    r = await json(await abrir('beto'));
+    check('quien ya tiene The Chosen no la vuelve a sacar', r.http === 200 && !r.pack.cards.includes(53), JSON.stringify(r.pack));
     r = await json(await fetch(`${BASE}/api/admin/packs`, { headers: admin }));
     check('el admin ve a beto como participante una sola vez', r.chosen.entrants.length === 1 && r.chosen.entrants[0].pulls === 1 && r.chosen.entrants[0].wallet === beto.address.toLowerCase());
     const sacadas = r.pulledByRarity;
-    check('el admin cuenta las cartas sacadas por rareza', sacadas.chosen.count === 5 && Object.values(sacadas).reduce((s, x) => s + x.count, 0) === r.totals.packs * 5, JSON.stringify(sacadas));
+    check('el admin cuenta las cartas sacadas por rareza', sacadas.chosen.count === 1 && Object.values(sacadas).reduce((s, x) => s + x.count, 0) === r.totals.packs * 5, JSON.stringify(sacadas));
     check('y cuantas se esperaban segun las chances', sacadas.chosen.expected === r.totals.packs * 5 && sacadas.common.expected === 0, JSON.stringify(sacadas));
     r = await json(await pedir('POST', '/api/admin/packs/chosen/draw', {}, admin));
     check('el sorteo elige a beto', r.http === 200 && r.chosen.raffle.winner === beto.address.toLowerCase());
