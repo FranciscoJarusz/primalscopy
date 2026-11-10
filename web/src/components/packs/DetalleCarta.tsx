@@ -22,9 +22,9 @@ export default function DetalleCarta({
         <div
             onClick={onCerrar}
             data-lenis-prevent
-            className="mw-texto fixed inset-0 z-[70] bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center gap-6 p-4 animate-aparece cursor-pointer"
+            className="mw-texto fixed inset-0 z-70 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center gap-6 p-4 animate-aparece cursor-pointer"
         >
-            <div className="h-[min(68vh,44rem)] aspect-[1621/2250] max-w-[90vw]">
+            <div className="h-[min(68vh,44rem)] aspect-1621/2250 max-w-[90vw]">
                 <Frente carta={carta} />
             </div>
             <TituloCarta carta={carta} />

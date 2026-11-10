@@ -275,7 +275,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                                     item.enabled ? '' : 'opacity-50'
                                 }`}
                             >
-                                <div className="order-1 xl:order-none sm:col-span-2 flex items-end gap-3 xl:contents">
+                                <div className="order-1 xl:order-0 sm:col-span-2 flex items-end gap-3 xl:contents">
                                 <div className="h-16 xl:h-9 flex flex-col items-center justify-center">
                                     <button
                                         type="button"
@@ -335,7 +335,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                                     )}
                                 </div>
                                 </div>
-                                <label className={`${etiqueta} order-3 xl:order-none col-span-2 xl:col-span-1`}>
+                                <label className={`${etiqueta} order-3 xl:order-0 col-span-2 xl:col-span-1`}>
                                     Name
                                     <input
                                         value={item.label}
@@ -344,7 +344,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                                         className={campo}
                                     />
                                 </label>
-                                <label className={`${etiqueta} order-4 xl:order-none col-span-2 xl:col-span-1`}>
+                                <label className={`${etiqueta} order-4 xl:order-0 col-span-2 xl:col-span-1`}>
                                     Description
                                     <input
                                         value={item.description}
@@ -353,7 +353,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                                         className={campo}
                                     />
                                 </label>
-                                <label className={`${etiqueta} order-5 xl:order-none`}>
+                                <label className={`${etiqueta} order-5 xl:order-0`}>
                                     Price (FOG)
                                     <input
                                         type="number"
@@ -363,7 +363,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                                         className={campo}
                                     />
                                 </label>
-                                <label className={`${etiqueta} order-6 xl:order-none`} title="How many are left to sell. Empty means unlimited.">
+                                <label className={`${etiqueta} order-6 xl:order-0`} title="How many are left to sell. Empty means unlimited.">
                                     Stock
                                     <input
                                         type="number"
@@ -374,7 +374,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                                         className={campo}
                                     />
                                 </label>
-                                <div className={`${etiqueta} order-7 xl:order-none col-span-2 xl:col-span-1`}>
+                                <div className={`${etiqueta} order-7 xl:order-0 col-span-2 xl:col-span-1`}>
                                     Background
                                     <div className="h-9 flex items-center gap-1.5">
                                         {(['from', 'to'] as const).map((lado) => {
@@ -411,7 +411,7 @@ export default function ShopAdmin({ token }: { token: string }) {
                                         )}
                                     </div>
                                 </div>
-                                <div className="order-2 xl:order-none sm:col-span-2 self-start xl:self-auto flex items-center justify-end gap-2 xl:contents">
+                                <div className="order-2 xl:order-0 sm:col-span-2 self-start xl:self-auto flex items-center justify-end gap-2 xl:contents">
                                 <label className="h-9 flex items-center gap-2 text-sm text-lightblue cursor-pointer">
                                     <input
                                         type="checkbox"

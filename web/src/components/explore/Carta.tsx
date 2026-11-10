@@ -10,7 +10,7 @@ export default function Carta({ id, rank, zona }: { id: number; rank: number | n
             insignia={
                 zona && (
                     <span
-                        title={`Training in ${zona.nombre}`}
+                        title={`Staking in ${zona.nombre}`}
                         className="absolute top-2 left-2 h-5 inline-flex items-center rounded-md px-2 pb-[0.38em] font-accent uppercase text-xs text-white leading-none"
                         style={{ backgroundColor: zona.color }}
                     >

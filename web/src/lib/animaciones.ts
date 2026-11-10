@@ -107,7 +107,8 @@ function observador(hacia: gsap.TweenVars) {
         // poco scroll que quizas nunca cruce el margen (en una pantalla
         // grande, el footer asoma 76px y la pagina scrollea 8).
         alFondo() {
-            const fondo = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 100;
+            if (!mirando.size) return;
+            const fondo = window.scrollY + window.innerHeight >= altoPagina - 100;
             if (!fondo) return;
             animar([...mirando].filter((el) => el.getBoundingClientRect().top < window.innerHeight));
         },
@@ -127,6 +128,11 @@ function observador(hacia: gsap.TweenVars) {
         },
     };
 }
+
+let altoPagina = 0;
+const medirAlto = () => {
+    altoPagina = document.documentElement.scrollHeight;
+};
 
 let reveal: ReturnType<typeof observador>;
 let escalonado: ReturnType<typeof observador>;
@@ -219,13 +225,16 @@ export function initAnimaciones(lenis: Lenis | null) {
     mm.add('(prefers-reduced-motion: no-preference)', () => {
         // Lenis mueve el scroll por su cuenta: ScrollTrigger tiene que
         // enterarse en cada frame o los disparos llegan tarde.
-        const sync = () => ScrollTrigger.update();
+        const sync = () => {
+            if (triggers.size) ScrollTrigger.update();
+        };
         lenis?.on('scroll', sync);
 
         reveal = observador({ ...FIN, x: 0, y: 0, duration: 0.9, ease: EASE, stagger: 0.12 });
         escalonado = observador({ ...FIN, y: 0, duration: 0.7, ease: 'power2.out', stagger: 0.08 });
         animar();
         listoSiHidrato();
+        medirAlto();
         requestAnimationFrame(alFondo);
         window.addEventListener('scroll', alFondo, { passive: true });
 
@@ -244,6 +253,7 @@ export function initAnimaciones(lenis: Lenis | null) {
         const resize = new ResizeObserver(() => {
             clearTimeout(refresco);
             refresco = window.setTimeout(() => {
+                medirAlto();
                 limpiar();
                 ScrollTrigger.refresh();
                 alFondo();

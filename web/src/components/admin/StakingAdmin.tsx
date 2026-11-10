@@ -182,7 +182,7 @@ export default function StakingAdmin({ token }: { token: string }) {
             if (!respuesta.ok) throw new Error(d.error);
             setVerificacion(
                 d.checked === 0
-                    ? 'Nothing is training.'
+                    ? 'Nothing is staking.'
                     : `${d.checked} checked. Finished ${d.ended.completed}, sold ${d.ended.transferred}, listed ${d.ended.listed}.${
                           d.listingsChecked
                               ? ''
@@ -230,8 +230,8 @@ export default function StakingAdmin({ token }: { token: string }) {
                     Staking
                 </h1>
                 <p className="text-base sm:text-lg text-lightblue mt-3 max-w-2xl">
-                    Holders train their Primals to earn FOG. Changes to the rate
-                    and bonuses apply to new trainings; the ones already running
+                    Holders stake their Primals to earn FOG. Changes to the rate
+                    and bonuses apply to new stakes; the ones already running
                     keep the rate they started with.
                 </p>
             </div>
@@ -261,8 +261,8 @@ export default function StakingAdmin({ token }: { token: string }) {
                         </span>
                         <span className="text-lightblue/80 text-sm flex-1">
                             {resumen.config.enabled
-                                ? 'Holders can start new trainings.'
-                                : 'Nobody can start a new training. Running ones keep going.'}
+                                ? 'Holders can start new stakes.'
+                                : 'Nobody can start a new stake. Running ones keep going.'}
                         </span>
                         <button
                             onClick={alternarAbierto}
@@ -273,8 +273,8 @@ export default function StakingAdmin({ token }: { token: string }) {
                     </div>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                         {[
-                            ['Primals training', fog(resumen.training)],
-                            ['Wallets training', fog(resumen.wallets)],
+                            ['Primals staking', fog(resumen.training)],
+                            ['Wallets staking', fog(resumen.wallets)],
                             ['FOG earned', fog(resumen.totals.earned)],
                             ['FOG spent', fog(resumen.totals.spent)],
                         ].map(([nombre, valor]) => (
@@ -437,7 +437,7 @@ export default function StakingAdmin({ token }: { token: string }) {
                             From how many Primals staking at once each one gets
                             the extra %. It adds to the region bonus, and it is
                             recalculated every day with what the wallet has
-                            staking. New trainings take the tiers saved here;
+                            staking. New stakes take the tiers saved here;
                             the ones already running keep theirs.
                         </p>
                         <div className="flex flex-wrap items-stretch gap-3">
@@ -519,7 +519,7 @@ export default function StakingAdmin({ token }: { token: string }) {
                                 Extra % for the 1/1 pieces. It adds to the
                                 region and quantity bonus, and it applies from
                                 the moment you save to every 1/1, also the ones
-                                already training. Days already earned don't
+                                already staking. Days already earned don't
                                 change.
                             </p>
                             <div className="flex flex-wrap items-end gap-4">
@@ -545,8 +545,8 @@ export default function StakingAdmin({ token }: { token: string }) {
                                             key={u.tokenId}
                                             title={
                                                 u.training
-                                                    ? 'Training now'
-                                                    : 'Not training'
+                                                    ? 'Staking now'
+                                                    : 'Not staking'
                                             }
                                             className={`rounded-md px-2 py-0.5 text-sm ${
                                                 u.training
@@ -585,7 +585,7 @@ export default function StakingAdmin({ token }: { token: string }) {
                         <h2 className={titulo}>Wallets</h2>
                         {resumen.topWallets.length === 0 ? (
                             <p className="text-lightblue/70">
-                                Nobody has trained yet.
+                                Nobody has staked yet.
                             </p>
                         ) : (
                             <div className={lista} data-scroll-propio>
@@ -596,7 +596,7 @@ export default function StakingAdmin({ token }: { token: string }) {
                                             Wallet
                                         </th>
                                         <th className="font-normal pb-2 text-right">
-                                            Training
+                                            Staking
                                         </th>
                                         <th className="font-normal pb-2 text-right">
                                             Spent
@@ -637,7 +637,7 @@ export default function StakingAdmin({ token }: { token: string }) {
                             {resumen.endings.length === 0 ? (
                                 <p className="text-lightblue/70">
                                     No Primal was sold, listed or unstaked
-                                    while training.
+                                    while staking.
                                 </p>
                             ) : (
                                 <ul data-scroll-propio className={`${lista} text-sm text-lightblue flex flex-col gap-1.5`}>

@@ -16,6 +16,8 @@ export default defineConfig({
 
   prefetch: { prefetchAll: true },
 
+  devToolbar: { enabled: false },
+
   // El sitio sigue siendo estatico por defecto: la landing y el resto de las
   // pantallas se generan una vez y se sirven como HTML, que es lo mas rapido.
   // Solo las rutas que lo piden explicitamente (`export const prerender = false`)

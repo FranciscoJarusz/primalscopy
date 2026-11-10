@@ -23,7 +23,7 @@ const boton =
     'h-8 inline-flex items-center gap-1.5 leading-none rounded-md px-3 font-accent uppercase text-darkblue cursor-pointer active:scale-97 transition-all duration-300';
 const botonLink = `${boton} bg-lightblue hover:bg-yellow`;
 const botonAmarillo = `${boton} bg-yellow hover:scale-102`;
-const subir = 'relative -top-[0.19em]';
+const subir = 'relative top-[-0.19em]';
 
 const fecha = (iso: string) =>
     new Date(iso).toLocaleDateString('en-US', {
@@ -94,7 +94,7 @@ function Staking({ s }: { s: NonNullable<Datos['staking']> }) {
                 className="font-accent uppercase text-lg leading-none pb-1"
                 style={{ color: zona?.color }}
             >
-                Training in {zona?.titulo ?? `${s.days} days`}
+                Staking in {zona?.titulo ?? `${s.days} days`}
             </span>
             <span className="text-sm text-lightblue/80">
                 {dias > 0

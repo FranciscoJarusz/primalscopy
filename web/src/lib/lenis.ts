@@ -1,7 +1,8 @@
 import Lenis from 'lenis';
 import 'lenis/dist/lenis.css';
 
-const DURACION = 1.8;
+const LERP = 0.12;
+const DURACION_ANCLA = 1.2;
 
 let lenis: Lenis | null = null;
 let listaPuede = false;
@@ -24,8 +25,7 @@ export function initLenis() {
         return null;
 
     lenis = new Lenis({
-        duration: DURACION,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        lerp: LERP,
         autoRaf: true,
         prevent: (node) =>
             node.closest('w3m-modal, appkit-modal') !== null ||
@@ -33,8 +33,8 @@ export function initLenis() {
     });
 
     // La rueda dentro de una lista con scroll propio (data-scroll-propio) frena
-    // a la pagina: si no, la inercia de DURACION la seguia bajando mientras la
-    // lista tambien bajaba.
+    // a la pagina: si no, la inercia la seguia bajando mientras la lista
+    // tambien bajaba.
     document.addEventListener(
         'wheel',
         (e) => {
@@ -61,7 +61,8 @@ export function initLenis() {
 
         e.preventDefault();
         lenis?.scrollTo(destino, {
-            duration: DURACION,
+            duration: DURACION_ANCLA,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
             offset: offsetHeader(),
         });
         history.pushState(null, '', href);

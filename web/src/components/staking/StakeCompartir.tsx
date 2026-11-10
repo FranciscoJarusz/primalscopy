@@ -158,7 +158,7 @@ export default function StakeCompartir({
 
                 <p className="stake-pop text-lightblue text-base sm:text-lg" style={{ animationDelay: '.2s' }}>
                     {otro ? otro.mensaje : <>
-                    {primals} {n === 1 ? 'is' : 'are'} training
+                    {primals} {n === 1 ? 'is' : 'are'} staking
                     {zona ? (
                         <>
                             {' '}in <span className="text-yellow">{zona}</span>

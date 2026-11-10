@@ -1,12 +1,9 @@
 ---
-const roles = [
-    { slug: 'primal', name: 'Primal', holding: '1', fog: '30' },
-    { slug: 'sentinel', name: 'Sentinel', holding: '2+', fog: '70' },
-    { slug: 'vanguard', name: 'Vanguard', holding: '10+', fog: '300' },
-    { slug: 'relicwarden', name: 'Relicwarden', holding: '30+', fog: '600' },
-    { slug: 'eminence', name: 'Eminence', holding: '50+', fog: '1000' },
-    { slug: 'paragon', name: 'Paragon', holding: '80+', fog: '1000' },
-    { slug: 'archon', name: 'Archon', holding: '100+', fog: '1000' },
+const periodos = [
+    { days: 7, perDay: 40 },
+    { days: 14, perDay: 44 },
+    { days: 30, perDay: 52 },
+    { days: 90, perDay: 64 },
 ];
 ---
 
@@ -37,18 +34,16 @@ const roles = [
 
             <div class="flex max-w-lg flex-col gap-2 text-base sm:text-lg text-lightblue">
                 <p>
-                    By being a Primal Cult Owner you will start to get daily
-                    passive income, with the Discord soft staking system.
+                    Stake your Primals on the website and earn FOG every day.
+                    No gas, and they never leave your wallet.
                 </p>
                 <p>
-                    Each day an amount of FOG will be delivered to your user,
-                    and it will be the main source of income as a reward for the
-                    Primals that you hold.
+                    Pick 7, 14, 30 or 90 days: the longer you stake, the more
+                    FOG you earn. Holding more Primals adds an extra bonus.
                 </p>
                 <p>
-                    The roles in Discord are segmented in different Primal Cult
-                    holding amounts. They will give you a specific amount of FOG
-                    that will be stackable with the previous role income too.
+                    Spend your FOG in the Shop on keys, raffle tickets, rerolls
+                    and more.
                 </p>
 
                 <a
@@ -63,18 +58,36 @@ const roles = [
 
     <ul
         data-anim-stagger
-        class="flex flex-wrap justify-center gap-3 sm:gap-5"
-        aria-label="Discord soft staking roles"
+        class="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        aria-label="Staking periods"
     >
-        {roles.map((role) => (
-            <li class="w-[calc((100%-1.5rem)/3)] sm:w-[calc((100%-3.75rem)/4)] lg:w-[calc((100%-7.5rem)/7)]">
-                <img
-                    src={`/images/roles/${role.slug}.webp`}
-                    alt={`${role.name}: holder of ${role.holding} Primals, earns ${role.fog} FOG daily`}
-                    class="w-full rounded-2xl shadow-lg shadow-darkblue/50"
-                    loading="lazy"
-                />
+        {periodos.map((p) => (
+            <li
+                data-periodo={p.days}
+                class="flex flex-col items-center justify-center gap-2 lg:gap-3 rounded-2xl sm:rounded-3xl bg-darkblue px-3 sm:px-6 pt-1 pb-4 text-center text-yellow shadow-lg shadow-darkblue/50"
+            >
+                <p class="font-accent uppercase text-3xl sm:text-4xl xl:text-5xl 2xl:text-6xl">{p.days} days</p>
+                <span class="text-sm sm:text-base font-bold uppercase">
+                    <span data-fog>{p.perDay}</span> FOG a day
+                </span>
             </li>
         ))}
     </ul>
 </section>
+
+<script>
+    import { BACKEND_URL } from '@/lib/backend';
+
+    (async () => {
+        try {
+            const response = await fetch(`${BACKEND_URL}/staking/config`);
+            if (!response.ok) return;
+            const { periods } = await response.json();
+            if (!Array.isArray(periods)) return;
+            for (const periodo of periods) {
+                const fog = document.querySelector<HTMLElement>(`[data-periodo="${periodo.days}"] [data-fog]`);
+                if (fog && Number.isFinite(periodo.perDay)) fog.textContent = periodo.perDay.toLocaleString('en-US');
+            }
+        } catch {}
+    })();
+</script>

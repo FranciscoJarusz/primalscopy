@@ -1,8 +1,8 @@
 ---
 const initialStats = [
-    { value: '2,712', label: 'Primals', id: 'primals-count' },
+    { value: '2,713', label: 'Primals', id: 'primals-count' },
     { value: '1,013.95', label: '$APE burned', id: 'ape-burned' },
-    { value: '+600', label: 'Cultists' },
+    { value: '636', label: 'Cultists', id: 'holders-count' },
 ];
 ---
 
@@ -19,7 +19,7 @@ const initialStats = [
                 stat.id === 'primals-count' && 'select-none',
             ]}
         >
-            <p id={stat.id} class="font-accent text-5xl sm:text-4xl lg:text-6xl">
+            <p id={stat.id} data-supply={stat.id === 'primals-count' ? '' : undefined} class="font-accent text-5xl sm:text-4xl lg:text-6xl">
                 {stat.value}
             </p>
             <span class="text-sm sm:text-base font-bold uppercase">{stat.label}</span>
@@ -29,6 +29,7 @@ const initialStats = [
 
 <script>
     const burned = document.querySelector<HTMLElement>('#ape-burned');
+    const holders = document.querySelector<HTMLElement>('#holders-count');
 
     if (burned) {
         const refreshBurned = async () => {
@@ -49,4 +50,25 @@ const initialStats = [
         refreshBurned();
         window.setInterval(refreshBurned, 5 * 60 * 1000);
     }
+
+    const refreshCollection = async () => {
+        try {
+            const response = await fetch('/api/stats/holders');
+            if (!response.ok) return;
+
+            const data = await response.json();
+            if (Number.isInteger(data.totalSupply) && data.totalSupply > 0) {
+                const texto = data.totalSupply.toLocaleString('en-US');
+                document.querySelectorAll<HTMLElement>('[data-supply]').forEach((n) => {
+                    n.dataset.supply = String(data.totalSupply);
+                    if (!n.classList.contains('exiled-rojo')) n.textContent = texto;
+                });
+            }
+            if (holders && Number.isInteger(data.holders) && data.holders > 0) {
+                holders.textContent = data.holders.toLocaleString('en-US');
+            }
+        } catch {}
+    };
+
+    refreshCollection();
 </script>

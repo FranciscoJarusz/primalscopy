@@ -24,19 +24,19 @@ export default function NetworkSwitcher() {
       <div className="flex items-center gap-3">
         <div className="text-yellow-400 text-xl">⚠️</div>
         <div>
-          <div className="text-yellow-300 font-semibold">Red incorrecta</div>
+          <div className="text-yellow-300 font-semibold">Wrong network</div>
           <div className="text-yellow-200 text-sm">
-            Red actual: Chain ID {chainId}
+            Current network: chain ID {chainId}
           </div>
           <div className="text-yellow-200 text-sm">
-            Necesitas cambiar a {APECHAIN.nombre}
+            Switch to {APECHAIN.nombre} to continue.
           </div>
           <button
             onClick={() => switchChain({ chainId: APECHAIN.id })}
             disabled={isPending}
             className="bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 cursor-pointer px-3 py-1 rounded text-white text-xs mt-2 transition-all duration-300"
           >
-            {isPending ? "Cambiando..." : `Cambiar a ${APECHAIN.nombre}`}
+            {isPending ? "Switching..." : `Switch to ${APECHAIN.nombre}`}
           </button>
         </div>
       </div>

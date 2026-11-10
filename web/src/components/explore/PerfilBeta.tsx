@@ -11,6 +11,7 @@ import Sticker, { giro } from '@/components/insignias/Sticker';
 import Carta from './Carta';
 import EditarPerfil from './EditarPerfil';
 import { rememberPrimal } from '@/lib/cultomizer/avatarPrimal';
+import { hace } from '@/lib/tiempo';
 
 const card =
     'rounded-2xl sm:rounded-[30px] bg-darkblue shadow-lg shadow-darkblue/50 p-5 sm:p-8';
@@ -41,14 +42,6 @@ function Numero({ label, valor, icono = false }: { label: string; valor: string;
     );
 }
 
-function hace(iso: string) {
-    const min = Math.max(1, Math.floor((Date.now() - Date.parse(iso)) / 60000));
-    if (min < 60) return `${min}m ago`;
-    if (min < 60 * 24) return `${Math.floor(min / 60)}h ago`;
-    if (min < 60 * 24 * 30) return `${Math.floor(min / 60 / 24)}d ago`;
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 function Actividad({ a }: { a: Datos['activity'][number] }) {
     const zona = ZONAS.find((z) => z.days === a.days);
     const primal = a.tokenId ? (
@@ -64,7 +57,7 @@ function Actividad({ a }: { a: Datos['activity'][number] }) {
         ) : a.kind === 'stake' ? (
             <>Sent {primal} to {zona?.titulo ?? `${a.days} days`}</>
         ) : a.kind === 'trained' ? (
-            <>{primal} finished training in {zona?.nombre ?? `${a.days} days`}</>
+            <>{primal} finished staking in {zona?.nombre ?? `${a.days} days`}</>
         ) : (
             <>Redeemed {a.label}</>
         );
@@ -164,10 +157,10 @@ export default function PerfilBeta({
         <div className="flex flex-col gap-5 sm:gap-8">
             <div className="grid gap-5 sm:gap-8 lg:grid-cols-12 items-start">
                 <div
-                    className="lg:col-span-7 rounded-2xl sm:rounded-[30px] shadow-lg shadow-darkblue/50 bg-[#0b0b0b] bg-cover bg-center p-5 sm:p-8 lg:aspect-[3/2] grid gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-center"
+                    className="lg:col-span-7 rounded-2xl sm:rounded-[30px] shadow-lg shadow-darkblue/50 bg-[#0b0b0b] bg-cover bg-center p-5 sm:p-8 lg:aspect-3/2 grid gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-center"
                     style={{ backgroundImage: 'url(/profile/fondo.webp)' }}
                 >
-                    <div className="relative w-full max-w-56 mx-auto aspect-[994/1326] -rotate-2">
+                    <div className="relative w-full max-w-56 mx-auto aspect-994/1326 -rotate-2">
                         {avatar && (
                             <img
                                 src={miniaturaPrimal(avatar, 384)}
@@ -241,7 +234,7 @@ export default function PerfilBeta({
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                             <Numero label="Primals" valor={fog(datos.tokens.length)} />
-                            <Numero label="Training" valor={fog(datos.fog.training)} />
+                            <Numero label="Staking" valor={fog(datos.fog.training)} />
                             <Numero label="FOG" valor={fog(datos.fog.balance)} icono />
                             <Numero label="FOG per day" valor={fog(datos.fog.perDay)} icono />
                         </div>

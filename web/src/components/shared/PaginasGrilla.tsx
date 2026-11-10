@@ -105,7 +105,7 @@ export default function PaginasGrilla<T>({
                     setPagina(Math.round(e.currentTarget.scrollTop / paso))
                 }
                 style={{ height: altoPagina + 8 }}
-                className="flex-1 min-w-0 overflow-y-auto snap-y snap-mandatory scroll-pt-1 lg:overscroll-contain -m-1 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="flex-1 min-w-0 overflow-y-auto snap-y snap-mandatory scroll-pt-1 lg:overscroll-contain -m-1 p-1 scrollbar-none [&::-webkit-scrollbar]:hidden"
             >
                 {paginas.map((grupo, i) => (
                     <div

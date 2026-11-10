@@ -16,14 +16,7 @@ export const pastilla = 'bg-darkblue rounded-3xl shadow-lg shadow-darkblue/50 mi
 export const deshabilitable =
     'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:active:scale-100';
 
-const dos = (n: number) => String(n).padStart(2, '0');
-export function reloj(ms: number) {
-    const s = Math.max(0, Math.floor(ms / 1000));
-    const d = Math.floor(s / 86400);
-    const h = Math.floor((s % 86400) / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    return d ? `${d}d ${dos(h)}h ${dos(m)}m` : `${dos(h)}:${dos(m)}:${dos(s % 60)}`;
-}
+export { reloj } from '@/lib/tiempo';
 export const fechaCorta = (iso: string) =>
     new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 export const jugadoresTexto = (n: number) => `${fog(n)} ${n === 1 ? 'player' : 'players'}`;

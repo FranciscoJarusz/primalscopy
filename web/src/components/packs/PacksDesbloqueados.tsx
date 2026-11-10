@@ -64,7 +64,7 @@ export default function PacksDesbloqueados({
         <div
             onClick={onCerrar}
             data-lenis-prevent
-            className="mw-texto fixed inset-0 z-[70] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-aparece"
+            className="mw-texto fixed inset-0 z-70 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-aparece"
         >
             <div
                 role="dialog"

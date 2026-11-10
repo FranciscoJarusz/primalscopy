@@ -299,7 +299,7 @@ export default function Perfil({
                 <h2 className={titulo}>Overview</h2>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <Dato label="Primals" valor={fog(datos.tokens.length)} />
-                    <Dato label="Training" valor={fog(datos.fog.training)} />
+                    <Dato label="Staking" valor={fog(datos.fog.training)} />
                     <Dato
                         label="Current FOG"
                         valor={fog(datos.fog.balance)}

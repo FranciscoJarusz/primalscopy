@@ -79,7 +79,7 @@ export default function BoostAdmin({
                 <div className="flex flex-wrap items-center gap-3 bg-blue rounded-xl px-4 py-3">
                     {/* Sunzone queda 0,19em por debajo del centro (ver SUBIR
                         en Staking.tsx). */}
-                    <span className="relative -top-[0.19em] font-accent uppercase text-yellow text-xl">
+                    <span className="relative top-[-0.19em] font-accent uppercase text-yellow text-xl">
                         x{actual.multiplier}
                     </span>
                     <span className="text-white">{actual.title}</span>

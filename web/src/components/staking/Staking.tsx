@@ -57,7 +57,7 @@ const flotante = 'bg-darkblue/95 rounded-xl shadow-lg shadow-darkblue/60';
 // items-center, un padding de abajo de 0,38em las sube justo eso; para subir
 // solo un texto al lado de otras cosas, SUBIR.
 const CENTRAR_ACCENT = 'pb-[0.38em]';
-const SUBIR = 'relative -top-[0.19em]';
+const SUBIR = 'relative top-[-0.19em]';
 // Los contadores redondos (Restake, My Primals). En una caja de 16 px con
 // texto de 12 px, las mayusculas de Sunzone quedan centradas con 4 px de padding
 // abajo justos. CENTRAR_ACCENT (0,38em = 4,56 px) las dejaba 0,28 px arriba, y

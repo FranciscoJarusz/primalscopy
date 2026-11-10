@@ -44,7 +44,7 @@ export default function ExiledAdmin({ token }: { token: string }) {
         >
             <h2 className="font-accent uppercase text-yellow text-2xl">Exiled master code</h2>
             <p className="text-lightblue/70 text-sm -mt-2">
-                The home easter egg: tapping the &quot;2,712 Primals&quot; card 20 times lets the
+                The home easter egg: tapping the &quot;Primals&quot; counter card 20 times lets the
                 Exiled Twenty take over the page. Whoever types this code there gets
                 Entirione&apos;s answer; anything else gets ACCESS DENIED. Not case sensitive.
             </p>

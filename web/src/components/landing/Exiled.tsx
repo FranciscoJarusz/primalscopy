@@ -51,11 +51,13 @@ export default function Exiled() {
     const textos = useRef<{ nodo: Text; original: string }[]>([]);
 
     const numero = () => document.getElementById('primals-count');
+    const total = () => Number(numero()?.dataset.supply) || 2713;
+    const totalTexto = () => total().toLocaleString('en-US');
 
     const restaurarNumero = () => {
         const n = numero();
         if (!n) return;
-        n.textContent = '2,712';
+        n.textContent = totalTexto();
         n.classList.remove('exiled-tiembla', 'exiled-rojo');
     };
 
@@ -145,20 +147,20 @@ export default function Exiled() {
             }, REINICIO_MS);
 
             if (toques >= 10 && toques < 16) {
-                const roto = [...'2,712'].map((c) => (c !== ',' && Math.random() < 0.3 ? GLIFOS[Math.floor(Math.random() * 4)] : c)).join('');
+                const roto = [...totalTexto()].map((c) => (c !== ',' && Math.random() < 0.3 ? GLIFOS[Math.floor(Math.random() * 4)] : c)).join('');
                 n.textContent = roto;
                 window.setTimeout(() => {
-                    if (faseRef.current === 'quieto' && toques < 16) n.textContent = '2,712';
+                    if (faseRef.current === 'quieto' && toques < 16) n.textContent = totalTexto();
                 }, 140);
             }
             if (toques >= 16) {
                 n.classList.add('exiled-tiembla', 'exiled-rojo');
-                n.textContent = (2712 - Math.round(((toques - 15) / (TOQUES - 15)) * 20)).toLocaleString('en-US');
+                n.textContent = (total() - Math.round(((toques - 15) / (TOQUES - 15)) * 20)).toLocaleString('en-US');
             }
             if (toques >= TOQUES) {
                 toques = 0;
                 window.clearTimeout(reinicio);
-                n.textContent = '2,692';
+                n.textContent = (total() - 20).toLocaleString('en-US');
                 if (!document.querySelector(`link[href="${FUENTE}"]`)) {
                     const link = document.createElement('link');
                     link.rel = 'stylesheet';

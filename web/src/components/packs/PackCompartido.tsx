@@ -31,7 +31,7 @@ export default function PackCompartido({
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-5 w-[min(92vw,56rem)]">
                 {ordenadas.map((c, i) => (
-                    <div key={i} className="aspect-[1621/2250]">
+                    <div key={i} className="aspect-1621/2250">
                         <Frente carta={c} />
                     </div>
                 ))}

@@ -314,7 +314,7 @@ export default function Explorador() {
                 </h1>
                 <p className="text-base sm:text-lg text-lightblue mt-3 max-w-2xl">
                     Every Primal in the cult: traits, rarity, who holds it and
-                    where it is training.
+                    where it is staking.
                 </p>
             </div>
 
@@ -387,7 +387,7 @@ export default function Explorador() {
                             1/1s
                         </Chip>
                     </Grupo>
-                    <Grupo titulo="Training in">
+                    <Grupo titulo="Staking in">
                         {ZONAS.map((z) => (
                             <Chip
                                 key={z.id}

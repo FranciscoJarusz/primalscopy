@@ -98,7 +98,7 @@ export default function PendientesAdmin({ token }: { token: string }) {
                     seccion: 'staking',
                     nombre: 'Staking',
                     valor: staking.config.enabled ? 'Open' : 'Closed',
-                    detalle: `${staking.training.toLocaleString('en-US')} Primals training in ${staking.wallets.toLocaleString('en-US')} wallets.`,
+                    detalle: `${staking.training.toLocaleString('en-US')} Primals staking in ${staking.wallets.toLocaleString('en-US')} wallets.`,
                     atencion: !staking.config.enabled,
                 },
                 {
