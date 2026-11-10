@@ -62,6 +62,7 @@ export default function CartaPrimal({
     gif,
     alt,
     insignia,
+    className = '',
     children,
 }: {
     tokenId: string;
@@ -72,6 +73,7 @@ export default function CartaPrimal({
     gif?: string | false;
     alt?: string;
     insignia?: ReactNode;
+    className?: string;
     children?: ReactNode;
 }) {
     const [encima, setEncima] = useState(false);
@@ -79,7 +81,7 @@ export default function CartaPrimal({
         onMouseEnter: () => setEncima(true),
         onMouseLeave: () => setEncima(false),
         title,
-        className: clase,
+        className: `${clase} ${className}`,
     };
     const contenido = (
         <>

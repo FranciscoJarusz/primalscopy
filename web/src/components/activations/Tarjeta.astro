@@ -1,0 +1,102 @@
+---
+import {
+    ETIQUETA,
+    INSIGNIA,
+    esExterno,
+    grupo,
+    imagenActivation,
+    type Activation,
+} from '@/lib/activations';
+
+interface Props {
+    hito: Activation;
+}
+
+const { hito } = Astro.props;
+const imagen = imagenActivation(hito.image);
+const detalle = [hito.category, hito.date].filter(Boolean).join(' · ');
+const externo = esExterno(hito.href);
+---
+
+<div
+    data-hito={hito.id}
+    data-grupo={grupo(hito.status)}
+    class="relative aspect-2/3 min-w-0 perspective-distant"
+>
+    <div
+        data-carta
+        class="group relative h-full transform-3d transition-all duration-300 motion-reduce:transition-none data-volteada:rotate-y-180"
+    >
+        <button
+            type="button"
+            data-voltear
+            data-frente
+            aria-expanded="false"
+            aria-label={`${hito.title}: show details`}
+            class="absolute inset-0 isolate flex flex-col items-center justify-center overflow-hidden rounded-2xl sm:rounded-[30px] bg-darkblue text-center shadow-lg shadow-darkblue/50 backface-hidden cursor-pointer"
+        >
+            {imagen ? (
+                <img
+                    src={imagen}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    class:list={[
+                        'absolute inset-0 -z-10 h-full w-full object-center group-hover:scale-105 transition-all duration-300',
+                        hito.fit === 'contain'
+                            ? 'object-contain p-8 sm:p-10'
+                            : 'object-cover',
+                    ]}
+                />
+            ) : (
+                <span class="p-5 font-accent text-2xl sm:text-3xl uppercase text-yellow">
+                    {hito.title}
+                </span>
+            )}
+        </button>
+
+        <div
+            data-voltear
+            data-dorso
+            inert
+            class="absolute inset-0 flex flex-col gap-2 sm:gap-3 overflow-y-auto rounded-2xl sm:rounded-[30px] bg-darkblue p-4 sm:p-5 shadow-lg shadow-darkblue/50 ring-2 ring-inset ring-yellow/40 backface-hidden rotate-y-180 cursor-pointer"
+        >
+            <span
+                class={`w-fit rounded-[10px] px-3 py-1 text-xs font-bold uppercase tracking-wide ${INSIGNIA[hito.status]}`}
+            >
+                {ETIQUETA[hito.status]}
+            </span>
+            {detalle && (
+                <p class="text-xs font-bold uppercase tracking-wide text-lightblue/70">
+                    {detalle}
+                </p>
+            )}
+            <h2 class="pb-1 font-accent text-2xl sm:text-3xl uppercase text-yellow">
+                {hito.title}
+            </h2>
+            <p class="whitespace-pre-line text-sm sm:text-base leading-tight text-lightblue">
+                {hito.text}
+            </p>
+
+            <div class="mt-auto flex items-center justify-between gap-3 pt-2">
+                {hito.href && (
+                    <a
+                        href={hito.href}
+                        target={externo ? '_blank' : undefined}
+                        rel={externo ? 'noopener noreferrer' : undefined}
+                        class="w-fit bg-yellow text-darkblue font-accent uppercase px-4 sm:px-6 pt-1.5 pb-2.5 sm:pt-2 sm:pb-3.5 rounded-[10px] hover:scale-102 active:scale-97 transition-all duration-300"
+                    >
+                        Open
+                    </a>
+                )}
+                <button
+                    type="button"
+                    aria-label="Flip the card back"
+                    class="ml-auto font-accent uppercase text-sm sm:text-base text-lightblue hover:text-yellow cursor-pointer transition-all duration-300"
+                >
+                    ← Back
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

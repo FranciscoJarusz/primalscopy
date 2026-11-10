@@ -216,7 +216,7 @@ export const leerMapa = () =>
 // La miniatura de un Primal (backend/lib/primalThumbs.js): 96 px para el mapa,
 // 192 para la grilla del panel. Mucho mas liviana que el GIF original de
 // 2000 px, que al decodificarse trababa el cambio de region.
-export const miniaturaPrimal = (tokenId: string, lado: 96 | 192 | 384 = 96) =>
+export const miniaturaPrimal = (tokenId: string, lado: 96 | 192 | 384 | 512 = 96) =>
     `${BACKEND_URL}/staking/primal/${tokenId}.webp${lado === 96 ? '' : `?t=${lado}`}`;
 
 export const entrenar = (token: string, tokenIds: string[], days: number) =>

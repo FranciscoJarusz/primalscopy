@@ -23,6 +23,7 @@ const traitShop = require('../lib/traitShopStore');
 const backup = require('../lib/backup');
 const transfers = require('../lib/transferIndex');
 const badges = require('../lib/badgeStore');
+const activations = require('../lib/activationStore');
 const { diskUsage } = require('../lib/diskUsage');
 const { resolveLayerPath } = require('../controllers/nftController');
 const {
@@ -371,6 +372,17 @@ router.post('/badges/:id/image', uploadIcon.single('file'), async (req, res) => 
     conBadges(res, await badges.ponerImagen(req.params.id, req.file.buffer));
 });
 router.delete('/badges/:id/image', (req, res) => conBadges(res, badges.quitarImagen(req.params.id)));
+
+router.get('/activations', (req, res) => res.json(activations.admin()));
+router.post('/activations', (req, res) => conBadges(res, activations.crear(req.body)));
+router.put('/activations/order', (req, res) => conBadges(res, activations.ordenar(req.body?.order)));
+router.patch('/activations/:id', (req, res) => conBadges(res, activations.actualizar(req.params.id, req.body)));
+router.delete('/activations/:id', (req, res) => conBadges(res, activations.borrar(req.params.id)));
+router.post('/activations/:id/image', uploadIcon.single('file'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Pick an image.' });
+    conBadges(res, await activations.ponerImagen(req.params.id, req.file.buffer));
+});
+router.delete('/activations/:id/image', (req, res) => conBadges(res, activations.quitarImagen(req.params.id)));
 
 router.use(adminErrorHandler);
 

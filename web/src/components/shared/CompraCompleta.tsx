@@ -28,6 +28,7 @@ export default function CompraCompleta({
     texto,
     principal,
     mudwater = false,
+    encabezado = 'Purchase complete!',
     onCerrar,
 }: {
     imagen: string;
@@ -35,6 +36,7 @@ export default function CompraCompleta({
     texto: React.ReactNode;
     principal?: { texto: string; alTocar: () => void };
     mudwater?: boolean;
+    encabezado?: string;
     onCerrar: () => void;
 }) {
     useEffect(() => {
@@ -63,7 +65,7 @@ export default function CompraCompleta({
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 transition-all duration-300 ease-out starting:opacity-0"
+            className="fixed inset-0 z-70 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 transition-all duration-300 ease-out starting:opacity-0"
             onClick={onCerrar}
             data-lenis-prevent
         >
@@ -71,7 +73,7 @@ export default function CompraCompleta({
             <div
                 role="dialog"
                 aria-modal="true"
-                aria-label="Purchase complete"
+                aria-label={encabezado}
                 onClick={(e) => e.stopPropagation()}
                 {...(mudwater ? { 'data-mudwater': '' } : {})}
                 className="relative w-full max-w-md bg-darkblue rounded-2xl p-5 sm:p-6 shadow-lg shadow-darkblue/50 ring-1 ring-lightblue/15 flex flex-col items-center gap-4 text-center overflow-hidden transition-all duration-300 ease-out starting:opacity-0 starting:scale-95 starting:translate-y-4"
@@ -85,7 +87,7 @@ export default function CompraCompleta({
                     ×
                 </button>
                 <h2 className="fog-pop font-accent uppercase text-yellow text-3xl sm:text-4xl">
-                    Purchase complete!
+                    {encabezado}
                 </h2>
 
                 <div className="relative grid place-items-center py-2 w-full">

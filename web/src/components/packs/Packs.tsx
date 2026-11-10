@@ -95,6 +95,8 @@ function Digitos({ texto }: { texto: string }) {
 }
 
 const dias = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
+const puesto = (n: number) =>
+    `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th')}`;
 
 function MarcaChosen({ fila }: { fila?: FilaChosen }) {
     if (!fila) return null;
@@ -136,7 +138,11 @@ const DIA_MS = 86_400_000;
 
 function intentoDe(wallet: string) {
     try {
-        return Number(localStorage.getItem(`${INTENTO_EXTRA}:${wallet.toLowerCase()}`)) || 0;
+        return (
+            Number(
+                localStorage.getItem(`${INTENTO_EXTRA}:${wallet.toLowerCase()}`)
+            ) || 0
+        );
     } catch {
         return 0;
     }
@@ -147,6 +153,26 @@ function marcarIntento(wallet: string, activo: boolean) {
         const clave = `${INTENTO_EXTRA}:${wallet.toLowerCase()}`;
         if (activo) localStorage.setItem(clave, String(Date.now()));
         else localStorage.removeItem(clave);
+    } catch {
+        /* storage bloqueado */
+    }
+}
+
+const PREMIO_META = 'packs:premio-meta';
+const claveMeta = (wallet: string) =>
+    `${PREMIO_META}:${wallet.toLowerCase()}:${new Date().toISOString().slice(0, 10)}`;
+
+function premioVisto(wallet: string) {
+    try {
+        return localStorage.getItem(claveMeta(wallet)) === '1';
+    } catch {
+        return false;
+    }
+}
+
+function marcarPremioVisto(wallet: string) {
+    try {
+        localStorage.setItem(claveMeta(wallet), '1');
     } catch {
         /* storage bloqueado */
     }
@@ -164,6 +190,8 @@ export default function Packs() {
     const [apertura, setApertura] = useState<{
         id: string;
         cartas: CartaPack[];
+        nuevas?: boolean[];
+        completo?: boolean;
         prueba?: boolean;
     } | null>(null);
     const [abriendo, setAbriendo] = useState(false);
@@ -172,6 +200,7 @@ export default function Packs() {
     const [desbloqueado, setDesbloqueado] = useState<Nivel | null>(null);
     const [comprando, setComprando] = useState<string | null>(null);
     const [extraComprado, setExtraComprado] = useState(false);
+    const [premioMeta, setPremioMeta] = useState(false);
     useEffect(() => {
         const fuentes = Promise.race([
             Promise.all([
@@ -218,10 +247,29 @@ export default function Packs() {
         leerMio(session.token)
             .then((m) => !cancelado && setMio(m))
             .catch(() => {});
+        const t = setInterval(() => {
+            if (document.hidden) return;
+            leerMio(session.token!)
+                .then((m) => !cancelado && setMio(m))
+                .catch(() => {});
+        }, 60_000);
         return () => {
             cancelado = true;
+            clearInterval(t);
         };
     }, [session.token]);
+
+    useEffect(() => {
+        if (
+            mio?.goalRewardToday &&
+            address &&
+            !apertura &&
+            !premioVisto(address)
+        ) {
+            marcarPremioVisto(address);
+            setPremioMeta(true);
+        }
+    }, [mio, address, apertura]);
 
     useEffect(() => {
         if (!session.token || !address) return;
@@ -315,9 +363,21 @@ export default function Packs() {
         setError(null);
         setAbriendo(true);
         try {
+            const antes = mio?.collection ?? {};
             const { pack, me } = await abrirPack(session.token);
+            const vistas = new Set<number>();
+            const nuevas = pack.cards.map((id) => {
+                const nueva = !antes[id] && !vistas.has(id);
+                vistas.add(id);
+                return nueva;
+            });
             setMio(me);
-            setApertura({ id: pack.id, cartas: pack.cards.map(cartaPorId) });
+            setApertura({
+                id: pack.id,
+                cartas: pack.cards.map(cartaPorId),
+                nuevas,
+                completo: !!me.collectionComplete && !mio?.collectionComplete,
+            });
         } catch (e) {
             setError((e as Error).message);
             leerMio(session.token)
@@ -349,12 +409,16 @@ export default function Packs() {
         );
 
     const coleccion = mio?.collection ?? {};
-    const encontradas = CARTAS.filter((c) => coleccion[c.id]).length;
+    const paraCompletar = CARTAS.filter((c) => c.rareza !== 'chosen');
+    const encontradas = paraCompletar.filter((c) => coleccion[c.id]).length;
+    const chosen = CARTAS.filter((c) => c.rareza === 'chosen');
+    const premioColeccion = config.collectionPrize ?? null;
     const mejor = CARTAS.filter((c) => coleccion[c.id]).sort(
         (a, b) => RAREZAS[b.rareza].tier - RAREZAS[a.rareza].tier
     )[0];
     const yo = address?.toLowerCase();
     const conChosen = new Map(ranking?.chosen.map((c) => [c.wallet, c]));
+    const premios = config.prizes ?? [];
     const total = mio ? mio.limit + (mio.bonusPacks ?? 0) : config.tiers.none;
     const extra = config.extra;
     const puedeExtra =
@@ -581,6 +645,7 @@ export default function Packs() {
                             setApertura({
                                 id: String(Date.now()),
                                 cartas: packDePrueba(),
+                                nuevas: [true, false, true, false, true],
                                 prueba: true,
                             });
                         }}
@@ -589,11 +654,38 @@ export default function Packs() {
                         Test pack: all rarities (dev)
                     </button>
                 )}
+                {import.meta.env.DEV && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            despertar();
+                            const faltante =
+                                paraCompletar.find((c) => !coleccion[c.id]) ??
+                                paraCompletar[0];
+                            const resto = packDePrueba()
+                                .filter((c) => c.rareza !== 'chosen')
+                                .slice(0, 4);
+                            setApertura({
+                                id: String(Date.now()),
+                                cartas: [...resto, faltante],
+                                nuevas: [false, false, false, false, true],
+                                completo: true,
+                                prueba: true,
+                            });
+                        }}
+                        className="mw-titulo uppercase text-sm rounded-md px-3 py-1.5 border border-dashed border-mw-champagne/40 text-mw-champagne cursor-pointer hover:border-mw-champagne transition-all duration-300"
+                    >
+                        Test pack: completes the collection (dev)
+                    </button>
+                )}
                 {apertura && (
                     <Suspense fallback={null}>
                         <Apertura3D
                             key={apertura.id}
                             cartas={apertura.cartas}
+                            nuevas={apertura.nuevas}
+                            completo={apertura.completo}
+                            premioColeccion={premioColeccion}
                             compartir={apertura.prueba ? null : apertura.id}
                             quedan={restantes}
                             onFin={terminar}
@@ -622,7 +714,7 @@ export default function Packs() {
                     )}
                     <ol
                         data-lenis-prevent
-                        className="mt-5 -mx-3 px-3 flex flex-col max-h-130 lg:max-h-none lg:min-h-100 lg:grow lg:basis-0 overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:var(--color-mw-champagne)_transparent]"
+                        className="mt-5 -mx-3 px-3 flex flex-col max-h-130 lg:max-h-none lg:min-h-100 lg:grow lg:basis-0 overflow-y-auto overscroll-contain scrollbar-thin [scrollbar-color:var(--color-mw-champagne)_transparent]"
                     >
                         {ranking?.top.map((f) =>
                             f.rank === 1 ? (
@@ -657,7 +749,7 @@ export default function Packs() {
                                             <span className="hidden sm:inline">
                                                 Prize:{' '}
                                             </span>
-                                            Mudwater pack
+                                            {premios[0] ?? 'Mudwater pack'}
                                         </span>
                                     </span>
                                     <Racha dias={f.streak} hoy={!!f.today} />
@@ -675,17 +767,29 @@ export default function Packs() {
                                     key={f.wallet}
                                     className={`flex items-center gap-4 py-2.5 border-b border-mw-champagne/15 last:border-0 ${f.wallet === yo ? 'text-mw-champagne' : ''}`}
                                 >
-                                    <span className="mw-titulo w-8 text-mw-fog tabular-nums">
+                                    <span
+                                        className={`mw-titulo w-8 tabular-nums ${premios[f.rank - 1] ? 'text-mw-champagne' : 'text-mw-fog'}`}
+                                    >
                                         {f.rank}
                                     </span>
-                                    <span className="flex-1 min-w-0 flex items-center gap-2.5 text-lg">
-                                        <span className="truncate relative -top-px">
-                                            {f.nickname ??
-                                                walletCorta(f.wallet)}
+                                    <span className="flex-1 min-w-0">
+                                        <span className="flex items-center gap-2.5 text-lg">
+                                            <span className="truncate relative -top-px">
+                                                {f.nickname ??
+                                                    walletCorta(f.wallet)}
+                                            </span>
+                                            <MarcaChosen
+                                                fila={conChosen.get(f.wallet)}
+                                            />
                                         </span>
-                                        <MarcaChosen
-                                            fila={conChosen.get(f.wallet)}
-                                        />
+                                        {premios[f.rank - 1] && (
+                                            <span className="mw-etiqueta block truncate text-[10px] text-mw-champagne">
+                                                <span className="hidden sm:inline">
+                                                    Prize:{' '}
+                                                </span>
+                                                {premios[f.rank - 1]}
+                                            </span>
+                                        )}
                                     </span>
                                     <Racha dias={f.streak} hoy={!!f.today} />
                                     <span className="tabular-nums text-lg relative -top-px">
@@ -732,7 +836,7 @@ export default function Packs() {
                                 ['Packs opened', mio.packs],
                                 [
                                     'Cards found',
-                                    `${encontradas}/${CARTAS.length}`,
+                                    `${encontradas}/${paraCompletar.length}`,
                                 ],
                                 ['Streak', dias(mio.streak.current)],
                                 ['Best streak', dias(mio.streak.best)],
@@ -817,11 +921,37 @@ export default function Packs() {
                         <p className="mw-etiqueta text-[10px] text-mw-fog">
                             Prizes
                         </p>
-                        <p className="mt-2 text-mw-mist/80">
-                            When the competition ends, the #1 of the leaderboard
-                            wins a Mudwater pack. Pull The Chosen to enter the
-                            raffle for another one. Winners are reviewed by hand
-                            and bots are disqualified.
+                        {premios.length > 0 && (
+                            <ol className="mt-2 flex flex-col gap-1">
+                                {premios.map((p, i) => (
+                                    <li key={i} className="flex gap-3">
+                                        <span className="mw-titulo w-10 shrink-0 text-mw-champagne tabular-nums">
+                                            {puesto(i + 1)}
+                                        </span>
+                                        <span className="text-mw-mist">
+                                            {p}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ol>
+                        )}
+                        {premioColeccion && (
+                            <p className="mt-3 pt-3 border-t border-mw-champagne/15 flex gap-3">
+                                <span className="mw-titulo shrink-0 text-mw-champagne">
+                                    {paraCompletar.length}/
+                                    {paraCompletar.length}
+                                </span>
+                                <span className="text-mw-mist">
+                                    Raffle for {premioColeccion} among everyone
+                                    who completes the collection
+                                </span>
+                            </p>
+                        )}
+                        <p className="mt-3 text-sm text-mw-fog">
+                            {premios.length > 0
+                                ? 'Paid out when the competition ends.'
+                                : 'The #1 wins a Mudwater pack when the competition ends.'}{' '}
+                            Bots are disqualified.
                         </p>
                     </div>
                 </section>
@@ -829,27 +959,61 @@ export default function Packs() {
 
             <section className="flex flex-col gap-8">
                 <div className="flex items-end justify-between gap-4">
-                    <h2 className="mw-titulo uppercase text-mw-mist text-3xl sm:text-4xl">
-                        Collection
-                    </h2>
-                    <span className="mw-titulo text-mw-champagne text-xl tabular-nums">
-                        {encontradas}/{CARTAS.length}
+                    <div>
+                        <h2 className="mw-titulo uppercase text-mw-mist text-3xl sm:text-4xl">
+                            Collection
+                        </h2>
+                        {premioColeccion && (
+                            <p className="text-lg text-mw-mist/75 mt-2">
+                                {mio?.collectionComplete
+                                    ? `Complete! You're in the raffle for ${premioColeccion}.`
+                                    : `Find all ${paraCompletar.length} cards to enter the raffle for ${premioColeccion}.`}
+                            </p>
+                        )}
+                    </div>
+                    <span className="mw-titulo text-mw-champagne text-xl tabular-nums shrink-0">
+                        {mio?.collectionComplete
+                            ? 'Complete'
+                            : `${encontradas}/${paraCompletar.length}`}
                     </span>
                 </div>
-                {ORDEN_RAREZAS.map((r) => {
-                    const cartas = CARTAS.filter((c) => c.rareza === r);
+                {[
+                    'chosen' as const,
+                    ...ORDEN_RAREZAS.filter((r) => r !== 'chosen'),
+                ].map((r) => {
+                    const cartas =
+                        r === 'chosen'
+                            ? chosen
+                            : paraCompletar.filter((c) => c.rareza === r);
                     if (cartas.length === 0) return null;
                     return (
-                        <div key={r}>
+                        <div
+                            key={r}
+                            className={
+                                r === 'chosen'
+                                    ? 'pb-8 border-b border-mw-champagne/40'
+                                    : ''
+                            }
+                        >
                             <div className="flex items-baseline justify-between gap-4 border-b border-mw-champagne/25 pb-2">
-                                <h3 className="mw-titulo uppercase text-mw-champagne text-lg">
-                                    {RAREZAS[r].nombre}
+                                <h3
+                                    className={`mw-titulo uppercase text-lg ${r === 'chosen' ? 'text-[#ffe27a]' : 'text-mw-champagne'}`}
+                                >
+                                    {r === 'chosen'
+                                        ? 'Bonus - Chosen'
+                                        : RAREZAS[r].nombre}
                                 </h3>
                                 <span className="text-sm uppercase tracking-wider text-mw-fog">
                                     {RAREZAS[r].puntos} pts ·{' '}
                                     {formatoChance(chanceCarta(cartas[0]))} each
                                 </span>
                             </div>
+                            {r === 'chosen' && (
+                                <p className="mt-3 text-mw-mist/70">
+                                    Not needed to complete the collection. Pull
+                                    it to enter the raffle for a Mudwater pack.
+                                </p>
+                            )}
                             <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 gap-3 mt-4">
                                 {cartas.map((c) => (
                                     <div
@@ -896,6 +1060,23 @@ export default function Packs() {
                         },
                     }}
                     onCerrar={() => setExtraComprado(false)}
+                />
+            )}
+            {premioMeta && (
+                <CompraCompleta
+                    mudwater
+                    imagen={IMAGEN_PACK}
+                    encabezado="Goal achieved!"
+                    titular="+1 Primal Event Pack"
+                    texto="Fogbound players hit today’s pack goal, and you were one of them. Here’s a bonus pack for today. Bonus packs don’t expire."
+                    principal={{
+                        texto: 'Rip it now',
+                        alTocar: () => {
+                            setPremioMeta(false);
+                            abrir();
+                        },
+                    }}
+                    onCerrar={() => setPremioMeta(false)}
                 />
             )}
             {desbloqueado && (

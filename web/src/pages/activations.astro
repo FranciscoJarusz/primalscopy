@@ -1,0 +1,108 @@
+---
+import LandingLayout from '@/layouts/LandingLayout.astro';
+import Tarjeta from '@/components/activations/Tarjeta.astro';
+import { backendAbsoluto } from '@/lib/backend';
+import { grupo, type Activation, type Grupo } from '@/lib/activations';
+
+export const prerender = false;
+
+const respuesta = await fetch(`${backendAbsoluto(Astro.url)}/activations`).catch(() => null);
+const datos = respuesta?.ok ? await respuesta.json().catch(() => null) : null;
+const HITOS: Activation[] = Array.isArray(datos?.activations) ? datos.activations : [];
+
+const cuantos = (g: Grupo) => HITOS.filter((h) => grupo(h.status) === g).length;
+
+const filtros = [
+    { id: 'all', nombre: 'All', n: HITOS.length },
+    { id: 'live', nombre: 'Live', n: cuantos('live') },
+    { id: 'coming', nombre: 'Coming next', n: cuantos('coming') },
+    { id: 'finished', nombre: 'Finished', n: cuantos('finished') },
+].filter((f, i) => i === 0 || f.n > 0);
+
+Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=600');
+---
+
+<LandingLayout
+    title="Activations - Primal Cult"
+    description="Everything the Primal Cult has built on ApeChain, and what comes next."
+    activo="activations"
+    noindex
+>
+    <main class="mt-10 sm:mt-14 flex flex-col gap-6 sm:gap-10">
+        <div class="flex flex-col gap-4 sm:gap-7">
+            <h1
+                data-anim="reveal"
+                class="rounded-2xl sm:rounded-[30px] bg-yellow pt-1 pb-5 sm:pt-2 sm:pb-7 xl:pb-9 text-center font-accent text-5xl sm:text-6xl xl:text-7xl uppercase text-darkblue shadow-lg shadow-darkblue/50"
+            >
+                Activations
+            </h1>
+
+            <div
+                data-anim="reveal"
+                class="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+            >
+                <p class="max-w-xl text-base sm:text-lg text-lightblue">
+                    Everything the Cult has built so far, and what comes next. Tap a card to flip it.
+                </p>
+
+                <div
+                    role="tablist"
+                    aria-label="Filter activations"
+                    class="grid grid-cols-2 sm:flex gap-2 bg-darkblue rounded-2xl p-1.5 shadow-lg shadow-darkblue/50"
+                >
+                    {filtros.map((f, i) => (
+                        <button
+                            type="button"
+                            role="tab"
+                            data-filtro={f.id}
+                            aria-selected={i === 0 ? 'true' : 'false'}
+                            class="h-10 sm:flex-1 rounded-xl font-accent uppercase text-sm sm:text-base leading-none pb-1 px-4 cursor-pointer whitespace-nowrap active:scale-97 transition-all duration-300 text-lightblue hover:bg-lightblue hover:text-darkblue aria-selected:bg-yellow aria-selected:text-darkblue"
+                        >
+                            {f.nombre} {f.n}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+
+        <div
+            data-anim-stagger
+            data-hitos
+            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5"
+        >
+            {HITOS.map((hito) => <Tarjeta hito={hito} />)}
+        </div>
+
+        {HITOS.length === 0 && (
+            <p class="text-base sm:text-lg text-lightblue/70">Couldn't load the activations right now. Try again in a minute.</p>
+        )}
+    </main>
+</LandingLayout>
+
+<script>
+    const botones = document.querySelectorAll<HTMLButtonElement>('[data-filtro]');
+    const tarjetas = document.querySelectorAll<HTMLElement>('[data-hitos] > [data-grupo]');
+
+    for (const boton of botones) {
+        boton.addEventListener('click', () => {
+            const filtro = boton.dataset.filtro;
+            for (const b of botones) b.setAttribute('aria-selected', String(b === boton));
+            for (const t of tarjetas) t.hidden = filtro !== 'all' && t.dataset.grupo !== filtro;
+        });
+    }
+
+    document.querySelector('[data-hitos]')?.addEventListener('click', (e) => {
+        const objetivo = e.target as HTMLElement;
+        if (objetivo.closest('a')) return;
+        const carta = objetivo.closest<HTMLElement>('[data-voltear]')?.closest<HTMLElement>('[data-carta]');
+        if (!carta) return;
+        const volteada = !carta.hasAttribute('data-volteada');
+        carta.toggleAttribute('data-volteada', volteada);
+        const frente = carta.querySelector<HTMLElement>('[data-frente]')!;
+        const dorso = carta.querySelector<HTMLElement>('[data-dorso]')!;
+        frente.setAttribute('aria-expanded', String(volteada));
+        frente.inert = volteada;
+        dorso.inert = !volteada;
+        (volteada ? dorso.querySelector<HTMLElement>('a, button') : frente)?.focus({ preventScroll: true });
+    });
+</script>

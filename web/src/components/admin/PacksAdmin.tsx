@@ -45,18 +45,32 @@ type Datos = {
         extraMax: number;
         extraBoost?: number;
         winners: number | null;
+        prizes?: string[];
+        collectionPrize?: string | null;
         rarities: Record<Rareza, { chance: number; points: number }>;
     };
     cardsByRarity: Record<Rareza, number>;
     pulledByRarity?: Record<Rareza, { count: number; expected: number }>;
     totals: { players: number; packs: number; today: number; playersToday: number; extras: number; extrasToday: number; extraApe: string; gifted?: number };
     players: Jugador[];
-    daily?: { day: string; players: number; newPlayers: number; packs: number; extras: number; wallets?: JugadorDia[] }[];
+    daily?: { day: string; players: number; newPlayers: number; packs: number; extras: number; goalRewards?: number; wallets?: JugadorDia[] }[];
     credited?: { txHash: string; wallet: string; at: string; valueWei: string; source: 'admin' | 'recovered' }[];
     chosen: {
         entrants: { wallet: string; nickname: string | null; pulls: number; firstAt: string }[];
         raffle: { winner: string; drawnAt: string; entrants: number } | null;
     };
+    goal?: Meta | null;
+    collectors?: { wallet: string; nickname: string | null; at: string; packs: number }[];
+};
+type Meta = {
+    title: string;
+    reward: string;
+    target: number;
+    daily?: boolean;
+    progress: number;
+    from: string;
+    to: string | null;
+    status: 'running' | 'reached' | 'missed';
 };
 
 const RAREZAS: Rareza[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'chosen'];
@@ -157,6 +171,9 @@ export default function PacksAdmin({ token }: { token: string }) {
                         <Numeros datos={datos} />
                         <PorDia datos={datos} />
                         <Competencia datos={datos} ocupado={ocupado} configurar={configurar} />
+                        <PremiosRanking datos={datos} ocupado={ocupado} configurar={configurar} />
+                        <PremioColeccion datos={datos} ocupado={ocupado} configurar={configurar} />
+                        <MetaComunitaria datos={datos} ocupado={ocupado} configurar={configurar} />
                         <AcreditarExtra datos={datos} ocupado={ocupado} pedir={pedir} />
                     </div>
                     <div id="packs-ranking">
@@ -328,6 +345,165 @@ function Competencia({ datos, ocupado, configurar }: Props) {
                     </button>
                 </Tarjeta>
             </div>
+    );
+}
+
+function PremiosRanking({ datos, ocupado, configurar }: Props) {
+    const guardados = datos.config.prizes ?? [];
+    const [texto, setTexto] = useState(guardados.join('\n'));
+    const lineas = texto.split('\n').map((l) => l.trim());
+    while (lineas.length && !lineas[lineas.length - 1]) lineas.pop();
+
+    return (
+        <section className={panel}>
+            <div>
+                <h2 className={titulo}>Leaderboard prizes</h2>
+                <p className="text-sm text-lightblue/70 mt-1">
+                    One line per place, starting with 1st. They show next to each place in the leaderboard. Leave it empty to hide them.
+                </p>
+            </div>
+            <textarea
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                rows={Math.max(5, lineas.length + 1)}
+                placeholder={'Mudwater pack + 5 Primals\n4 Primals\n3 Primals'}
+                aria-label="Leaderboard prizes"
+                className={`${campo} font-mono`}
+            />
+            <div className="flex flex-wrap items-center gap-3">
+                <button type="button" disabled={ocupado || lineas.join('\n') === guardados.join('\n')} onClick={() => configurar({ prizes: lineas })} className={botonGuardar}>
+                    Save prizes
+                </button>
+            </div>
+        </section>
+    );
+}
+
+function PremioColeccion({ datos, ocupado, configurar }: Props) {
+    const guardado = datos.config.collectionPrize ?? '';
+    const [premio, setPremio] = useState(guardado);
+    const lista = datos.collectors ?? [];
+    const quien = useQuien();
+    const cartas = Object.entries(datos.cardsByRarity).reduce((n, [r, k]) => n + (r === 'chosen' ? 0 : k), 0);
+
+    return (
+        <section className={panel}>
+            <div>
+                <h2 className={titulo}>Full collection raffle</h2>
+                <p className="text-sm text-lightblue/70 mt-1">
+                    The prize raffled among everyone who finds all {cartas} cards. The Chosen doesn't count. Leave it empty to hide it.
+                </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+                <input
+                    value={premio}
+                    onChange={(e) => setPremio(e.target.value)}
+                    maxLength={120}
+                    placeholder="1 Primal"
+                    aria-label="Full collection prize"
+                    className={`${campo} flex-1 min-w-0`}
+                />
+                <button type="button" disabled={ocupado || premio.trim() === guardado} onClick={() => configurar({ collectionPrize: premio })} className={botonGuardar}>
+                    Save
+                </button>
+            </div>
+            <div>
+                <p className="text-sm text-lightblue/70">
+                    {lista.length === 0 ? 'Nobody has completed it yet.' : `${lista.length} completed it (disqualified wallets are left out):`}
+                </p>
+                {lista.length > 0 && (
+                    <ol className="mt-2 flex flex-col gap-1 text-lightblue">
+                        {lista.map((c) => (
+                            <li key={c.wallet} className="flex flex-wrap gap-x-3">
+                                <span className="text-yellow">{quien(c.wallet)}</span>
+                                <span className="text-lightblue/70">
+                                    {fecha(c.at)} · {c.packs} packs
+                                </span>
+                            </li>
+                        ))}
+                    </ol>
+                )}
+            </div>
+        </section>
+    );
+}
+
+function MetaComunitaria({ datos, ocupado, configurar }: Props) {
+    const meta = datos.goal ?? null;
+    const [nombreMeta, setNombreMeta] = useState(meta?.title ?? '');
+    const [premio, setPremio] = useState(meta?.reward ?? '');
+    const [objetivo, setObjetivo] = useState(meta ? String(meta.target) : '200');
+    const [diaria, setDiaria] = useState(meta ? Boolean(meta.daily) : true);
+    const [desde, setDesde] = useState(aLocal(meta?.from ?? new Date().toISOString()));
+    const [conFin, setConFin] = useState(Boolean(meta?.to));
+    const [hasta, setHasta] = useState(aLocal(meta?.to ?? new Date(Date.now() + 7 * 86400000).toISOString()));
+
+    const guardar = () =>
+        configurar({
+            goal: {
+                title: nombreMeta,
+                reward: premio,
+                target: Number(objetivo),
+                ...(diaria
+                    ? { daily: true }
+                    : { from: new Date(desde).toISOString(), to: conFin ? new Date(hasta).toISOString() : null }),
+            },
+        });
+
+    return (
+        <section className={panel}>
+            <div>
+                <h2 className={titulo}>Community goal</h2>
+                <p className="text-sm text-lightblue/70 mt-1">
+                    {meta
+                        ? `${fog(meta.progress)} of ${fog(meta.target)} packs opened${meta.daily ? ' today' : ''}${meta.status === 'reached' ? ': reached!' : meta.status === 'missed' ? ': ended without reaching it.' : '.'} It shows on the home page while packs are open.`
+                        : 'A goal everyone pushes together: packs opened between two dates. It shows on the home page while packs are open.'}
+                </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+                <label className={etiqueta}>
+                    Title (optional)
+                    <input value={nombreMeta} onChange={(e) => setNombreMeta(e.target.value)} maxLength={80} placeholder={`Open ${objetivo || 'N'} packs`} className={campo} />
+                </label>
+                <label className={etiqueta}>
+                    What it unlocks
+                    <input value={premio} onChange={(e) => setPremio(e.target.value)} maxLength={120} placeholder="A free pack for every player" className={campo} />
+                </label>
+                <label className={etiqueta}>
+                    Packs to open
+                    <input type="number" min={1} value={objetivo} onChange={(e) => setObjetivo(e.target.value)} className={campo} />
+                </label>
+                <label className="flex items-center gap-2 text-lightblue cursor-pointer sm:col-span-2">
+                    <input type="checkbox" checked={diaria} onChange={(e) => setDiaria(e.target.checked)} className="size-4 accent-yellow" />
+                    Daily: resets every day at 00:00 UTC, with the packs
+                </label>
+                {!diaria && (
+                    <>
+                        <label className={etiqueta}>
+                            Counts packs from (your time)
+                            <input type="datetime-local" value={desde} onChange={(e) => setDesde(e.target.value)} className={campo} />
+                        </label>
+                        <label className="flex items-center gap-2 text-lightblue cursor-pointer">
+                            <input type="checkbox" checked={conFin} onChange={(e) => setConFin(e.target.checked)} className="size-4 accent-yellow" />
+                            Ends on a date
+                        </label>
+                        {conFin && (
+                            <input type="datetime-local" value={hasta} onChange={(e) => setHasta(e.target.value)} aria-label="Goal end" className={campo} />
+                        )}
+                    </>
+                )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+                <button type="button" disabled={ocupado || !premio.trim() || !(Number(objetivo) > 0)} onClick={guardar} className={botonGuardar}>
+                    {meta ? 'Save goal' : 'Start goal'}
+                </button>
+                {meta && (
+                    <button type="button" disabled={ocupado} onClick={() => configurar({ goal: null })} className={botonChico}>
+                        Remove goal
+                    </button>
+                )}
+            </div>
+        </section>
     );
 }
 
@@ -736,12 +912,13 @@ function PorDia({ datos }: { datos: Datos }) {
                             aria-expanded={abierto === d.day}
                             className="w-full flex flex-wrap items-center gap-x-4 gap-y-1 text-left cursor-pointer"
                         >
-                            <span className="font-accent uppercase text-yellow min-w-32 leading-none relative -top-[0.19em]">{nombreDia(d.day)}</span>
+                            <span className="font-accent uppercase text-yellow min-w-32 leading-none relative top-[-0.19em]">{nombreDia(d.day)}</span>
                             <span className="flex-1 min-w-48 text-sm text-lightblue/80">
                                 {d.newPlayers} new · {d.players - d.newPlayers} returning · {fog(d.packs)} packs
                                 {d.extras > 0 && ` · ${d.extras} ${d.extras === 1 ? 'extra' : 'extras'}`}
+                                {!!d.goalRewards && ` · goal reached: ${d.goalRewards} got a bonus pack`}
                             </span>
-                            <span className="font-accent text-yellow leading-none relative -top-[0.19em]">
+                            <span className="font-accent text-yellow leading-none relative top-[-0.19em]">
                                 {fog(d.players)} {d.players === 1 ? 'player' : 'players'}
                             </span>
                             <FiChevronDown
@@ -753,7 +930,7 @@ function PorDia({ datos }: { datos: Datos }) {
                                 {(d.wallets ?? []).map((w) => (
                                     <li key={w.wallet} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-3 border-t border-white/10 first:border-0">
                                         <span className="flex-1 min-w-48 text-lightblue">{quien(w.wallet)}</span>
-                                        {w.isNew && <span className="font-accent uppercase text-yellow leading-none relative -top-[0.19em]">New</span>}
+                                        {w.isNew && <span className="font-accent uppercase text-yellow leading-none relative top-[-0.19em]">New</span>}
                                         <span>
                                             {w.packs} {w.packs === 1 ? 'pack' : 'packs'}
                                             {w.extras > 0 && ` (${w.extras} extra)`} · {fog(w.points)} pts · day {w.daysPlayed}

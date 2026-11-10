@@ -16,6 +16,8 @@ const raffleRoutes = require('./routes/raffleRoutes');
 const traitShopRoutes = require('./routes/traitShopRoutes');
 const badgeRoutes = require('./routes/badgeRoutes');
 const packsRoutes = require('./routes/packsRoutes');
+const liveRoutes = require('./routes/liveRoutes');
+const activationRoutes = require('./routes/activationRoutes');
 const { startCollectionIndex } = require('./lib/collectionIndex');
 const { startStakingJob } = require('./lib/stakingJob');
 const { startRaffleJob } = require('./lib/raffleStore');
@@ -142,6 +144,8 @@ app.use('/api/raffles', raffleRoutes);
 app.use('/api/traits', traitShopRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/packs', packsRoutes);
+app.use('/api/live', liveRoutes);
+app.use('/api/activations', activationRoutes);
 
 // Lo que se escapo de una ruta (ver lib/asyncErrors.js). Se contesta un 500 y
 // el server sigue.

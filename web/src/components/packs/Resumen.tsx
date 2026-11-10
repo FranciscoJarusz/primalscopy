@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { RAREZAS, type CartaPack } from '@/lib/packs';
+import { CARTAS, RAREZAS, type CartaPack } from '@/lib/packs';
 import { Frente } from './Carta';
 
 const boton =
@@ -21,13 +21,46 @@ ${window.location.origin}/mudwater/pull/${id}
     return tweet.href;
 }
 
+function enlaceColeccion(compartir: string | null, premio: string | null) {
+    const total = CARTAS.filter((c) => c.rareza !== 'chosen').length;
+    const link = compartir
+        ? `${window.location.origin}/mudwater/pull/${compartir}`
+        : `${window.location.origin}/mudwater`;
+    const tweet = new URL('https://x.com/intent/tweet');
+    tweet.searchParams.set(
+        'text',
+        `Collection complete: I found all ${total} Primal Cult x Mudwater cards 🃏${premio ? `\nNow I'm in the raffle for ${premio}.` : ''}
+
+${link}
+
+#CultNeverDies #PrimalCult @primal_cult`
+    );
+    return tweet.href;
+}
+
+export function EtiquetaNueva({ className = '' }: { className?: string }) {
+    return (
+        <span
+            className={`mw-etiqueta inline-flex items-center justify-center h-5 text-[10px] leading-none text-black bg-mw-champagne rounded-full px-2.5 pb-px shadow-[0_0_14px_rgb(174_163_93/0.6)] ${className}`}
+        >
+            New
+        </span>
+    );
+}
+
 export default function Resumen({
     cartas,
+    nuevas = [],
+    completo = false,
+    premioColeccion = null,
     compartir,
     quedan,
     onFin,
 }: {
     cartas: CartaPack[];
+    nuevas?: boolean[];
+    completo?: boolean;
+    premioColeccion?: string | null;
     compartir: string | null;
     quedan: number;
     onFin: (otro: boolean) => void;
@@ -70,15 +103,30 @@ export default function Resumen({
                     <div
                         key={i}
                         data-carta
-                        className="w-[calc((100%-1.5rem)/3)] sm:w-[calc((100%-5rem)/5)] aspect-1621/2250"
+                        className="relative w-[calc((100%-1.5rem)/3)] sm:w-[calc((100%-5rem)/5)] aspect-1621/2250"
                     >
                         <Frente carta={c} />
+                        {nuevas[i] && (
+                            <EtiquetaNueva className="absolute -top-2 left-1/2 -translate-x-1/2 z-10" />
+                        )}
                     </div>
                 ))}
             </div>
             <p className="mw-titulo text-4xl sm:text-5xl mw-brass-texto">
                 +<span ref={contador}>0</span> points
             </p>
+            {completo && (
+                <div className="flex flex-col items-center gap-1 text-center">
+                    <p className="mw-titulo uppercase text-xl sm:text-2xl text-mw-champagne">
+                        Collection complete: you found every card
+                    </p>
+                    {premioColeccion && (
+                        <p className="text-lg text-mw-mist/80">
+                            You're in the raffle for {premioColeccion}.
+                        </p>
+                    )}
+                </div>
+            )}
             {cartas.some((c) => c.rareza === 'chosen') && (
                 <p className="mw-titulo uppercase text-xl sm:text-2xl text-[#ffe27a] text-center">
                     You pulled The Chosen: you're in the Mudwater pack raffle
@@ -95,12 +143,16 @@ export default function Resumen({
                         <span className="relative">Open next pack</span>
                     </button>
                 )}
-                {compartir && (
+                {(compartir || completo) && (
                     <a
-                        href={enlaceX(compartir, total)}
+                        href={
+                            completo
+                                ? enlaceColeccion(compartir, premioColeccion)
+                                : enlaceX(compartir!, total)
+                        }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`${botonSecundario} flex items-center gap-2`}
+                        className={`${completo ? boton : botonSecundario} flex items-center gap-2`}
                     >
                         <span
                             aria-hidden="true"
@@ -109,13 +161,13 @@ export default function Resumen({
                                 mask: 'url(/icons/x.svg) center / contain no-repeat',
                             }}
                         />
-                        Share
+                        {completo ? 'Share on X' : 'Share'}
                     </a>
                 )}
                 <button
                     type="button"
                     onClick={() => onFin(false)}
-                    className={quedan > 0 ? botonSecundario : boton}
+                    className={quedan > 0 || completo ? botonSecundario : boton}
                 >
                     {quedan > 0 ? 'Back' : 'Done for today'}
                 </button>

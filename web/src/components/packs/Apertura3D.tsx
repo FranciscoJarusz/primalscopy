@@ -10,7 +10,7 @@ import gsap from 'gsap';
 import { FiVolume2, FiVolumeX } from 'react-icons/fi';
 import { RAREZAS, type CartaPack } from '@/lib/packs';
 import { Frente, PastillaCarta, TituloCarta } from './Carta';
-import Resumen from './Resumen';
+import Resumen, { EtiquetaNueva } from './Resumen';
 import { Escena3D, type Ranura, type Sonido } from './escena3d';
 export { precalentar } from './texturas3d';
 import {
@@ -43,11 +43,17 @@ const buena = (c: CartaPack) => RAREZAS[c.rareza].tier >= RAREZAS.rare.tier;
 
 export default function Apertura3D({
     cartas,
+    nuevas = [],
+    completo = false,
+    premioColeccion = null,
     compartir,
     quedan,
     onFin,
 }: {
     cartas: CartaPack[];
+    nuevas?: boolean[];
+    completo?: boolean;
+    premioColeccion?: string | null;
     compartir: string | null;
     quedan: number;
     onFin: (otro: boolean) => void;
@@ -67,6 +73,30 @@ export default function Apertura3D({
     const destello = useRef<HTMLDivElement>(null);
     const barra = useRef<HTMLDivElement>(null);
     const info = useRef<HTMLDivElement>(null);
+    const etiqueta = useRef<HTMLDivElement>(null);
+    const conEtiqueta =
+        etapa === 'revelando' && volteada && !ocupado && !!nuevas[actual];
+
+    useEffect(() => {
+        if (!conEtiqueta) return;
+        let cuadro = 0;
+        const seguir = () => {
+            const p = escena.current?.bordeSuperior(actual);
+            if (p && etiqueta.current)
+                etiqueta.current.style.transform = `translate(${p.x}px, ${p.y}px)`;
+            cuadro = requestAnimationFrame(seguir);
+        };
+        seguir();
+        const aparece = gsap.to(etiqueta.current, {
+            opacity: 1,
+            duration: 0.3,
+            delay: 0.15,
+        });
+        return () => {
+            cancelAnimationFrame(cuadro);
+            aparece.kill();
+        };
+    }, [conEtiqueta, actual]);
     const puntero = useRef<{
         x: number;
         y: number;
@@ -336,7 +366,7 @@ export default function Apertura3D({
     return createPortal(
         <div
             ref={raiz}
-            className="mw-texto fixed inset-0 z-[60] bg-black text-mw-mist overflow-hidden select-none touch-none"
+            className="mw-texto fixed inset-0 z-60 bg-black text-mw-mist overflow-hidden select-none touch-none"
             data-lenis-prevent
             onPointerDown={apretar}
             onPointerMove={mover}
@@ -395,6 +425,15 @@ export default function Apertura3D({
                 </div>
             </div>
 
+            {conEtiqueta && (
+                <div
+                    ref={etiqueta}
+                    className="pointer-events-none absolute left-0 top-0 z-30 opacity-0"
+                >
+                    <EtiquetaNueva className="-translate-x-1/2 translate-y-[-80%]" />
+                </div>
+            )}
+
             {etapa !== 'resumen' && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[26%] z-20 bg-[radial-gradient(ellipse_60%_100%_at_bottom,rgb(0_0_0/0.85),rgb(0_0_0/0.5)_45%,transparent_85%)]" />
             )}
@@ -426,6 +465,9 @@ export default function Apertura3D({
                 <div className="absolute inset-0 z-30 flex items-center justify-center px-4 animate-aparece">
                     <Resumen
                         cartas={cartas}
+                        nuevas={nuevas}
+                        completo={completo}
+                        premioColeccion={premioColeccion}
                         compartir={compartir}
                         quedan={quedan}
                         onFin={onFin}
@@ -441,7 +483,7 @@ export default function Apertura3D({
                             ref={(el) => {
                                 ranuras.current[i] = el;
                             }}
-                            className="w-12 sm:w-16 aspect-[1621/2250]"
+                            className="w-12 sm:w-16 aspect-1621/2250"
                         >
                             {i < actual && <Frente carta={c} chica />}
                         </div>

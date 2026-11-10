@@ -12,6 +12,7 @@ export const ADMIN_SECCIONES = [
     { id: 'promo', nombre: 'Codes', href: '/admin/promo' },
     { id: 'nicknames', nombre: 'Community', href: '/admin/nicknames' },
     { id: 'badges', nombre: 'Badges', href: '/admin/badges' },
+    { id: 'activations', nombre: 'Activations', href: '/admin/activations' },
     { id: 'traits', nombre: 'Traits', href: '/admin/traits' },
 ];
 

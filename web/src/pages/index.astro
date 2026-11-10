@@ -4,13 +4,13 @@ import Hero from "@/components/landing/Hero.astro";
 import Stats from "@/components/landing/Stats.astro";
 import PrimalMarquee from "@/components/landing/PrimalMarquee.astro";
 import PrimalCult from "@/components/landing/PrimalCult.astro";
-import Roadmap from "@/components/landing/Roadmap.astro";
 import CultomizerSec from "@/components/landing/CultomizerSec.astro";
 import StakingSec from "@/components/landing/StakingSec.astro";
 import Caves from "@/components/landing/Caves.astro";
 import IpRights from "@/components/landing/IpRights.astro";
 import TeamSec from "@/components/landing/TeamSec.astro";
 import Exiled from "@/components/landing/Exiled";
+import EnVivo from "@/components/landing/EnVivo";
 ---
 
 <LandingLayout title="Primal Cult | Glitch Art on ApeChain" activo="home">
@@ -19,7 +19,7 @@ import Exiled from "@/components/landing/Exiled";
     <PrimalMarquee desde={1} hasta={49} velocidad={10} aleatorio cantidad={14} />
     <PrimalCult />
     <Stats />
-    <Roadmap />
+    <EnVivo client:only="react" />
     <PrimalMarquee desde={50} hasta={100} velocidad={10} aleatorio cantidad={14} />
     <CultomizerSec />
     <StakingSec />

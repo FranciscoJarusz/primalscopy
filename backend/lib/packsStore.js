@@ -17,6 +17,7 @@ const GIFTS_PATH = path.join(PACKS_DIR, 'gifts.json');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CHOSEN_ID = CARTAS.find(c => c.rarity === 'chosen')?.id ?? null;
+const COLECCION = CARTAS.filter(c => c.rarity !== 'chosen').map(c => c.id);
 const CARTAS_POR_PACK = 5;
 const TOP_PUBLICO = 100;
 const SOLANA = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
@@ -31,6 +32,7 @@ const DEFAULTS = {
     extraMax: 2,
     extraBoost: 50,
     winners: null,
+    prizes: ['Mudwater pack + 5 Primals', '4 Primals', '3 Primals', '2 Primals', '1 Primal'],
     rarities: {
         common: { chance: 5490, points: 5 },
         uncommon: { chance: 2500, points: 10 },
@@ -86,6 +88,7 @@ function sumar(open) {
         j.giftDays[open.day] = (j.giftDays[open.day] || 0) + 1;
     }
     for (const id of open.cards) j.collection[id] = (j.collection[id] || 0) + 1;
+    if (!j.completedAt && COLECCION.length && COLECCION.every(id => j.collection[id])) j.completedAt = open.at;
     if (open.points > 0) j.lastAt = open.at;
 }
 
@@ -186,6 +189,29 @@ function grantPacks(wallet, amount, ref) {
     return { granted: nuevos };
 }
 
+const refMeta = d => `goal:${d}`;
+const RACHA_META = 2;
+
+function premiarMeta(config, now) {
+    const meta = config.goal;
+    if (!meta?.daily || avanceMeta(meta, now) < meta.target) return;
+    const hoy = dia(now);
+    const regalos = leerRegalos();
+    const at = new Date(now).toISOString();
+    const descalificados = leerJugadores();
+    let nuevos = 0;
+    for (const [wallet, j] of jugadores()) {
+        const id = `${refMeta(hoy)}:${wallet}:0`;
+        if (!j.days[hoy] || regalos[id] || descalificados[wallet]?.disqualified) continue;
+        if (rachaDe(j.days, now).current < RACHA_META) continue;
+        regalos[id] = { wallet, ref: refMeta(hoy), at };
+        nuevos++;
+    }
+    if (nuevos) writeJson(GIFTS_PATH, regalos);
+}
+
+const ganoMetaHoy = (key, now) => Boolean(leerRegalos()[`${refMeta(dia(now))}:${key}:0`]);
+
 const normalesDe = (j, hoy) => (j?.days[hoy] || 0) - (j?.giftDays?.[hoy] || 0);
 
 const comprasDeExtras = () => Object.values(leerExtras()).filter(e => e.valueWei);
@@ -214,6 +240,8 @@ function publicConfig(now = Date.now()) {
         tiers: config.tiers,
         extra: extraPublico(config),
         packSize: CARTAS_POR_PACK,
+        prizes: config.prizes,
+        collectionPrize: config.collectionPrize || null,
         rarities: Object.fromEntries(RAREZAS.map(r => [r, {
             chance: total && CARTAS.some(c => c.rarity === r) ? config.rarities[r].chance / total : 0,
             points: config.rarities[r].points,
@@ -231,7 +259,17 @@ function leaderboard(now = Date.now()) {
         limit: TOP_PUBLICO,
         top: todos.slice(0, TOP_PUBLICO).map(f => ({ ...f, nickname: apodos[f.wallet] ?? null })),
         chosen: participantesChosen().map(p => ({ ...p, winner: p.wallet === ganador })),
+        collectors: coleccionistas(),
     };
+}
+
+function coleccionistas() {
+    const fuera = leerJugadores();
+    const apodos = nicknames.getAllNicknames();
+    return [...jugadores()]
+        .filter(([wallet, j]) => j.completedAt && !fuera[wallet]?.disqualified)
+        .map(([wallet, j]) => ({ wallet, nickname: apodos[wallet] ?? null, at: j.completedAt, packs: j.packs }))
+        .sort((a, b) => a.at.localeCompare(b.at));
 }
 
 const baseDe = (config, tier) => config.tiers[NIVELES.includes(tier) ? tier : 'none'];
@@ -255,11 +293,14 @@ function resumen(wallet, { tier = null } = {}, now = Date.now()) {
         limit: baseDe(config, tier) + extrasDe(key, dia(now)),
         openedToday: normalesDe(j, dia(now)),
         bonusPacks: regalosDe(key),
+        goalRewardToday: ganoMetaHoy(key, now),
         points: puntosDe(j, jugador),
         packs: j?.packs || 0,
         rank: fila?.rank ?? null,
         streak: rachaDe(j?.days || {}, now),
         collection: j?.collection || {},
+        collectionComplete: Boolean(j?.completedAt),
+        completedAt: j?.completedAt ?? null,
         disqualified: Boolean(jugador.disqualified),
         winner,
         chosenEntered: Boolean(CHOSEN_ID && j?.collection[CHOSEN_ID]),
@@ -336,6 +377,7 @@ function open(wallet, { tier = null } = {}, now = Date.now()) {
     };
     appendJsonLine(OPENS_PATH, entrada);
     sumar(entrada);
+    premiarMeta(config, now);
     return { pack: { id: entrada.id, cards: entrada.cards, points: entrada.points }, me: resumen(key, { tier }, now) };
 }
 
@@ -458,6 +500,37 @@ function updateConfig(cambios = {}, now = Date.now()) {
             siguiente.winners = n;
         }
     }
+    if ('prizes' in cambios) {
+        if (!Array.isArray(cambios.prizes)) return { error: 'Invalid prizes.' };
+        const premios = cambios.prizes.map(p => String(p ?? '').trim().slice(0, 60));
+        while (premios.length && !premios[premios.length - 1]) premios.pop();
+        if (premios.length > 20) return { error: 'Up to 20 prizes.' };
+        if (premios.some(p => !p)) return { error: 'Every place up to the last one needs a prize.' };
+        siguiente.prizes = premios;
+    }
+    if ('collectionPrize' in cambios) {
+        siguiente.collectionPrize = String(cambios.collectionPrize ?? '').trim().slice(0, 120) || null;
+    }
+    if ('goal' in cambios) {
+        const meta = cambios.goal;
+        if (meta === null) siguiente.goal = null;
+        else {
+            const target = intEntre(meta?.target, 1, 10000000);
+            if (target === null) return { error: 'The goal needs a number of packs.' };
+            const title = String(meta.title ?? '').trim().slice(0, 80);
+            const reward = String(meta.reward ?? '').trim().slice(0, 120);
+            if (!reward) return { error: 'Write what the community unlocks.' };
+            if (meta.daily === true) siguiente.goal = { title, reward, target, daily: true };
+            else {
+                const fecha = v => (v === null || v === undefined || v === '' ? null : Number.isFinite(Date.parse(v)) ? new Date(v).toISOString() : undefined);
+                const from = fecha(meta.from);
+                const to = fecha(meta.to);
+                if (from === undefined || to === undefined) return { error: 'Invalid goal dates.' };
+                if (from && to && Date.parse(to) <= Date.parse(from)) return { error: 'The goal has to end after it starts.' };
+                siguiente.goal = { title, reward, target, from: from ?? new Date(now).toISOString(), to };
+            }
+        }
+    }
     if ('rarities' in cambios) {
         for (const r of RAREZAS) {
             const pedido = cambios.rarities?.[r];
@@ -472,6 +545,7 @@ function updateConfig(cambios = {}, now = Date.now()) {
     }
 
     writeJson(CONFIG_PATH, siguiente);
+    if ('goal' in cambios) premiarMeta(siguiente, now);
     return { config: siguiente };
 }
 
@@ -547,7 +621,7 @@ function reiniciarSorteoChosen() {
 function porDia(extras) {
     const dias = new Map();
     const fila = d => {
-        if (!dias.has(d)) dias.set(d, { day: d, players: 0, newPlayers: 0, packs: 0, extras: 0, wallets: [] });
+        if (!dias.has(d)) dias.set(d, { day: d, players: 0, newPlayers: 0, packs: 0, extras: 0, goalRewards: 0, wallets: [] });
         return dias.get(d);
     };
     const compras = new Map();
@@ -556,6 +630,9 @@ function porDia(extras) {
         fila(e.day).extras++;
         const k = `${e.day}|${e.wallet}`;
         compras.set(k, (compras.get(k) || 0) + 1);
+    }
+    for (const g of Object.values(leerRegalos())) {
+        if (g.ref?.startsWith('goal:')) fila(g.ref.slice(5)).goalRewards++;
     }
     for (const [wallet, j] of jugadores()) {
         const suyos = Object.keys(j.days).sort();
@@ -576,6 +653,84 @@ function porDia(extras) {
     }
     for (const f of dias.values()) f.wallets.sort((a, b) => b.isNew - a.isNew || b.points - a.points);
     return [...dias.values()].sort((a, b) => b.day.localeCompare(a.day));
+}
+
+function ventanaMeta(meta, now) {
+    if (meta.daily) {
+        const desde = Date.parse(`${dia(now)}T00:00:00.000Z`);
+        return { desde, hasta: desde + DAY_MS };
+    }
+    return { desde: meta.from ? Date.parse(meta.from) : -Infinity, hasta: meta.to ? Date.parse(meta.to) : Infinity };
+}
+
+function avanceMeta(meta, now) {
+    jugadores();
+    const { desde, hasta } = ventanaMeta(meta, now);
+    let packs = 0;
+    for (const a of aperturas.values()) {
+        const t = Date.parse(a.at);
+        if (a.gift) continue;
+        if (t >= desde && (meta.daily ? t < hasta : t <= hasta)) packs++;
+    }
+    return packs;
+}
+
+function metaPublica(config, now = Date.now()) {
+    const meta = config.goal;
+    if (!meta?.target) return null;
+    const progress = avanceMeta(meta, now);
+    if (meta.daily) {
+        const { desde, hasta } = ventanaMeta(meta, now);
+        return {
+            title: meta.title,
+            reward: meta.reward,
+            target: meta.target,
+            daily: true,
+            progress,
+            from: new Date(desde).toISOString(),
+            to: new Date(hasta).toISOString(),
+            status: progress >= meta.target ? 'reached' : 'running',
+        };
+    }
+    return {
+        title: meta.title,
+        reward: meta.reward,
+        target: meta.target,
+        daily: false,
+        progress,
+        from: meta.from,
+        to: meta.to,
+        status: progress >= meta.target ? 'reached' : meta.to && Date.parse(meta.to) <= now ? 'missed' : 'running',
+    };
+}
+
+const ORDEN_RAREZA = Object.fromEntries(RAREZAS.map((r, i) => [r, i]));
+
+function enVivo(now = Date.now()) {
+    const config = getConfig();
+    const todos = jugadores();
+    const hoy = dia(now);
+    const orden = ranking(now);
+    const apodos = nicknames.getAllNicknames();
+    let deHoy = 0;
+    for (const j of todos.values()) deHoy += j.days[hoy] || 0;
+    const grandes = [];
+    for (const a of aperturas.values()) {
+        const mejor = a.cards
+            .map(id => CARTAS.find(c => c.id === id))
+            .filter(Boolean)
+            .sort((x, y) => ORDEN_RAREZA[y.rarity] - ORDEN_RAREZA[x.rarity])[0];
+        if (mejor && ORDEN_RAREZA[mejor.rarity] >= ORDEN_RAREZA.epic) grandes.push({ at: a.at, wallet: a.wallet, pull: a.id, card: cartaPublica(mejor) });
+    }
+    return {
+        status: estado(config, now),
+        endsAt: config.endsAt,
+        players: orden.length,
+        today: deHoy,
+        top: orden.slice(0, 3).map(f => ({ rank: f.rank, wallet: f.wallet, nickname: apodos[f.wallet] ?? null, points: f.points })),
+        goal: metaPublica(config, now),
+        pulls: grandes.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12),
+    };
 }
 
 function adminSummary(now = Date.now()) {
@@ -634,11 +789,14 @@ function adminSummary(now = Date.now()) {
         daily: porDia(extras),
         credited: extras.filter(e => e.source).sort((a, b) => b.at.localeCompare(a.at)),
         chosen: { entrants: participantesChosen(), raffle: config.chosenRaffle ?? null },
+        collectors: coleccionistas(),
+        goal: metaPublica(config, now),
     };
 }
 
 module.exports = {
     PACKS_DIR,
+    enVivo,
     comprasDeExtras,
     CARTAS_POR_PACK,
     getConfig,

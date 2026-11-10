@@ -79,6 +79,8 @@ export interface ConfigPacks {
         confirmations: number;
     } | null;
     packSize: number;
+    prizes?: string[];
+    collectionPrize?: string | null;
     rarities: Record<Rareza, { chance: number; points: number }>;
     cards: { id: number; name: string; category: Categoria; rarity: Rareza }[];
 }
@@ -92,6 +94,7 @@ export interface MiPacks {
     baseLimit: number;
     extrasToday: number;
     bonusPacks?: number;
+    goalRewardToday?: boolean;
     limit: number;
     openedToday: number;
     points: number;
@@ -99,6 +102,8 @@ export interface MiPacks {
     rank: number | null;
     streak: { current: number; best: number };
     collection: Record<string, number>;
+    collectionComplete?: boolean;
+    completedAt?: string | null;
     disqualified: boolean;
     winner: boolean;
     chosenEntered: boolean;
@@ -114,6 +119,13 @@ export interface FilaRanking {
     packs: number;
     streak: number;
     today?: boolean;
+}
+
+export interface FilaColeccionista {
+    wallet: string;
+    nickname: string | null;
+    at: string;
+    packs: number;
 }
 
 export interface FilaChosen {
@@ -192,6 +204,7 @@ export interface Ranking {
     limit?: number;
     top: FilaRanking[];
     chosen: FilaChosen[];
+    collectors?: FilaColeccionista[];
 }
 export const leerRanking = () => pedir<Ranking>('/leaderboard');
 export const leerMio = (token: string) => pedir<MiPacks>('/me', token);

@@ -1002,6 +1002,17 @@ function actividadDe(wallet) {
             : { at: h.event === 'start' ? h.startAt : h.endsAt, kind: h.event === 'start' ? 'stake' : 'trained', tokenId: h.tokenId, days: h.days });
 }
 
+function recientes(cuantos = 12) {
+    const now = Date.now();
+    const salida = [];
+    const historia = readHistory();
+    for (let i = historia.length - 1; i >= 0 && salida.length < cuantos; i--) {
+        const h = historia[i];
+        if (h.event === 'start' && Date.parse(h.startAt) <= now) salida.push({ at: h.startAt, wallet: h.wallet, tokenId: h.tokenId, days: h.days });
+    }
+    return salida;
+}
+
 // Lo del staking que miran las insignias (lib/badgeStore.js).
 function datosParaInsignias(wallet) {
     const key = wallet.toLowerCase();
@@ -1479,6 +1490,7 @@ module.exports = {
     stakeOf,
     datosParaInsignias,
     actividadDe,
+    recientes,
     leaderboard,
     badgesOf,
     streaksByWallet,

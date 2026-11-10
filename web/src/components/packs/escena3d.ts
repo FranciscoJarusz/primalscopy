@@ -827,6 +827,17 @@ export class Escena3D {
         this.inclinacion.y = THREE.MathUtils.clamp(y, -1, 1);
     }
 
+    bordeSuperior(i: number) {
+        const pivote = this.pivotes[i];
+        if (!pivote || !this.cartas[i]?.visible) return null;
+        const p = pivote.localToWorld(new THREE.Vector3(0, CH / 2, 0));
+        p.project(this.camera);
+        return {
+            x: ((p.x + 1) / 2) * this.contenedor.clientWidth,
+            y: ((1 - p.y) / 2) * this.contenedor.clientHeight,
+        };
+    }
+
     private aMundo(r: Ranura, z: number) {
         const w = this.contenedor.clientWidth || 1;
         const h = this.contenedor.clientHeight || 1;
