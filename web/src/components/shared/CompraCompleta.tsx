@@ -139,6 +139,7 @@ export default function CompraCompleta({
                     style={{ animationDelay: '.3s' }}
                 >
                     <button
+                        data-boton-modal
                         onClick={onCerrar}
                         className={`${principal ? 'bg-lightblue' : 'bg-yellow'} text-darkblue font-accent uppercase text-lg leading-normal! rounded-md px-6 pb-1.5 cursor-pointer hover:bg-yellow active:scale-97 transition-all duration-300`}
                     >
@@ -146,6 +147,7 @@ export default function CompraCompleta({
                     </button>
                     {principal && (
                         <button
+                            data-boton-modal
                             onClick={principal.alTocar}
                             className="bg-yellow text-darkblue font-accent uppercase text-lg leading-normal! rounded-md px-6 pb-1.5 cursor-pointer hover:scale-102 active:scale-97 transition-all duration-300"
                         >

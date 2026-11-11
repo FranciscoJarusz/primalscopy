@@ -100,7 +100,7 @@ export default function EnVivo() {
             <h2
                 data-anim="reveal"
                 id="live-titulo"
-                className="rounded-2xl sm:rounded-[30px] bg-yellow pt-1 pb-5 sm:pt-2 sm:pb-7 xl:pb-9 text-center font-accent text-5xl sm:text-6xl xl:text-7xl uppercase text-darkblue shadow-lg shadow-darkblue/50"
+                className="rounded-2xl sm:rounded-[30px] bg-yellow pt-1 pb-5 sm:pt-2 sm:pb-7 xl:pb-9 text-center font-accent text-4xl min-[420px]:text-5xl sm:text-6xl xl:text-7xl uppercase text-darkblue shadow-lg shadow-darkblue/50"
             >
                 Live in the Cult
             </h2>
