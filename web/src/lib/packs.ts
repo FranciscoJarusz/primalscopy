@@ -61,6 +61,21 @@ export function packDePrueba(): CartaPack[] {
     });
 }
 
+export type TipoUpgrade = 'up' | 'swap';
+
+export const SIGUIENTE: Partial<Record<Rareza, Rareza>> = {
+    common: 'uncommon',
+    uncommon: 'rare',
+    rare: 'epic',
+    epic: 'legendary',
+};
+
+export const repetidasDe = (coleccion: Record<string, number>, r: Rareza) =>
+    CARTAS.filter((c) => c.rareza === r).reduce(
+        (s, c) => s + Math.max(0, (coleccion[c.id] ?? 0) - 1),
+        0
+    );
+
 export type EstadoPacks = 'upcoming' | 'open' | 'ended';
 
 export type Nivel = 'none' | 'holder' | 'staker';
@@ -81,6 +96,11 @@ export interface ConfigPacks {
     packSize: number;
     prizes?: string[];
     collectionPrize?: string | null;
+    upgrades?: {
+        from: string;
+        tradeUp: Partial<Record<Rareza, number>>;
+        swap: Partial<Record<Rareza, number>>;
+    } | null;
     rarities: Record<Rareza, { chance: number; points: number }>;
     cards: { id: number; name: string; category: Categoria; rarity: Rareza }[];
 }
@@ -222,6 +242,12 @@ export const abrirPack = (token: string) =>
         token,
         { method: 'POST', body: '{}' }
     );
+export interface ResultadoUpgrade {
+    upgrade: { id: string; kind: TipoUpgrade; rarity: Rareza; card: number; new: boolean };
+    me: MiPacks;
+}
+export const hacerUpgrade = (token: string, kind: TipoUpgrade, cards: number[]) =>
+    pedir<ResultadoUpgrade>('/upgrade', token, { method: 'POST', body: JSON.stringify({ kind, cards }) });
 export async function acreditarExtra(token: string, txHash: string): Promise<MiPacks> {
     for (let intento = 0; intento < 20; intento++) {
         const r = await fetch(`${BACKEND_URL}/packs/extra`, {

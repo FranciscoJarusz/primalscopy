@@ -386,6 +386,91 @@ async function main() {
     r = await json(await config({ goal: null }));
     check('la meta se puede sacar', r.http === 200 && r.goal === null);
 
+    console.log('\nUpgrade de repetidas');
+    const elegir = (rarity, n) => {
+        const col = { ...packs.resumen(caro.address).collection };
+        const ids = [];
+        for (let i = 0; i < n; i++) {
+            const id = CARTAS.filter(c => c.rarity === rarity && (col[c.id] || 0) > 1).sort((a, b) => col[b.id] - col[a.id])[0]?.id;
+            if (id === undefined) break;
+            col[id]--;
+            ids.push(id);
+        }
+        return ids;
+    };
+    const cantidadDe = (kind, rarity) => packs.getConfig().upgrades[kind === 'up' ? 'tradeUp' : 'swap'][rarity] || 0;
+    const upgradear = (quien, kind, rarity, cards) => pedir('POST', '/api/packs/upgrade', { kind, cards: cards ?? elegir(rarity, cantidadDe(kind, rarity)) }, como(t[quien]));
+    r = await json(await fetch(`${BASE}/api/packs/config`));
+    check('sin fecha no se publica el upgrade', r.upgrades === null);
+    check('sin fecha esta cerrado', (await json(await upgradear('caro', 'up', 'common'))).reason === 'upgrades-locked');
+    const enUnDia = new Date(Date.now() + 86400000).toISOString();
+    r = await json(await config({ upgrades: { from: enUnDia } }));
+    check('el admin pone la fecha', r.http === 200 && r.config.upgrades.from === enUnDia && r.config.upgrades.tradeUp.common === 10 && r.config.upgrades.swap.common === 3);
+    r = await json(await fetch(`${BASE}/api/packs/config`));
+    check('con fecha se publica para la cuenta regresiva', r.upgrades?.from === enUnDia && r.upgrades.tradeUp.epic === 5);
+    check('antes de la fecha sigue cerrado', (await json(await upgradear('caro', 'up', 'common'))).reason === 'upgrades-locked');
+    check('una cantidad invalida se rechaza', (await json(await config({ upgrades: { swap: { common: -1 } } }))).http === 400);
+    check('una fecha invalida se rechaza', (await json(await config({ upgrades: { from: 'mañana' } }))).http === 400);
+    await config({ upgrades: { from: new Date(Date.now() - 1000).toISOString() } });
+    check('legendary no sube a nada', (await json(await upgradear('caro', 'up', 'legendary'))).http === 400);
+    check('un tipo desconocido no', (await json(await upgradear('caro', 'otro', 'common'))).http === 400);
+
+    const rarezaDe = new Map(CARTAS.map(c => [String(c.id), c.rarity]));
+    const repetidas = (col, rz) => Object.entries(col).filter(([id]) => rarezaDe.get(id) === rz).reduce((s, [, k]) => s + Math.max(0, k - 1), 0);
+    const totalDe = (col, rz) => Object.entries(col).filter(([id]) => rarezaDe.get(id) === rz).reduce((s, [, k]) => s + k, 0);
+    await config({ upgrades: { tradeUp: { common: 200 } } });
+    const unaComun = CARTAS.find(c => c.rarity === 'common' && packs.resumen(caro.address).collection[c.id]).id;
+    check('sin repetidas suficientes no', (await json(await upgradear('caro', 'up', 'common', Array(200).fill(unaComun)))).reason === 'not-enough');
+    await config({ upgrades: { tradeUp: { common: 0 } } });
+    check('en 0 queda apagado', (await json(await upgradear('caro', 'up', 'common'))).http === 400);
+    await config({ upgrades: { tradeUp: { common: 10 } } });
+    const lejos = Date.now() + 400 * 86400000;
+    for (let d = 0; d < 100 && repetidas(packs.resumen(caro.address).collection, 'common') < 10; d++) {
+        for (let k = 0; k < 4; k++) packs.open(caro.address, { tier: 'staker' }, lejos + d * 86400000);
+    }
+    let antes = packs.resumen(caro.address);
+    check('junto 10 comunes repetidas', repetidas(antes.collection, 'common') >= 10);
+    const otraRareza = CARTAS.find(c => c.rarity === 'uncommon' && (antes.collection[c.id] || 0) > 1)?.id;
+    if (otraRareza) check('mezclar rarezas no', (await json(await upgradear('caro', 'up', 'common', [...elegir('common', 9), otraRareza]))).http === 400);
+    const unica = CARTAS.find(c => c.rarity === 'common' && antes.collection[c.id] === 1)?.id;
+    if (unica) check('la ultima copia no se puede usar', (await json(await upgradear('caro', 'up', 'common', [...elegir('common', 9), unica]))).reason === 'not-enough');
+    check('con 9 cartas no alcanza', (await json(await upgradear('caro', 'up', 'common', elegir('common', 9)))).reason === 'wrong-amount');
+    check('un id que no existe no', (await json(await upgradear('caro', 'up', 'common', [...elegir('common', 9), 99999]))).http === 400);
+    check('sin cartas no', (await json(await upgradear('caro', 'up', 'common', []))).http === 400);
+    const pedidas = elegir('common', 10);
+    const uncommonsAntes = CARTAS.filter(c => c.rarity === 'uncommon' && antes.collection[c.id]).length;
+    r = await json(await upgradear('caro', 'up', 'common', pedidas));
+    check('gasta justo las cartas elegidas', JSON.stringify(r.upgrade?.spent) === JSON.stringify(pedidas.reduce((m, id) => ({ ...m, [id]: (m[id] || 0) + 1 }), {})));
+    check('el trade-up responde', r.http === 200 && r.upgrade?.kind === 'up', JSON.stringify(r));
+    let ganada = CARTAS.find(c => c.id === r.upgrade?.card);
+    check('sube a uncommon', ganada?.rarity === 'uncommon');
+    check('si faltaba una, da una que faltaba', uncommonsAntes === CARTAS.filter(c => c.rarity === 'uncommon').length || (r.upgrade.new && !antes.collection[ganada.id]));
+    let despues = r.me;
+    check('no da ni quita puntos', despues.points === antes.points && despues.packs === antes.packs && despues.rank === antes.rank);
+    check('gasta 10 comunes', totalDe(despues.collection, 'common') === totalDe(antes.collection, 'common') - 10);
+    check('suma 1 uncommon', totalDe(despues.collection, 'uncommon') === totalDe(antes.collection, 'uncommon') + 1);
+    check('nunca gasta la ultima copia', Object.keys(antes.collection).every(id => despues.collection[id] >= 1));
+
+    const comunes = CARTAS.filter(c => c.rarity === 'common');
+    const faltaComun = comunes.some(c => !despues.collection[c.id]);
+    antes = despues;
+    r = await json(await upgradear('caro', 'swap', 'common'));
+    if (faltaComun && repetidas(antes.collection, 'common') >= 3) {
+        ganada = CARTAS.find(c => c.id === r.upgrade?.card);
+        check('el canje da una comun que faltaba', r.http === 200 && ganada?.rarity === 'common' && !antes.collection[ganada.id] && r.upgrade.new);
+        check('el canje gasta 3 y suma 1', totalDe(r.me.collection, 'common') === totalDe(antes.collection, 'common') - 2);
+    } else if (!faltaComun) {
+        check('sin comunes faltantes el canje no se hace', r.reason === 'nothing-missing');
+    } else {
+        check('el canje sin repetidas no se hace', r.reason === 'not-enough');
+    }
+    const lineas = fs.readFileSync(path.join(packs.PACKS_DIR, 'upgrades.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l));
+    check('se guarda en upgrades.jsonl', lineas.length >= 1 && lineas[0].kind === 'up' && lineas[0].rarity === 'common');
+    r = await json(await fetch(`${BASE}/api/admin/packs`, { headers: admin }));
+    check('el admin cuenta los upgrades', r.totals.upgrades === lineas.length);
+    await config({ status: 'ended' });
+    check('terminada la competencia no hay upgrades', (await json(await upgradear('caro', 'up', 'common'))).reason === 'closed');
+
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });
     process.exit(fail ? 1 : 0);

@@ -93,6 +93,12 @@ router.post('/open', requireWallet, async (req, res) => {
     responder(res, packs.open(req.walletAddress, { tier }));
 });
 
+router.post('/upgrade', requireWallet, async (req, res) => {
+    const tier = await nivel(req);
+    if (!tier) return responder(res, sinCadena);
+    responder(res, packs.upgrade(req.walletAddress, { kind: String(req.body?.kind || ''), cards: req.body?.cards }, { tier }));
+});
+
 router.post('/extra', requireWallet, async (req, res) => {
     const txHash = String(req.body?.txHash || '').toLowerCase();
     try {

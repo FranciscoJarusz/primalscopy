@@ -28,6 +28,7 @@ import {
     chanceCarta,
     formatoChance,
     guardarSolana,
+    hacerUpgrade,
     configCompartida,
     leerMio,
     leerRanking,
@@ -41,11 +42,15 @@ import {
     type MiPacks,
     type Ranking,
     type Nivel,
+    type ResultadoUpgrade,
+    type TipoUpgrade,
 } from '@/lib/packs';
 import Sobre from './Sobre';
 import { Dorso, Frente } from './Carta';
 import DetalleCarta from './DetalleCarta';
 import PacksDesbloqueados from './PacksDesbloqueados';
+import Upgrades from './Upgrades';
+import UpgradeHecho from './UpgradeHecho';
 import { despertar } from './sonidos';
 import { CSS } from './cssMudwater';
 
@@ -201,6 +206,11 @@ export default function Packs() {
     const [comprando, setComprando] = useState<string | null>(null);
     const [extraComprado, setExtraComprado] = useState(false);
     const [premioMeta, setPremioMeta] = useState(false);
+    const [upgradeHecho, setUpgradeHecho] = useState<{
+        carta: CartaPack;
+        nueva: boolean;
+        completo: boolean;
+    } | null>(null);
     useEffect(() => {
         const fuentes = Promise.race([
             Promise.all([
@@ -386,6 +396,18 @@ export default function Packs() {
         } finally {
             setAbriendo(false);
         }
+    };
+
+    const upgradear = (tipo: TipoUpgrade, cartas: number[]) =>
+        hacerUpgrade(session.token!, tipo, cartas);
+
+    const upgradeListo = ({ upgrade, me }: ResultadoUpgrade) => {
+        setUpgradeHecho({
+            carta: cartaPorId(upgrade.card),
+            nueva: upgrade.new,
+            completo: !!me.collectionComplete && !mio?.collectionComplete,
+        });
+        setMio(me);
     };
 
     const terminar = (otro: boolean) => {
@@ -957,6 +979,21 @@ export default function Packs() {
                 </section>
             </div>
 
+            {config.upgrades && config.status !== 'ended' && (
+                <Upgrades
+                    upgrades={config.upgrades}
+                    coleccion={coleccion}
+                    activo={
+                        config.status === 'open' &&
+                        !!session.token &&
+                        !!mio?.registered &&
+                        !mio.disqualified
+                    }
+                    onUpgrade={upgradear}
+                    onListo={upgradeListo}
+                />
+            )}
+
             <section className="flex flex-col gap-8">
                 <div className="flex items-end justify-between gap-4">
                     <div>
@@ -1084,6 +1121,18 @@ export default function Packs() {
                     tier={desbloqueado}
                     config={config}
                     onCerrar={() => setDesbloqueado(null)}
+                />
+            )}
+            {upgradeHecho && (
+                <UpgradeHecho
+                    carta={upgradeHecho.carta}
+                    nueva={upgradeHecho.nueva}
+                    completo={upgradeHecho.completo}
+                    premioColeccion={premioColeccion}
+                    onCerrar={() => {
+                        setUpgradeHecho(null);
+                        recargarRanking();
+                    }}
                 />
             )}
             {detalle && (

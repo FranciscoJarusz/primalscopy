@@ -14,6 +14,7 @@ const OPENS_PATH = path.join(PACKS_DIR, 'opens.jsonl');
 const PLAYERS_PATH = path.join(PACKS_DIR, 'players.json');
 const EXTRAS_PATH = path.join(PACKS_DIR, 'extras.json');
 const GIFTS_PATH = path.join(PACKS_DIR, 'gifts.json');
+const UPGRADES_PATH = path.join(PACKS_DIR, 'upgrades.jsonl');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CHOSEN_ID = CARTAS.find(c => c.rarity === 'chosen')?.id ?? null;
@@ -41,7 +42,15 @@ const DEFAULTS = {
         legendary: { chance: 200, points: 200 },
         chosen: { chance: 10, points: 500 },
     },
+    upgrades: {
+        from: null,
+        tradeUp: { common: 10, uncommon: 10, rare: 10, epic: 5 },
+        swap: { common: 3, uncommon: 3, rare: 3, epic: 3, legendary: 3 },
+    },
 };
+
+const SIGUIENTE = { common: 'uncommon', uncommon: 'rare', rare: 'epic', epic: 'legendary' };
+const CANJEABLES = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 
 const dia = t => new Date(t).toISOString().slice(0, 10);
 
@@ -52,6 +61,11 @@ function getConfig() {
         ...guardada,
         tiers: { ...DEFAULTS.tiers, ...guardada.tiers },
         rarities: { ...DEFAULTS.rarities, ...guardada.rarities },
+        upgrades: {
+            from: guardada.upgrades?.from ?? DEFAULTS.upgrades.from,
+            tradeUp: { ...DEFAULTS.upgrades.tradeUp, ...guardada.upgrades?.tradeUp },
+            swap: { ...DEFAULTS.upgrades.swap, ...guardada.upgrades?.swap },
+        },
     };
 }
 
@@ -67,18 +81,29 @@ function leerJugadores() {
 let indice = null;
 let aperturas = null;
 
+let totalUpgrades = 0;
+
 let version = 0;
 let cacheRanking = null;
 let cacheChosen = null;
 
+function jugadorDe(wallet, at) {
+    let j = indice.get(wallet);
+    if (!j) {
+        j = { points: 0, packs: 0, upgrades: 0, days: {}, pointsByDay: {}, giftDays: {}, giftsUsed: 0, collection: {}, firstAt: at, lastAt: at };
+        indice.set(wallet, j);
+    }
+    return j;
+}
+
+function marcarCompleta(j, at) {
+    if (!j.completedAt && COLECCION.length && COLECCION.every(id => j.collection[id])) j.completedAt = at;
+}
+
 function sumar(open) {
     version++;
     aperturas.set(open.id, open);
-    let j = indice.get(open.wallet);
-    if (!j) {
-        j = { points: 0, packs: 0, days: {}, pointsByDay: {}, giftDays: {}, giftsUsed: 0, collection: {}, firstAt: open.at, lastAt: open.at };
-        indice.set(open.wallet, j);
-    }
+    const j = jugadorDe(open.wallet, open.at);
     j.points += open.points;
     j.packs++;
     j.days[open.day] = (j.days[open.day] || 0) + 1;
@@ -88,15 +113,36 @@ function sumar(open) {
         j.giftDays[open.day] = (j.giftDays[open.day] || 0) + 1;
     }
     for (const id of open.cards) j.collection[id] = (j.collection[id] || 0) + 1;
-    if (!j.completedAt && COLECCION.length && COLECCION.every(id => j.collection[id])) j.completedAt = open.at;
+    marcarCompleta(j, open.at);
     if (open.points > 0) j.lastAt = open.at;
+}
+
+function sumarUpgrade(u) {
+    version++;
+    totalUpgrades++;
+    const j = jugadorDe(u.wallet, u.at);
+    for (const [id, n] of Object.entries(u.spent)) {
+        j.collection[id] = (j.collection[id] || 0) - n;
+        if (j.collection[id] <= 0) delete j.collection[id];
+    }
+    j.collection[u.card] = (j.collection[u.card] || 0) + 1;
+    j.upgrades++;
+    marcarCompleta(j, u.at);
 }
 
 function jugadores() {
     if (!indice) {
         indice = new Map();
         aperturas = new Map();
-        for (const open of readJsonLines(OPENS_PATH, 'packs')) sumar(open);
+        totalUpgrades = 0;
+        const opens = readJsonLines(OPENS_PATH, 'packs');
+        const upgrades = readJsonLines(UPGRADES_PATH, 'packs');
+        let u = 0;
+        for (const open of opens) {
+            while (u < upgrades.length && upgrades[u].at <= open.at) sumarUpgrade(upgrades[u++]);
+            sumar(open);
+        }
+        while (u < upgrades.length) sumarUpgrade(upgrades[u++]);
     }
     return indice;
 }
@@ -242,6 +288,7 @@ function publicConfig(now = Date.now()) {
         packSize: CARTAS_POR_PACK,
         prizes: config.prizes,
         collectionPrize: config.collectionPrize || null,
+        upgrades: config.upgrades.from ? config.upgrades : null,
         rarities: Object.fromEntries(RAREZAS.map(r => [r, {
             chance: total && CARTAS.some(c => c.rarity === r) ? config.rarities[r].chance / total : 0,
             points: config.rarities[r].points,
@@ -298,7 +345,7 @@ function resumen(wallet, { tier = null } = {}, now = Date.now()) {
         packs: j?.packs || 0,
         rank: fila?.rank ?? null,
         streak: rachaDe(j?.days || {}, now),
-        collection: j?.collection || {},
+        collection: { ...j?.collection },
         collectionComplete: Boolean(j?.completedAt),
         completedAt: j?.completedAt ?? null,
         disqualified: Boolean(jugador.disqualified),
@@ -379,6 +426,54 @@ function open(wallet, { tier = null } = {}, now = Date.now()) {
     sumar(entrada);
     premiarMeta(config, now);
     return { pack: { id: entrada.id, cards: entrada.cards, points: entrada.points }, me: resumen(key, { tier }, now) };
+}
+
+function upgradesAbiertos(config, now) {
+    const desde = config.upgrades?.from;
+    return Boolean(desde) && Date.parse(desde) <= now;
+}
+
+function elegidas(coleccion, cartas) {
+    if (!Array.isArray(cartas) || !cartas.length || cartas.length > 200) return { error: 'Pick the cards to trade.' };
+    const spent = {};
+    let rareza = null;
+    for (const valor of cartas) {
+        const carta = CARTAS.find(c => c.id === Number(valor));
+        if (!carta || carta.rarity === 'chosen') return { error: 'Unknown card.' };
+        if (rareza && carta.rarity !== rareza) return { error: 'All the cards have to be the same rarity.' };
+        rareza = carta.rarity;
+        spent[carta.id] = (spent[carta.id] || 0) + 1;
+        if (spent[carta.id] > (coleccion[carta.id] || 0) - 1) return { error: `You don't have that many duplicates of #${carta.id}.`, reason: 'not-enough', status: 409 };
+    }
+    return { rareza, spent };
+}
+
+function upgrade(wallet, { kind, cards } = {}, { tier = null } = {}, now = Date.now()) {
+    const key = wallet.toLowerCase();
+    const config = getConfig();
+    if (kind !== 'up' && kind !== 'swap') return { error: 'Unknown upgrade.', status: 400 };
+    if (estado(config, now) !== 'open') return { error: "Packs aren't open right now.", reason: 'closed', status: 409 };
+    if (!upgradesAbiertos(config, now)) return { error: "Upgrades aren't open yet.", reason: 'upgrades-locked', status: 409 };
+    if (leerJugadores()[key]?.disqualified) return { error: 'This wallet was disqualified.', reason: 'disqualified', status: 403 };
+    if (!registrado(registro(key))) return { error: 'Set a nickname and your X or Discord first.', reason: 'not-registered', status: 409 };
+    const coleccion = jugadores().get(key)?.collection || {};
+    const eleccion = elegidas(coleccion, cards);
+    if (eleccion.error) return { status: 400, ...eleccion };
+    const rarity = eleccion.rareza;
+    const destino = kind === 'up' ? SIGUIENTE[rarity] : rarity;
+    const cantidad = kind === 'up' ? config.upgrades.tradeUp[rarity] : config.upgrades.swap[rarity];
+    if (!destino || !cantidad) return { error: `${rarity} cards can't be ${kind === 'up' ? 'traded up' : 'swapped'}.`, status: 400 };
+    if (cards.length !== cantidad) return { error: `This needs exactly ${cantidad} ${rarity} cards.`, reason: 'wrong-amount', status: 400 };
+    const opciones = CARTAS.filter(c => c.rarity === destino);
+    const faltan = opciones.filter(c => !coleccion[c.id]);
+    if (kind === 'swap' && !faltan.length) return { error: `You already have every ${destino} card.`, reason: 'nothing-missing', status: 409 };
+    const { spent } = eleccion;
+    const lista = faltan.length ? faltan : opciones;
+    const carta = lista[crypto.randomInt(lista.length)];
+    const entrada = { at: new Date(now).toISOString(), id: crypto.randomUUID(), wallet: key, kind, rarity, spent, card: carta.id };
+    appendJsonLine(UPGRADES_PATH, entrada);
+    sumarUpgrade(entrada);
+    return { upgrade: { id: entrada.id, kind, rarity, card: carta.id, spent, new: faltan.length > 0 }, me: resumen(key, { tier }, now) };
 }
 
 function puedeComprarExtra(wallet, now = Date.now()) {
@@ -530,6 +625,28 @@ function updateConfig(cambios = {}, now = Date.now()) {
                 siguiente.goal = { title, reward, target, from: from ?? new Date(now).toISOString(), to };
             }
         }
+    }
+    if ('upgrades' in cambios) {
+        const pedido = cambios.upgrades || {};
+        const nuevo = { ...config.upgrades, tradeUp: { ...config.upgrades.tradeUp }, swap: { ...config.upgrades.swap } };
+        if ('from' in pedido) {
+            if (pedido.from === null || pedido.from === '') nuevo.from = null;
+            else if (!Number.isFinite(Date.parse(pedido.from))) return { error: 'Invalid upgrades date.' };
+            else nuevo.from = new Date(pedido.from).toISOString();
+        }
+        for (const [campo, rarezas] of [
+            ['tradeUp', Object.keys(SIGUIENTE)],
+            ['swap', CANJEABLES],
+        ]) {
+            for (const r of rarezas) {
+                const valor = pedido[campo]?.[r];
+                if (valor === undefined) continue;
+                const n = intEntre(valor === '' || valor === null ? 0 : valor, 0, 200);
+                if (n === null) return { error: `Invalid ${r} amount for ${campo === 'swap' ? 'swaps' : 'trade-ups'}.` };
+                nuevo[campo][r] = n;
+            }
+        }
+        siguiente.upgrades = nuevo;
     }
     if ('rarities' in cambios) {
         for (const r of RAREZAS) {
@@ -783,6 +900,7 @@ function adminSummary(now = Date.now()) {
             extras: extras.length,
             extrasToday: extras.filter(e => e.day === hoy).length,
             gifted: Object.keys(leerRegalos()).length,
+            upgrades: totalUpgrades,
             extraApe: formatEther(extras.reduce((s, e) => s + BigInt(e.valueWei || 0), 0n)),
         },
         players: filas,
@@ -805,6 +923,7 @@ module.exports = {
     pull,
     resumen,
     open,
+    upgrade,
     puedeComprarExtra,
     buyExtra,
     grantPacks,

@@ -48,10 +48,11 @@ type Datos = {
         prizes?: string[];
         collectionPrize?: string | null;
         rarities: Record<Rareza, { chance: number; points: number }>;
+        upgrades?: { from: string | null; tradeUp: Partial<Record<Rareza, number>>; swap: Partial<Record<Rareza, number>> };
     };
     cardsByRarity: Record<Rareza, number>;
     pulledByRarity?: Record<Rareza, { count: number; expected: number }>;
-    totals: { players: number; packs: number; today: number; playersToday: number; extras: number; extrasToday: number; extraApe: string; gifted?: number };
+    totals: { players: number; packs: number; today: number; playersToday: number; extras: number; extrasToday: number; extraApe: string; gifted?: number; upgrades?: number };
     players: Jugador[];
     daily?: { day: string; players: number; newPlayers: number; packs: number; extras: number; goalRewards?: number; wallets?: JugadorDia[] }[];
     credited?: { txHash: string; wallet: string; at: string; valueWei: string; source: 'admin' | 'recovered' }[];
@@ -74,6 +75,8 @@ type Meta = {
 };
 
 const RAREZAS: Rareza[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'chosen'];
+const CANJEABLES: Rareza[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+const SUBE: Partial<Record<Rareza, Rareza>> = { common: 'uncommon', uncommon: 'rare', rare: 'epic', epic: 'legendary' };
 const ESTADOS: Record<Estado, { nombre: string; clase: string }> = {
     upcoming: { nombre: 'Not open', clase: 'bg-lightblue/20 text-lightblue' },
     open: { nombre: 'Live', clase: 'bg-yellow text-darkblue' },
@@ -174,6 +177,7 @@ export default function PacksAdmin({ token }: { token: string }) {
                         <PremiosRanking datos={datos} ocupado={ocupado} configurar={configurar} />
                         <PremioColeccion datos={datos} ocupado={ocupado} configurar={configurar} />
                         <MetaComunitaria datos={datos} ocupado={ocupado} configurar={configurar} />
+                        <UpgradesAdmin datos={datos} ocupado={ocupado} configurar={configurar} />
                         <AcreditarExtra datos={datos} ocupado={ocupado} pedir={pedir} />
                     </div>
                     <div id="packs-ranking">
@@ -221,6 +225,7 @@ function Numeros({ datos }: { datos: Datos }) {
             ['Extras sold', totals.extras],
             ['APE from extras', Number(totals.extraApe).toLocaleString('en-US')],
             ['Packs given', totals.gifted ?? 0],
+            ['Upgrades', totals.upgrades ?? 0],
         ]],
     ];
     return (
@@ -502,6 +507,85 @@ function MetaComunitaria({ datos, ocupado, configurar }: Props) {
                         Remove goal
                     </button>
                 )}
+            </div>
+        </section>
+    );
+}
+
+function UpgradesAdmin({ datos, ocupado, configurar }: Props) {
+    const actual = datos.config.upgrades;
+    const leer = (m?: Partial<Record<Rareza, number>>) => Object.fromEntries(CANJEABLES.map((r) => [r, String(m?.[r] ?? 0)]));
+    const [sube, setSube] = useState(() => leer(actual?.tradeUp));
+    const [canje, setCanje] = useState(() => leer(actual?.swap));
+    const prendido = Boolean(actual?.from) && Date.parse(actual!.from!) <= Date.now();
+    const numeros = (m: Record<string, string>, rarezas: Rareza[]) => Object.fromEntries(rarezas.map((r) => [r, Number(m[r] || 0)]));
+    const guardar = (from: string | null) =>
+        configurar({
+            upgrades: {
+                from,
+                tradeUp: numeros(sube, CANJEABLES.filter((r) => SUBE[r])),
+                swap: numeros(canje, CANJEABLES),
+            },
+        });
+    const casilla = (valores: Record<string, string>, cambiar: (v: Record<string, string>) => void, r: Rareza, nombre: string) => (
+        <input
+            type="number"
+            min={0}
+            value={valores[r]}
+            onChange={(e) => cambiar({ ...valores, [r]: e.target.value })}
+            aria-label={`${nombre} ${r}`}
+            className={campo}
+        />
+    );
+
+    return (
+        <section className={panel}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-col gap-2">
+                    <h2 className={titulo}>Card upgrades</h2>
+                    <p className="text-sm text-lightblue/70">
+                        {prendido
+                            ? `On since ${fecha(actual!.from!)}. They always give a card the player is missing when there is one. No points.`
+                            : "Off: players don't see it."}
+                    </p>
+                </div>
+                <button type="button" disabled={ocupado} onClick={() => guardar(prendido ? null : new Date().toISOString())} className={botonGuardar}>
+                    {prendido ? 'Turn off' : 'Turn on'}
+                </button>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+                {(
+                    [
+                        ['Trade up', 'Duplicates for 1 card of the next rarity.', sube, setSube],
+                        ['Swap', 'Duplicates for 1 missing card of the same rarity.', canje, setCanje],
+                    ] as const
+                ).map(([nombre, texto, valores, cambiar]) => (
+                    <div key={nombre} className="flex flex-col gap-3 bg-lightblue/5 rounded-xl p-4">
+                        <div className="flex flex-col gap-1">
+                            <h3 className={subtitulo}>{nombre}</h3>
+                            <p className="text-sm text-lightblue/70">{texto}</p>
+                        </div>
+                        {CANJEABLES.map((r) => (
+                            <div key={r} className="flex items-center justify-between gap-3 h-10">
+                                <span className="text-sm text-lightblue/80 capitalize">
+                                    {r}
+                                    {nombre === 'Trade up' && SUBE[r] && <span className="text-lightblue/50"> → {SUBE[r]}</span>}
+                                </span>
+                                {nombre === 'Trade up' && !SUBE[r] ? (
+                                    <span className="w-24 text-center text-sm text-lightblue/40">—</span>
+                                ) : (
+                                    <div className="w-24 shrink-0">{casilla(valores, cambiar, r, nombre)}</div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                ))}
+            </div>
+            <p className="text-sm text-lightblue/60">0 turns that step off.</p>
+            <div>
+                <button type="button" disabled={ocupado} onClick={() => guardar(actual?.from ?? null)} className={botonGuardar}>
+                    Save amounts
+                </button>
             </div>
         </section>
     );

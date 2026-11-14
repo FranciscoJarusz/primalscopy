@@ -279,7 +279,7 @@ export interface Eventos {
 }
 
 export type Sonido =
-    'rasgar' | 'subir' | 'salir' | `inicio-${Rareza}` | `impacto-${Rareza}`;
+    'rasgar' | 'subir' | 'salir' | 'elegir' | 'quitar' | 'apilar' | 'fusionar' | `inicio-${Rareza}` | `impacto-${Rareza}`;
 
 interface MaterialesCarta {
     frente: THREE.MeshBasicMaterial;

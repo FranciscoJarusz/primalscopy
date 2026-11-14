@@ -293,10 +293,11 @@ export function cargar(p: number) {
     carga.volSub.gain.setTargetAtTime(0.4 * p * p, t, 0.05);
 }
 
-export function sonar(nombre: Sonido) {
+export function sonar(nombre: Sonido, retraso = 0, altura = 1) {
     const c = listo();
     if (!c) return;
-    const t = c.currentTime + 0.01;
+    const latencia = (c.outputLatency || 0) + (c.baseLatency || 0);
+    const t = c.currentTime + 0.01 + Math.max(0, retraso - latencia);
     switch (nombre) {
         case 'rasgar':
             cargar(0);
@@ -310,6 +311,21 @@ export function sonar(nombre: Sonido) {
             break;
         case 'salir':
             tocar(c, 'deslizar', t, { vol: 0.55, tono: 1.1, variar: 0.08 });
+            break;
+        case 'elegir':
+            tocar(c, 'apoyar', t, { vol: 0.6, tono: 1.15, variar: 0.08 });
+            break;
+        case 'apilar':
+            tocar(c, 'apoyar', t, { vol: 0.65, tono: altura, variar: 0.02 });
+            tocar(c, 'golpeSeco', t, { vol: 0.12, tono: altura, variar: 0.04 });
+            break;
+        case 'fusionar':
+            golpe(c, t, { desde: 130, hasta: 40, duracion: 0.55, vol: 0.45 });
+            tocar(c, 'apoyar', t, { vol: 0.7, tono: 0.85 });
+            florecer(c, t, { sube: 0.02, dura: 1.4, corte: 2400, vol: 0.28 });
+            break;
+        case 'quitar':
+            tocar(c, 'deslizar', t, { vol: 0.35, tono: 1.3, variar: 0.08 });
             break;
         case 'inicio-common':
         case 'inicio-uncommon':
