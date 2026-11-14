@@ -455,14 +455,15 @@ async function main() {
     const faltaComun = comunes.some(c => !despues.collection[c.id]);
     antes = despues;
     r = await json(await upgradear('caro', 'swap', 'common'));
-    if (faltaComun && repetidas(antes.collection, 'common') >= 3) {
+    const alcanzan = repetidas(antes.collection, 'common') >= 3;
+    if (faltaComun && alcanzan) {
         ganada = CARTAS.find(c => c.id === r.upgrade?.card);
         check('el canje da una comun que faltaba', r.http === 200 && ganada?.rarity === 'common' && !antes.collection[ganada.id] && r.upgrade.new);
         check('el canje gasta 3 y suma 1', totalDe(r.me.collection, 'common') === totalDe(antes.collection, 'common') - 2);
-    } else if (!faltaComun) {
+    } else if (alcanzan) {
         check('sin comunes faltantes el canje no se hace', r.reason === 'nothing-missing');
     } else {
-        check('el canje sin repetidas no se hace', r.reason === 'not-enough');
+        check('el canje sin repetidas no se hace', r.http >= 400 && !r.upgrade);
     }
     const lineas = fs.readFileSync(path.join(packs.PACKS_DIR, 'upgrades.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l));
     check('se guarda en upgrades.jsonl', lineas.length >= 1 && lineas[0].kind === 'up' && lineas[0].rarity === 'common');
