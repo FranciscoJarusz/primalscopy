@@ -246,7 +246,7 @@ export default function Upgrades({
                     ) : (
                         <div
                             data-lenis-prevent
-                            className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-5 xl:grid-cols-6 gap-3 max-h-120 overflow-y-auto overscroll-contain -mx-5 sm:-mx-6 -mt-8 -mb-5 sm:-mb-6 px-5 sm:px-6 pt-12 pb-5 sm:pb-6 scrollbar-thin [scrollbar-color:var(--color-mw-champagne)_transparent]"
+                            className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-5 xl:grid-cols-6 gap-3 max-h-120 overflow-y-auto overscroll-contain -mx-5 sm:-mx-6 -mt-3 -mb-5 sm:-mb-6 px-5 sm:px-6 pt-6 pb-5 sm:pb-6 scrollbar-thin [scrollbar-color:var(--color-mw-champagne)_transparent]"
                         >
                             {disponibles.map((c) => {
                                 const quedan = libres(c.id);
