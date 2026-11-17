@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import Analytics from "@vercel/analytics/astro";
 
 // La cascara comun a cualquier pagina del sitio: fuente, favicon, fondo. No
 // sabe nada de raffles ni de wallets — eso lo agrega cada layout especifico
@@ -12,12 +13,13 @@ interface Props {
   // buscadores no las indexen.
   noindex?: boolean;
   image?: string;
+  analytics?: boolean;
 }
 
 const DESCRIPCION =
   "Over 2,700 Primals. Ancient gorillas, shrouded in mystery, bearers of forbidden symbols, weaving chaos into glitch. One of the first glitch collections on ApeChain.";
 
-const { title = "Primal Cult", description = DESCRIPCION, noindex = false, image } = Astro.props;
+const { title = "Primal Cult", description = DESCRIPCION, noindex = false, image, analytics = true } = Astro.props;
 
 // Siempre el dominio principal (site en astro.config), aunque se entre por
 // cultomizer.primalcult.xyz o un preview: Google junta todo en una sola URL.
@@ -76,6 +78,7 @@ const imagen = new URL(image ?? "/og.png", Astro.site).href;
         }, 3000);
       }
     </script>
+    {analytics && <Analytics />}
   </head>
 
   <body
