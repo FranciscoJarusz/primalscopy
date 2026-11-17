@@ -1,7 +1,10 @@
+import { MARCA } from '@/lib/packs';
 import type { Sonido } from './escena3d';
 
 const CLAVE = 'primal_packs_sonido';
 const RUTA = '/packs/sonidos/';
+const RUTA_CULTO = '/packs/sonidos-cult/';
+const DEL_CULTO = ['coro', 'hielo', 'tierra', 'tierra2', 'explosion', 'rayo', 'destello', 'viento'];
 
 const ARCHIVOS = {
     rasgar: ['rasgar-1', 'rasgar-2'],
@@ -88,7 +91,8 @@ async function precargar(c: AudioContext) {
         (Object.keys(ARCHIVOS) as Muestra[]).map(async (m) => {
             const lista = await Promise.all(
                 ARCHIVOS[m].map(async (nombre) => {
-                    const r = await fetch(`${RUTA}${nombre}.mp3`);
+                    let r = MARCA.mudwater || !DEL_CULTO.includes(m) ? null : await fetch(`${RUTA_CULTO}${nombre}.mp3`).catch(() => null);
+                    if (!r?.ok || !r.headers.get('content-type')?.startsWith('audio')) r = await fetch(`${RUTA}${nombre}.mp3`);
                     return c.decodeAudioData(await r.arrayBuffer());
                 })
             );

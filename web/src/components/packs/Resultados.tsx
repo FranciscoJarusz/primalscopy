@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { walletCorta } from '@/lib/nicknames';
 import { crearTic, prepararAudio, sonarPremio } from '@/components/shared/sonidosRuleta';
 import { sonidoActivo } from './sonidos';
-import type { MiPacks, PremioGanado, Ranking, SorteoPacks, TipoSorteo } from '@/lib/packs';
+import { MARCA, type MiPacks, type PremioGanado, type Ranking, type SorteoPacks, type TipoSorteo } from '@/lib/packs';
 
 const EXPLORADOR = 'https://apechain.calderaexplorer.xyz';
 const ANCHO = 150;
@@ -15,11 +15,15 @@ const INICIO = 3 * PASO + ANCHO / 2;
 export const TIPOS: TipoSorteo[] = ['chosen', 'collection'];
 
 const NOMBRES: Record<TipoSorteo, string> = {
-    chosen: 'The Chosen raffle',
+    get chosen() {
+        return `${MARCA.especial ?? 'The Chosen'} raffle`;
+    },
     collection: 'Full collection raffle',
 };
 const QUIENES: Record<TipoSorteo, string> = {
-    chosen: 'Everyone who pulled The Chosen',
+    get chosen() {
+        return `Everyone who pulled ${MARCA.especial ?? 'The Chosen'}`;
+    },
     collection: 'Everyone who completed the collection',
 };
 
@@ -28,7 +32,7 @@ const nombre = (p: { wallet: string; nickname: string | null }) => p.nickname ??
 const entradas = (n: number) => `${n} ${n === 1 ? 'entry' : 'entries'}`;
 const ganadorDe = (s: SorteoPacks) => s.entrants.find((e) => e.wallet === s.winner);
 
-export const vaPorSolana = (p: PremioGanado) => /mudwater/i.test(p.prize);
+export const vaPorSolana = (p: PremioGanado) => MARCA.solana && /mudwater/i.test(p.prize);
 
 function destino(p: PremioGanado) {
     const solana = vaPorSolana(p);
@@ -53,7 +57,7 @@ function enlaceX(texto: string) {
     const tweet = new URL('https://x.com/intent/tweet');
     tweet.searchParams.set('text', `${texto}
 
-${window.location.origin}/mudwater
+${window.location.origin}${MARCA.ruta}
 
 ${ETIQUETAS}`);
     return tweet.href;
@@ -61,7 +65,7 @@ ${ETIQUETAS}`);
 
 function Marco({
     titulo,
-    etiqueta = 'Primal Cult × Mudwater',
+    etiqueta = MARCA.nombre,
     compartir,
     sinBotones = false,
     tituloAnimado = false,
@@ -141,14 +145,14 @@ function Premios({
 }) {
     const paso = (i: number) => (demora === undefined ? undefined : { animationDelay: `${demora + 0.25 + i * 0.18}s` });
     return (
-        <section className="rounded-lg border border-[#ffe27a]/50 bg-[#ffe27a]/8 px-4 py-4 sm:px-5 flex flex-col gap-4">
+        <section className="rounded-lg border border-mw-especial/50 bg-mw-especial/8 px-4 py-4 sm:px-5 flex flex-col gap-4">
             <div>
-                {titulo && <h3 className="mw-titulo uppercase text-xl text-[#ffe27a] mb-2.5">{titulo}</h3>}
+                {titulo && <h3 className="mw-titulo uppercase text-xl text-mw-especial mb-2.5">{titulo}</h3>}
                 <ul className="flex flex-col gap-2.5">
                     {premios.map((p, i) => (
                         <li key={i} className={`flex gap-2.5 items-baseline text-lg ${demora !== undefined ? 'res-sube' : ''}`} style={paso(i)}>
                             <span
-                                className={`size-2 shrink-0 rotate-45 bg-[#ffe27a] relative -top-0.5 ${demora !== undefined ? 'res-rombo' : ''}`}
+                                className={`size-2 shrink-0 rotate-45 bg-mw-especial relative -top-0.5 ${demora !== undefined ? 'res-rombo' : ''}`}
                                 style={paso(i)}
                                 aria-hidden="true"
                             />
@@ -203,9 +207,9 @@ export function FinEvento({
     }, []);
 
     const texto = premios.length
-        ? `I won in the Primal Cult x Mudwater pack competition 🏆
+        ? `I won in the ${MARCA.nombreX} pack competition 🏆
 ${premios.map((p) => `• ${textoPremio(p)}`).join('\n')}`
-        : `Finished #${mio.rank} of ${ranking.players} in the Primal Cult x Mudwater pack competition with ${mio.points.toLocaleString('en-US')} points 🃏`;
+        : `Finished #${mio.rank} of ${ranking.players} in the ${MARCA.nombreX} pack competition with ${mio.points.toLocaleString('en-US')} points 🃏`;
 
     return (
         <Marco
@@ -233,7 +237,7 @@ ${premios.map((p) => `• ${textoPremio(p)}`).join('\n')}`
                             </div>
                         </div>
                     </div>
-                    {mio.rank === 1 && (
+                    {mio.rank === 1 && MARCA.mudwater && (
                         <img
                             src="/packs/mudlogo.webp"
                             alt="Mudwater"
@@ -375,7 +379,7 @@ export function SorteoHecho({
     const caja = useRef<HTMLDivElement>(null);
     const gane = sorteo.winner === yo;
     const ganador = ganadorDe(sorteo);
-    const texto = `I won the ${NOMBRES[sorteo.kind]} (${sorteo.prize}) of Primal Cult x Mudwater 🎲
+    const texto = `I won the ${NOMBRES[sorteo.kind]} (${sorteo.prize}) of ${MARCA.nombreX} 🎲
 Picked among ${entradas(n)} by ApeChain block #${sorteo.block?.toLocaleString('en-US')}, anyone can check it.`;
 
     const terminar = () => {
@@ -428,7 +432,7 @@ Picked among ${entradas(n)} by ApeChain block #${sorteo.block?.toLocaleString('e
                         ) : (
                             <p className="res-sube text-center">
                                 <span className="mw-etiqueta block mb-1 text-[10px] text-mw-fog">Winner</span>
-                                <span className="mw-titulo text-3xl text-[#ffe27a]">{ganador ? nombre(ganador) : '—'}</span>
+                                <span className="mw-titulo text-3xl text-mw-especial">{ganador ? nombre(ganador) : '—'}</span>
                                 <span className="block mt-2 text-mw-mist/70">You were one of {entradas(n)}. Not this time.</span>
                             </p>
                         )}
@@ -454,7 +458,7 @@ function Confeti({ x, y }: { x: number; y: number }) {
                     dx: `${Math.cos(angulo) * lejos}px`,
                     dy: `${Math.sin(angulo) * lejos + 120}px`,
                     giro: `${Math.random() * 720 - 360}deg`,
-                    color: ['#ffe27a', '#efe7bd', '#aea35d', '#ffffff'][i % 4],
+                    color: (MARCA.mudwater ? ['#ffe27a', '#efe7bd', '#aea35d', '#ffffff'] : ['#fdf468', '#dfe8ff', '#ffffff', '#002e93'])[i % 4],
                     demora: `${Math.random() * 0.15}s`,
                     ancho: 7 + Math.random() * 7,
                 };
@@ -516,11 +520,11 @@ export function PanelRaffles({ raffles, yo }: { raffles: Record<TipoSorteo, Sort
                         ) : (
                             <>
                                 <p className="flex items-center gap-3">
-                                    <span className="flex-1 truncate mw-titulo text-2xl text-[#ffe27a]">
+                                    <span className="flex-1 truncate mw-titulo text-2xl text-mw-especial">
                                         {ganador ? nombre(ganador) : '—'}
                                         {s.winner === yo && <span className="text-mw-fog text-lg"> (you)</span>}
                                     </span>
-                                    <span className="mw-etiqueta text-[10px] text-black bg-[#ffe27a] rounded-full px-2.5 py-0.5">Winner</span>
+                                    <span className="mw-etiqueta text-[10px] text-black bg-mw-especial rounded-full px-2.5 py-0.5">Winner</span>
                                 </p>
                                 <Prueba sorteo={s} yo={yo} />
                             </>
@@ -564,7 +568,7 @@ function Prueba({ sorteo, yo }: { sorteo: SorteoPacks; yo?: string }) {
                     {sorteo.entrants.map((e, i) => (
                         <li
                             key={e.wallet}
-                            className={`flex gap-3 ${i === sorteo.index ? 'text-[#ffe27a]' : e.wallet === yo ? 'text-mw-champagne' : ''}`}
+                            className={`flex gap-3 ${i === sorteo.index ? 'text-mw-especial' : e.wallet === yo ? 'text-mw-champagne' : ''}`}
                         >
                             <span className="w-8 shrink-0 tabular-nums text-mw-fog">#{i}</span>
                             <span className="truncate">{nombre(e)}</span>
@@ -660,7 +664,7 @@ function Cinta({
                             style={{ width: ANCHO }}
                             className={`shrink-0 h-14 rounded-md border flex items-center justify-center px-3 transition-all duration-300 ${
                                 gana
-                                    ? `border-[#ffe27a] bg-[#ffe27a]/15 text-[#ffe27a] scale-105 ${festejar ? 'res-latido shadow-[0_0_24px_rgb(255_226_122/0.6)]' : 'shadow-[0_0_16px_rgb(255_226_122/0.35)]'}`
+                                    ? `border-mw-especial bg-mw-especial/15 text-mw-especial scale-105 ${festejar ? 'res-latido shadow-[0_0_24px_rgb(255_226_122/0.6)]' : 'shadow-[0_0_16px_rgb(255_226_122/0.35)]'}`
                                     : frenado
                                       ? 'border-mw-champagne/15 text-mw-fog opacity-50'
                                       : girar
@@ -674,8 +678,8 @@ function Cinta({
                 })}
             </div>
             <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 flex flex-col justify-between items-center">
-                <span className="size-0 border-x-8 border-x-transparent border-t-10 border-t-[#ffe27a]" />
-                <span className="size-0 border-x-8 border-x-transparent border-b-10 border-b-[#ffe27a]" />
+                <span className="size-0 border-x-8 border-x-transparent border-t-10 border-t-mw-especial" />
+                <span className="size-0 border-x-8 border-x-transparent border-b-10 border-b-mw-especial" />
             </div>
         </div>
     );

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { CARTAS, RAREZAS, type CartaPack } from '@/lib/packs';
+import { CARTAS, MARCA, RAREZAS, type CartaPack } from '@/lib/packs';
 import { Frente } from './Carta';
 
 const boton =
@@ -12,9 +12,9 @@ function enlaceX(id: string, puntos: number) {
     const tweet = new URL('https://x.com/intent/tweet');
     tweet.searchParams.set(
         'text',
-        `Ripped a Primal Cult x Mudwater pack: +${puntos} points. Rate my pull 🃏
+        `Ripped a ${MARCA.nombreX} pack: +${puntos} points. Rate my pull 🃏
 
-${window.location.origin}/mudwater/pull/${id}
+${window.location.origin}${MARCA.ruta}/pull/${id}
 
 #CultNeverDies #PrimalCult @primal_cult`
     );
@@ -24,12 +24,12 @@ ${window.location.origin}/mudwater/pull/${id}
 function enlaceColeccion(compartir: string | null, premio: string | null) {
     const total = CARTAS.filter((c) => c.rareza !== 'chosen').length;
     const link = compartir
-        ? `${window.location.origin}/mudwater/pull/${compartir}`
-        : `${window.location.origin}/mudwater`;
+        ? `${window.location.origin}${MARCA.ruta}/pull/${compartir}`
+        : `${window.location.origin}${MARCA.ruta}`;
     const tweet = new URL('https://x.com/intent/tweet');
     tweet.searchParams.set(
         'text',
-        `Collection complete: I found all ${total} Primal Cult x Mudwater cards 🃏${premio ? `\nNow I'm in the raffle for ${premio}.` : ''}
+        `Collection complete: I found all ${total} ${MARCA.nombreX} cards 🃏${premio ? `\nHappy to be participating now for ${premio} raffle.` : ''}
 
 ${link}
 
@@ -127,9 +127,9 @@ export default function Resumen({
                     )}
                 </div>
             )}
-            {cartas.some((c) => c.rareza === 'chosen') && (
-                <p className="mw-titulo uppercase text-xl sm:text-2xl text-[#ffe27a] text-center">
-                    You pulled The Chosen: you're in the Mudwater pack raffle
+            {cartas.some((c) => c.rareza === 'chosen') && MARCA.premioChosen && (
+                <p className="mw-titulo uppercase text-xl sm:text-2xl text-mw-especial text-center">
+                    You pulled {MARCA.especial}: you're in the {MARCA.mudwater ? 'Mudwater pack' : MARCA.premioChosen} raffle
                 </p>
             )}
             <div className="flex flex-wrap justify-center gap-3">

@@ -1,4 +1,4 @@
-import type { CartaPack } from '@/lib/packs';
+import { MARCA, type CartaPack } from '@/lib/packs';
 
 const ANCHO_CARTA = 640;
 const ALTO_CARTA = 888;
@@ -189,7 +189,13 @@ export function precalentar() {
     );
 }
 
+let temaDorso: boolean | null = null;
+
 export function texturaDorsoGuardada() {
+    if (temaDorso !== MARCA.mudwater) {
+        temaDorso = MARCA.mudwater;
+        dorso = null;
+    }
     dorso ??= texturaDorso();
     return dorso;
 }
@@ -198,26 +204,27 @@ async function texturaDorso() {
     const W = ANCHO_CARTA;
     const H = ALTO_CARTA;
     const [c, ctx] = lienzo(W, H);
-    ctx.fillStyle = '#000';
+    const mw = MARCA.mudwater;
+    ctx.fillStyle = mw ? '#000' : '#002e93';
     rectRedondo(ctx, 0, 0, W, H, W * 0.05);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(174,163,93,0.5)';
+    ctx.strokeStyle = mw ? 'rgba(174,163,93,0.5)' : 'rgba(223,232,255,0.35)';
     ctx.lineWidth = 3;
     rectRedondo(ctx, 2, 2, W - 4, H - 4, W * 0.05 - 2);
     ctx.stroke();
     ctx.save();
     rectRedondo(ctx, 30, 30, W - 60, H - 60, 18);
     ctx.clip();
-    rayos(ctx, W / 2, H / 2, H, 'rgba(174,163,93,0.1)');
+    rayos(ctx, W / 2, H / 2, H, mw ? 'rgba(174,163,93,0.1)' : 'rgba(223,232,255,0.08)');
     ctx.restore();
-    ctx.strokeStyle = dorado(ctx, 0, W);
+    ctx.strokeStyle = mw ? dorado(ctx, 0, W) : 'rgba(223,232,255,0.7)';
     ctx.lineWidth = 3;
     rectRedondo(ctx, 30, 30, W - 60, H - 60, 18);
     ctx.stroke();
     rectRedondo(ctx, 40, 40, W - 80, H - 80, 12);
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    const icono = await logoTenido(W * 0.38, (x) => dorado(x, 0, W * 0.38));
+    const icono = await logoTenido(W * 0.38, (x) => (mw ? dorado(x, 0, W * 0.38) : '#dfe8ff'));
     ctx.drawImage(icono, (W - icono.width) / 2, (H - icono.height) / 2);
     return c;
 }

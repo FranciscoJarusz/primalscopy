@@ -7,7 +7,7 @@ import { configCompartida } from '@/lib/packs';
 // no aparezca tarde y empuje la pagina; aca se confirma con el backend.
 
 const CACHE = 'primal_packs_estado';
-const CERRADO = 'primal_anuncio_mudwater_cerrado';
+const CERRADO = 'primal_anuncio_packs_cerrado';
 const VIDA_MS = 5 * 60 * 1000;
 
 async function estado(): Promise<string | null> {
@@ -16,7 +16,7 @@ async function estado(): Promise<string | null> {
         if (guardado && Date.now() - guardado.at < VIDA_MS) return guardado.status;
     } catch {}
     try {
-        const { status } = await configCompartida();
+        const { status } = await configCompartida({ actual: true });
         try {
             sessionStorage.setItem(CACHE, JSON.stringify({ status, at: Date.now() }));
         } catch {}

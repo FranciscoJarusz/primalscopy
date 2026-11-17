@@ -24,12 +24,14 @@ import {
     abrirPack,
     acreditarExtra,
     aplicarConfig,
+    MARCA,
     cartaPorId,
     chanceCarta,
     formatoChance,
     guardarSolana,
     hacerUpgrade,
     configCompartida,
+    usarTemporada,
     leerMio,
     leerRanking,
     packDePrueba,
@@ -116,13 +118,13 @@ const puesto = (n: number) =>
 function MarcaChosen({ fila }: { fila?: FilaChosen }) {
     if (!fila) return null;
     const texto = fila.winner
-        ? 'Pulled The Chosen · Raffle winner'
-        : 'Pulled The Chosen';
+        ? `Pulled ${MARCA.especial} · Raffle winner`
+        : `Pulled ${MARCA.especial}`;
     return (
         <span
             title={texto}
             aria-label={texto}
-            className={`size-2.5 shrink-0 rotate-45 bg-[#ffe27a] ${fila.winner ? 'shadow-[0_0_10px_rgb(255_226_122/0.9)] ring-2 ring-[#ffe27a]/40' : ''}`}
+            className={`size-2.5 shrink-0 rotate-45 bg-mw-especial ${fila.winner ? 'shadow-[0_0_10px_rgb(255_226_122/0.9)] ring-2 ring-mw-especial/40' : ''}`}
         />
     );
 }
@@ -137,8 +139,76 @@ function Racha({ dias, hoy }: { dias: number; hoy: boolean }) {
             className={`w-12 shrink-0 flex items-center justify-end gap-1 leading-none transition-all duration-300 ${hoy ? 'text-mw-champagne' : 'text-mw-fog/60'}`}
         >
             <PiFireFill className="size-4 shrink-0" />
-            <span className="mw-titulo text-base tabular-nums">{dias}</span>
+            <span className="mw-titulo text-base leading-none tabular-nums">{dias}</span>
         </span>
+    );
+}
+
+const MEDALLAS = [
+    { color: '#fdf468', fondo: 'bg-yellow/10 border-yellow/40' },
+    { color: '#dfe8ff', fondo: 'bg-lightblue/10 border-lightblue/30' },
+    { color: '#e0935a', fondo: 'bg-[#e0935a]/10 border-[#e0935a]/40' },
+];
+
+function RankingSitio({
+    filas,
+    yo,
+    premios,
+    conChosen,
+    terminado,
+}: {
+    filas: Ranking['top'];
+    yo?: string;
+    premios: string[];
+    conChosen: Map<string, FilaChosen>;
+    terminado: boolean;
+}) {
+    return (
+        <div className="relative mt-5 flex flex-col lg:grow lg:basis-0 lg:min-h-100">
+            <ol
+                data-lenis-prevent
+                className="flex flex-col gap-2 max-h-130 lg:max-h-none lg:grow lg:basis-0 overflow-y-auto overscroll-contain pr-2 pb-6 scrollbar-thin [scrollbar-color:var(--color-yellow)_transparent]"
+            >
+                {filas.map((f) => {
+                    const medalla = MEDALLAS[f.rank - 1];
+                    const mia = f.wallet === yo;
+                    const premio =
+                        f.rank === 1
+                            ? `${terminado ? '1st place' : 'Leading'} · Prize: ${premios[0] ?? 'To be announced'}`
+                            : premios[f.rank - 1]
+                              ? `Prize: ${premios[f.rank - 1]}`
+                              : null;
+                    return (
+                        <li
+                            key={f.wallet}
+                            className={`flex items-center gap-2.5 sm:gap-4 rounded-xl border px-3 sm:px-4 py-2.5 transition-all duration-300 ${medalla?.fondo ?? (mia ? 'border-yellow/60 bg-lightblue/5' : 'border-lightblue/10 bg-lightblue/5')}`}
+                        >
+                            <span
+                                className="w-8 sm:w-9 shrink-0 text-center font-accent text-base sm:text-lg leading-none relative -top-[0.185em]"
+                                style={{ color: medalla?.color ?? 'rgb(223 232 255 / 0.6)' }}
+                            >
+                                #{f.rank}
+                            </span>
+                            <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                <span className="flex items-center gap-2.5 min-w-0">
+                                    <span className="font-accent text-lg text-lightblue leading-none truncate relative -top-[0.185em]">
+                                        {f.nickname ?? walletCorta(f.wallet)}
+                                        {mia && <span className="text-lightblue/50"> (you)</span>}
+                                    </span>
+                                    <MarcaChosen fila={conChosen.get(f.wallet)} />
+                                </span>
+                                {premio && <span className="text-xs text-yellow truncate">{premio}</span>}
+                            </span>
+                            <Racha dias={f.streak} hoy={!!f.today} />
+                            <span className="font-accent text-xl text-yellow leading-none tabular-nums relative -top-[0.185em]">
+                                {f.points.toLocaleString('en-US')}
+                            </span>
+                        </li>
+                    );
+                })}
+            </ol>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t from-darkblue to-transparent" />
+        </div>
     );
 }
 
@@ -173,8 +243,13 @@ function marcarIntento(wallet: string, activo: boolean) {
     }
 }
 
+let prefijoTemporada = '';
+const temporadaDe = (c: ConfigPacks) => {
+    prefijoTemporada = c.season && c.season !== 'mudwater' ? `${c.season}:` : '';
+};
+
 type Vistos = { fin?: boolean } & Partial<Record<TipoSorteo, string>>;
-const claveVistos = (wallet: string) => `packs:resultados:${wallet.toLowerCase()}`;
+const claveVistos = (wallet: string) => `packs:resultados:${prefijoTemporada}${wallet.toLowerCase()}`;
 
 function leerVistos(wallet: string): Vistos {
     try {
@@ -210,7 +285,7 @@ function popupsPendientes(wallet: string, mio: MiPacks, ranking: Ranking) {
 
 const PREMIO_META = 'packs:premio-meta';
 const claveMeta = (wallet: string) =>
-    `${PREMIO_META}:${wallet.toLowerCase()}:${new Date().toISOString().slice(0, 10)}`;
+    `${PREMIO_META}:${prefijoTemporada}${wallet.toLowerCase()}:${new Date().toISOString().slice(0, 10)}`;
 
 function premioVisto(wallet: string) {
     try {
@@ -228,7 +303,8 @@ function marcarPremioVisto(wallet: string) {
     }
 }
 
-export default function Packs() {
+export default function Packs({ temporada }: { temporada?: string }) {
+    usarTemporada(temporada);
     const address = useWalletActual();
     const isConnected = !!address;
     const session = useSesionDe(address);
@@ -263,16 +339,25 @@ export default function Packs() {
     } | null>(null);
     useEffect(() => {
         const fuentes = Promise.race([
-            Promise.all([
-                document.fonts.load('700 1em gardein'),
-                document.fonts.load('400 1em acme-gothic-condensed'),
-                document.fonts.load('700 1em acme-gothic-extrawide'),
-            ]),
+            Promise.all(
+                temporada === 'mudwater'
+                    ? [
+                          document.fonts.load('700 1em gardein'),
+                          document.fonts.load('400 1em acme-gothic-condensed'),
+                          document.fonts.load('700 1em acme-gothic-extrawide'),
+                      ]
+                    : [document.fonts.load('1em Sunzone'), document.fonts.load('400 1em Montserrat')]
+            ),
             new Promise((ok) => setTimeout(ok, 2500)),
         ]).catch(() => {});
         Promise.all([configCompartida(), fuentes])
             .then(([c]) => {
+                if (!temporada && c.theme === 'mudwater') {
+                    window.location.replace('/mudwater');
+                    return;
+                }
                 aplicarConfig(c);
+                temporadaDe(c);
                 setConfig(c);
             })
             .catch(() => setFallo(true));
@@ -560,12 +645,23 @@ export default function Packs() {
         <main className="mw-texto w-full text-mw-mist flex flex-col gap-12 sm:gap-16">
             <style>{CSS}</style>
 
+            <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+                <p className="mw-etiqueta text-sm sm:text-base mw-brass-texto">
+                    {MARCA.nombre}
+                </p>
+                {!MARCA.mudwater && (
+                    <a
+                        href="/mudwater"
+                        className="text-sm text-mw-fog underline underline-offset-4 hover:text-mw-champagne transition-all duration-300"
+                    >
+                        Past season: Primal Cult × Mudwater
+                    </a>
+                )}
+            </div>
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
                 <div>
-                    <p className="mw-etiqueta text-sm sm:text-base mw-brass-texto">
-                        Primal Cult × Mudwater
-                    </p>
-                    <h1 className="mw-titulo uppercase text-mw-mist text-5xl sm:text-7xl leading-none mt-3">
+                    <h1 className="mw-titulo uppercase text-mw-mist text-5xl sm:text-7xl leading-none">
                         Rip your packs
                     </h1>
                     <p className="text-lg sm:text-xl text-mw-mist/75 max-w-2xl mt-4">
@@ -573,7 +669,9 @@ export default function Packs() {
                         {config.tiers.none} for everyone, {config.tiers.holder}{' '}
                         if you hold a Primal and {config.tiers.staker} if you
                         have Primals staked. Rarer pulls score more points, and
-                        the top of the leaderboard wins real Mudwater packs.
+                        {MARCA.mudwater
+                            ? ' the top of the leaderboard wins real Mudwater packs.'
+                            : ' the top of the leaderboard wins prizes.'}
                     </p>
                 </div>
                 <div className={`${panel} flex items-center gap-6 shrink-0`}>
@@ -628,6 +726,7 @@ export default function Packs() {
                         )}
                     </div>
                 </div>
+            </div>
             </div>
 
             <section className="relative flex flex-col items-center gap-8 min-h-136 justify-center">
@@ -721,10 +820,10 @@ export default function Packs() {
                         {error || session.error}
                     </p>
                 )}
-                {mio?.chosenEntered && !mio.chosenWinner && (
+                {mio?.chosenEntered && !mio.chosenWinner && MARCA.premioChosen && (
                     <p className="text-mw-champagne text-lg text-center max-w-md">
-                        You pulled The Chosen: you're in the raffle for a
-                        Mudwater pack.
+                        You pulled {MARCA.especial}: you're in the raffle for{' '}
+                        {MARCA.mudwater ? 'a Mudwater pack' : MARCA.premioChosen}.
                     </p>
                 )}
                 {import.meta.env.DEV && (
@@ -840,6 +939,15 @@ export default function Packs() {
                             spot.
                         </p>
                     )}
+                    {!MARCA.mudwater && ranking ? (
+                        <RankingSitio
+                            filas={ranking.top}
+                            yo={yo}
+                            premios={premios}
+                            conChosen={conChosen}
+                            terminado={config.status === 'ended'}
+                        />
+                    ) : (
                     <ol
                         data-lenis-prevent
                         className="mt-5 -mx-3 px-3 flex flex-col max-h-130 lg:max-h-none lg:min-h-100 lg:grow lg:basis-0 overflow-y-auto overscroll-contain scrollbar-thin [scrollbar-color:var(--color-mw-champagne)_transparent]"
@@ -877,15 +985,17 @@ export default function Packs() {
                                             <span className="hidden sm:inline">
                                                 Prize:{' '}
                                             </span>
-                                            {premios[0] ?? 'Mudwater pack'}
+                                            {premios[0] ?? (MARCA.mudwater ? 'Mudwater pack' : 'To be announced')}
                                         </span>
                                     </span>
                                     <Racha dias={f.streak} hoy={!!f.today} />
-                                    <img
-                                        src="/packs/mudlogo.webp"
-                                        alt="Mudwater"
-                                        className="hidden sm:block h-9 w-auto shrink-0 drop-shadow-[0_0_12px_rgb(174_163_93/0.35)]"
-                                    />
+                                    {MARCA.mudwater && (
+                                        <img
+                                            src="/packs/mudlogo.webp"
+                                            alt="Mudwater"
+                                            className="hidden sm:block h-9 w-auto shrink-0 drop-shadow-[0_0_12px_rgb(174_163_93/0.35)]"
+                                        />
+                                    )}
                                     <span className="tabular-nums text-lg mw-brass-texto">
                                         {f.points.toLocaleString('en-US')}
                                     </span>
@@ -927,6 +1037,7 @@ export default function Packs() {
                             )
                         )}
                     </ol>
+                    )}
                     {mio?.rank && mio.rank > 10 && (
                         <p className="mt-3 pt-3 border-t border-mw-champagne/30 flex items-center gap-4 text-mw-champagne">
                             <span className="mw-titulo w-8 tabular-nums">
@@ -1007,14 +1118,14 @@ export default function Packs() {
                                 yo={yo ?? '0xyo'}
                             />
                         </div>
-                    ) : ranking && (
+                    ) : ranking && MARCA.especial && (
                         <div className="border-t border-mw-champagne/20 pt-5">
                             <p className="mw-etiqueta text-[10px] text-mw-fog">
-                                Pulled The Chosen
+                                Pulled {MARCA.especial}
                             </p>
                             {ranking.chosen.length === 0 ? (
                                 <p className="mt-2 text-mw-mist/70">
-                                    Nobody has pulled The Chosen yet.
+                                    Nobody has pulled {MARCA.especial} yet.
                                 </p>
                             ) : (
                                 <ul className="mt-2 flex flex-col gap-1.5">
@@ -1024,13 +1135,13 @@ export default function Packs() {
                                             className="flex items-center gap-3"
                                         >
                                             <span
-                                                className={`flex-1 truncate text-lg ${c.winner ? 'text-[#ffe27a]' : c.wallet === yo ? 'text-mw-champagne' : 'text-mw-mist'}`}
+                                                className={`flex-1 truncate text-lg ${c.winner ? 'text-mw-especial' : c.wallet === yo ? 'text-mw-champagne' : 'text-mw-mist'}`}
                                             >
                                                 {c.nickname ??
                                                     walletCorta(c.wallet)}
                                             </span>
                                             {c.winner ? (
-                                                <span className="mw-etiqueta text-[10px] text-black bg-[#ffe27a] rounded-full px-2.5 py-0.5">
+                                                <span className="mw-etiqueta text-[10px] text-black bg-mw-especial rounded-full px-2.5 py-0.5">
                                                     Raffle winner
                                                 </span>
                                             ) : (
@@ -1085,7 +1196,9 @@ export default function Packs() {
                         <p className="mt-3 text-sm text-mw-fog">
                             {premios.length > 0
                                 ? 'Paid out when the competition ends.'
-                                : 'The #1 wins a Mudwater pack when the competition ends.'}{' '}
+                                : MARCA.mudwater
+                                  ? 'The #1 wins a Mudwater pack when the competition ends.'
+                                  : 'Prizes are announced before the competition ends.'}{' '}
                             Bots are disqualified.
                         </p>
                     </div>
@@ -1107,7 +1220,13 @@ export default function Packs() {
                 />
             )}
 
-            <section className="flex flex-col gap-8">
+            <section
+                className={
+                    MARCA.mudwater
+                        ? 'flex flex-col gap-8'
+                        : 'flex flex-col gap-8 bg-darkblue rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-lg shadow-darkblue/50'
+                }
+            >
                 <div className="flex items-end justify-between gap-4">
                     <div>
                         <h2 className="mw-titulo uppercase text-mw-mist text-3xl sm:text-4xl">
@@ -1147,10 +1266,10 @@ export default function Packs() {
                         >
                             <div className="flex items-baseline justify-between gap-4 border-b border-mw-champagne/25 pb-2">
                                 <h3
-                                    className={`mw-titulo uppercase text-lg ${r === 'chosen' ? 'text-[#ffe27a]' : 'text-mw-champagne'}`}
+                                    className={`mw-titulo uppercase text-lg ${r === 'chosen' ? 'text-mw-especial' : 'text-mw-champagne'}`}
                                 >
                                     {r === 'chosen'
-                                        ? 'Bonus - Chosen'
+                                        ? `Bonus - ${MARCA.especial}`
                                         : RAREZAS[r].nombre}
                                 </h3>
                                 <span className="text-sm uppercase tracking-wider text-mw-fog">
@@ -1160,8 +1279,9 @@ export default function Packs() {
                             </div>
                             {r === 'chosen' && (
                                 <p className="mt-3 text-mw-mist/70">
-                                    Not needed to complete the collection. Pull
-                                    it to enter the raffle for a Mudwater pack.
+                                    Not needed to complete the collection.
+                                    {MARCA.premioChosen &&
+                                        ` Pull it to enter the raffle for ${MARCA.mudwater ? 'a Mudwater pack' : MARCA.premioChosen}.`}
                                 </p>
                             )}
                             <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 gap-3 mt-4">
@@ -1198,7 +1318,7 @@ export default function Packs() {
             </section>
             {extraComprado && (
                 <CompraCompleta
-                    mudwater
+                    mudwater={MARCA.mudwater}
                     imagen={IMAGEN_PACK}
                     titular="+1 Extra pack"
                     texto="It's ready to rip. Extra packs are only for today: they don't carry over."
@@ -1214,7 +1334,7 @@ export default function Packs() {
             )}
             {premioMeta && (
                 <CompraCompleta
-                    mudwater
+                    mudwater={MARCA.mudwater}
                     imagen={IMAGEN_PACK}
                     encabezado="Goal achieved!"
                     titular="+1 Primal Event Pack"

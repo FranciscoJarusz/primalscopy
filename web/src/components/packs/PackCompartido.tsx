@@ -6,10 +6,14 @@ export default function PackCompartido({
     cartas,
     puntos,
     apodo,
+    etiqueta = 'Primal Cult × Mudwater',
+    ruta = '/mudwater',
 }: {
     cartas: CartaPack[];
     puntos: number;
     apodo: string | null;
+    etiqueta?: string;
+    ruta?: string;
 }) {
     const ordenadas = [...cartas].sort(
         (a, b) => ORDEN_RAREZAS.indexOf(a.rareza) - ORDEN_RAREZAS.indexOf(b.rareza)
@@ -23,7 +27,7 @@ export default function PackCompartido({
             <style>{CSS}</style>
             <div className="flex flex-col items-center gap-3">
                 <p className="mw-etiqueta text-xs sm:text-sm text-mw-champagne">
-                    Primal Cult × Mudwater
+                    {etiqueta}
                 </p>
                 <h1 className="mw-titulo uppercase text-3xl sm:text-5xl text-mw-mist">
                     {apodo ? `${apodo}'s pull` : 'A fresh pull'}
@@ -48,7 +52,7 @@ export default function PackCompartido({
                 +{puntos} points
             </p>
             <a
-                href="/mudwater"
+                href={ruta}
                 className="mw-boton-brillo mw-titulo uppercase text-black text-lg rounded-md px-9 py-3 tracking-wider hover:scale-105 active:scale-97 transition-all duration-300"
             >
                 <span className="mw-boton-reflejo" aria-hidden="true" />

@@ -81,6 +81,10 @@ export type EstadoPacks = 'upcoming' | 'open' | 'ended';
 export type Nivel = 'none' | 'holder' | 'staker';
 
 export interface ConfigPacks {
+    season?: string;
+    name?: string;
+    theme?: TemaPacks;
+    solana?: boolean;
     status: EstadoPacks;
     endsAt: string | null;
     tiers: Record<Nivel, number>;
@@ -96,6 +100,8 @@ export interface ConfigPacks {
     packSize: number;
     prizes?: string[];
     collectionPrize?: string | null;
+    chosenPrize?: string | null;
+    specialCard?: string | null;
     upgrades?: {
         from: string;
         tradeUp: Partial<Record<Rareza, number>>;
@@ -176,7 +182,29 @@ export interface FilaChosen {
     winner: boolean;
 }
 
+export const MARCA = {
+    mudwater: true,
+    nombre: 'Primal Cult × Mudwater',
+    nombreX: 'Primal Cult x Mudwater',
+    ruta: '/mudwater',
+    premioChosen: 'Mudwater pack' as string | null,
+    especial: 'The Chosen' as string | null,
+    solana: true,
+};
+
 export function aplicarConfig(config: ConfigPacks) {
+    if (config.theme === 'cult') {
+        const temporada = config.name || 'Packs';
+        Object.assign(MARCA, {
+            mudwater: false,
+            nombre: `Primal Cult · ${temporada}`,
+            nombreX: `Primal Cult ${temporada}`,
+            ruta: '/packs',
+            premioChosen: config.chosenPrize ?? null,
+            especial: config.specialCard ?? null,
+            solana: Boolean(config.solana),
+        });
+    }
     for (const r of ORDEN_RAREZAS) {
         RAREZAS[r].puntos = config.rarities[r].points;
         RAREZAS[r].chance = config.rarities[r].chance;
@@ -209,12 +237,22 @@ export class ErrorPacks extends Error {
     }
 }
 
+export type TemaPacks = 'mudwater' | 'cult';
+
+const ACTUAL = '/packs';
+let base = ACTUAL;
+
+export function usarTemporada(id?: string | null) {
+    base = id ? `/packs/s/${id}` : ACTUAL;
+}
+
 async function pedir<T>(
     ruta: string,
     token?: string | null,
-    init: RequestInit = {}
+    init: RequestInit = {},
+    desde = base
 ): Promise<T> {
-    const r = await fetch(`${BACKEND_URL}/packs${ruta}`, {
+    const r = await fetch(`${BACKEND_URL}${desde}${ruta}`, {
         ...init,
         headers: {
             'content-type': 'application/json',
@@ -231,13 +269,18 @@ async function pedir<T>(
 }
 
 export const leerConfig = () => pedir<ConfigPacks>('/config');
-let config: Promise<ConfigPacks> | null = null;
-export function configCompartida() {
-    config ??= leerConfig().catch((e) => {
-        config = null;
-        throw e;
-    });
-    return config;
+const configs = new Map<string, Promise<ConfigPacks>>();
+export function configCompartida({ actual = false } = {}) {
+    const desde = actual ? ACTUAL : base;
+    if (!configs.has(desde))
+        configs.set(
+            desde,
+            pedir<ConfigPacks>('/config', null, {}, desde).catch((e) => {
+                configs.delete(desde);
+                throw e;
+            })
+        );
+    return configs.get(desde)!;
 }
 export interface Ranking {
     players: number;
@@ -271,7 +314,7 @@ export const hacerUpgrade = (token: string, kind: TipoUpgrade, cards: number[]) 
     pedir<ResultadoUpgrade>('/upgrade', token, { method: 'POST', body: JSON.stringify({ kind, cards }) });
 export async function acreditarExtra(token: string, txHash: string): Promise<MiPacks> {
     for (let intento = 0; intento < 20; intento++) {
-        const r = await fetch(`${BACKEND_URL}/packs/extra`, {
+        const r = await fetch(`${BACKEND_URL}${base}/extra`, {
             method: 'POST',
             headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
             body: JSON.stringify({ txHash }),

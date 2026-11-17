@@ -1,5 +1,56 @@
 ---
+import CultomizerLayout from '@/layouts/CultomizerLayout.astro';
+import EstiloCult from '@/components/packs/EstiloCult.astro';
+import PackCompartido from '@/components/packs/PackCompartido';
+import { backendAbsoluto } from '@/lib/backend';
+import { esBuscador } from '@/lib/bots';
+import { RAREZAS, ORDEN_RAREZAS, type CartaPack, type Categoria, type Rareza } from '@/lib/packs';
+
 export const prerender = false;
 
-return Astro.redirect(`/mudwater/pull/${Astro.params.id}`, 308);
+const { id = '' } = Astro.params;
+if (!/^[0-9a-f-]{36}$/i.test(id)) return Astro.redirect('/packs');
+
+const backend = backendAbsoluto(Astro.url);
+const respuesta = await fetch(`${backend}/packs/pull/${id}`).catch(() => null);
+if (!respuesta?.ok) return Astro.redirect('/packs');
+const pull: {
+    season?: string;
+    seasonName?: string;
+    points: number;
+    nickname: string | null;
+    cards: { id: number; name: string; category: Categoria; rarity: Rareza }[];
+} = await respuesta.json();
+if (!pull.season || pull.season === 'mudwater') return Astro.redirect(`/mudwater/pull/${id}`);
+const etiqueta = `Primal Cult · ${pull.seasonName ?? 'Packs'}`;
+
+const tarjeta = `${backend}/packs/og/${id}.jpg`;
+if (!esBuscador(Astro.request)) fetch(tarjeta).catch(() => {});
+
+const cartas: CartaPack[] = pull.cards.map((c) => {
+    const archivo = `MW${String(c.id).padStart(2, '0')}.webp`;
+    return {
+        id: c.id,
+        nombre: `#${c.id} ${c.name}`,
+        categoria: c.category,
+        rareza: c.rarity,
+        imagen: `/packs/cards/${archivo}`,
+        miniatura: `/packs/cards/sm/${archivo}`,
+    };
+});
+const conteo = ORDEN_RAREZAS.map((r) => [r, pull.cards.filter((c) => c.rarity === r).length] as const)
+    .filter(([, n]) => n)
+    .map(([r, n]) => `${n} ${RAREZAS[r].nombre}`)
+    .join(', ');
+const quien = pull.nickname ?? 'Someone';
 ---
+
+<CultomizerLayout
+    title={`${quien}'s pull - ${etiqueta}`}
+    description={`${quien} ripped a Primal Cult pack: ${conteo}. +${pull.points} points. Open yours every day.`}
+    activo="packs"
+    image={tarjeta}
+>
+    <EstiloCult />
+    <PackCompartido cartas={cartas} puntos={pull.points} apodo={pull.nickname} etiqueta={etiqueta} ruta="/packs" />
+</CultomizerLayout>

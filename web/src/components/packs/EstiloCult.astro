@@ -1,0 +1,145 @@
+<style is:global>
+    html:root {
+        --color-mw-champagne: var(--color-yellow);
+        --color-mw-mist: var(--color-lightblue);
+        --color-mw-fog: color-mix(in srgb, var(--color-lightblue) 60%, transparent);
+        --color-mw-bayou: var(--color-blue);
+        --color-mw-especial: var(--color-yellow);
+    }
+
+    html [class*='rounded-[6cqw]'].bg-black {
+        background-color: var(--color-blue);
+        border-color: rgb(223 232 255 / 0.2);
+    }
+    html .mw-logo.mw-brass {
+        background: var(--color-lightblue);
+    }
+
+    html .mw-titulo {
+        font-family: var(--font-accent);
+        font-weight: 400;
+        letter-spacing: 0;
+    }
+    html .mw-texto {
+        font-family: var(--font-sans);
+    }
+    html .mw-etiqueta {
+        font-family: var(--font-sans);
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+    html .mw-titulo.py-1\.5 {
+        padding-top: calc(0.375rem - 0.185em);
+        padding-bottom: calc(0.375rem + 0.185em);
+    }
+    html .mw-titulo.py-2 {
+        padding-top: calc(0.5rem - 0.185em);
+        padding-bottom: calc(0.5rem + 0.185em);
+    }
+    html .mw-titulo.py-2\.25 {
+        padding-top: calc(0.5625rem - 0.185em);
+        padding-bottom: calc(0.5625rem + 0.185em);
+    }
+    html .mw-titulo.py-2\.5 {
+        padding-top: calc(0.625rem - 0.185em);
+        padding-bottom: calc(0.625rem + 0.185em);
+    }
+    html .mw-titulo.py-3 {
+        padding-top: calc(0.75rem - 0.185em);
+        padding-bottom: calc(0.75rem + 0.185em);
+    }
+
+    html span.mw-titulo.leading-none {
+        translate: 0 -0.185em;
+    }
+    html .mw-titulo.rounded-full.h-6 {
+        padding-bottom: 0.37em;
+    }
+    html .mw-titulo > span[aria-hidden='true'] {
+        translate: 0 0.185em;
+    }
+
+    html .mw-texto h1,
+    html .mw-texto h2 {
+        color: var(--color-yellow);
+    }
+    html .tracking-wider:not([data-header] *) {
+        letter-spacing: 0;
+    }
+    html .mw-brass-texto {
+        background: none;
+        color: var(--color-yellow);
+    }
+    html .mw-brass {
+        background: var(--color-yellow);
+    }
+    html .text-black {
+        color: var(--color-darkblue);
+    }
+
+    html .mw-marco:not(.rounded-md):not([class*='cqw']) {
+        border: 0;
+        border-radius: 1.5rem;
+        background-color: var(--color-darkblue);
+        box-shadow: 0 10px 15px -3px rgb(9 0 80 / 0.5);
+    }
+    html [role='dialog'].mw-marco:not(.rounded-md),
+    html .fixed > .mw-marco:not(.rounded-md) {
+        border-radius: 1rem;
+        box-shadow:
+            0 10px 15px -3px rgb(9 0 80 / 0.5),
+            0 0 0 1px rgb(223 232 255 / 0.15);
+    }
+    html .mw-marco[class*='cqw'] {
+        border-color: rgb(223 232 255 / 0.25);
+        box-shadow: none;
+    }
+
+    html .mw-boton-brillo {
+        background: var(--color-yellow);
+        color: var(--color-darkblue);
+    }
+    html .mw-boton-brillo::before,
+    html .mw-boton-reflejo {
+        display: none;
+    }
+    html .mw-boton-brillo:disabled {
+        filter: none;
+        opacity: 0.5;
+    }
+    html .mw-marco.rounded-md,
+    html .border.border-mw-champagne.text-mw-champagne {
+        border-color: transparent;
+        box-shadow: none;
+        background: var(--color-lightblue);
+        color: var(--color-darkblue);
+    }
+    html .mw-marco.rounded-md:hover,
+    html .border.border-mw-champagne.text-mw-champagne:hover {
+        background: var(--color-yellow);
+    }
+
+    html .mw-texto [class*='border-mw-champagne/'],
+    html [role='dialog'] [class*='border-mw-champagne/'] {
+        border-color: rgb(223 232 255 / 0.12);
+    }
+
+    html .mw-texto input:not([type='checkbox']):not([type='radio']),
+    html .mw-texto select,
+    html [role='dialog'] input:not([type='checkbox']) {
+        background: var(--color-lightblue);
+        color: var(--color-darkblue);
+        border-color: transparent;
+    }
+    html .mw-texto input::placeholder,
+    html [role='dialog'] input::placeholder {
+        color: rgb(9 0 80 / 0.5);
+    }
+
+    html [class*='bg-[radial-gradient(ellipse_at_center,rgb(174_163_93'] {
+        background-image: radial-gradient(ellipse at center, rgb(223 232 255 / 0.1), transparent 65%);
+    }
+    html .mw-rayos {
+        background: repeating-conic-gradient(from 0deg at 50% 50%, rgb(253 244 104 / 0.08) 0 2deg, transparent 2deg 9deg);
+    }
+</style>

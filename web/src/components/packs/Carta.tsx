@@ -6,7 +6,7 @@ const AURA: Record<CartaPack['rareza'], string> = {
     rare: 'shadow-[0_0_14px_-4px_rgb(220_215_183/0.5)]',
     epic: 'shadow-[0_0_22px_-4px_rgb(174_163_93/0.8)]',
     legendary: 'mw-legendaria',
-    chosen: 'mw-legendaria ring-2 ring-[#ffe27a]',
+    chosen: 'mw-legendaria ring-2 ring-mw-especial',
 };
 export function Dorso({ className = '' }: { className?: string }) {
     return (

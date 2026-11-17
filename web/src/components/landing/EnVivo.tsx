@@ -91,7 +91,7 @@ export default function EnVivo() {
     if (!datos) return null;
 
     const tarjetas: ReactNode[] = [];
-    if (datos.packs.status !== 'upcoming') tarjetas.push(<Mudwater key="packs" packs={datos.packs} ahora={ahora} />);
+    if (datos.packs.status !== 'upcoming') tarjetas.push(<Packs key="packs" packs={datos.packs} ahora={ahora} />);
     if (datos.raffle) tarjetas.push(<Sorteo key="raffle" raffle={datos.raffle} ahora={ahora} />);
     tarjetas.push(<Staking key="staking" staking={datos.staking} />);
 
@@ -160,13 +160,13 @@ function Meta({ meta, ahora }: { meta: NonNullable<Datos['packs']['goal']>; ahor
     );
 }
 
-function Mudwater({ packs, ahora }: { packs: Datos['packs']; ahora: number }) {
+function Packs({ packs, ahora }: { packs: Datos['packs']; ahora: number }) {
     const ultimo = packs.pulls[0];
     const abierto = packs.status === 'open';
     return (
         <article className={tarjeta}>
             <div className="flex items-start justify-between gap-3">
-                <h3 className={titulo}>Mudwater</h3>
+                <h3 className={titulo}>Packs</h3>
                 <span className="mt-2 shrink-0 rounded-[10px] bg-lightblue/10 px-3 py-1 text-xs font-bold uppercase text-lightblue">
                     {abierto ? 'Open' : 'Ended'}
                 </span>
@@ -188,7 +188,7 @@ function Mudwater({ packs, ahora }: { packs: Datos['packs']; ahora: number }) {
             )}
             {ultimo && (
                 <a
-                    href={`/mudwater/pull/${ultimo.pull}`}
+                    href={`/packs/pull/${ultimo.pull}`}
                     className="flex items-center gap-3 rounded-xl sm:rounded-2xl bg-lightblue/5 border border-lightblue/10 p-2.5 hover:border-yellow/60 transition-all duration-300"
                 >
                     <img src={imagenCarta(ultimo.card.id)} alt="" loading="lazy" className="w-11 aspect-1000/1388 rounded-md object-cover shrink-0" />
@@ -199,7 +199,7 @@ function Mudwater({ packs, ahora }: { packs: Datos['packs']; ahora: number }) {
                     </span>
                 </a>
             )}
-            <a href="/mudwater" className={`${boton} mt-auto`}>
+            <a href="/packs" className={`${boton} mt-auto`}>
                 {abierto ? 'Rip packs' : 'See leaderboard'}
             </a>
         </article>

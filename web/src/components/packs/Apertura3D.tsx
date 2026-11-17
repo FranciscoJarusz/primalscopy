@@ -8,7 +8,7 @@ import {
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import { FiVolume2, FiVolumeX } from 'react-icons/fi';
-import { RAREZAS, type CartaPack } from '@/lib/packs';
+import { MARCA, RAREZAS, type CartaPack } from '@/lib/packs';
 import { Frente, PastillaCarta, TituloCarta } from './Carta';
 import Resumen, { EtiquetaNueva } from './Resumen';
 import { Escena3D, type Ranura, type Sonido } from './escena3d';
@@ -366,7 +366,7 @@ export default function Apertura3D({
     return createPortal(
         <div
             ref={raiz}
-            className="mw-texto fixed inset-0 z-60 bg-black text-mw-mist overflow-hidden select-none touch-none"
+            className={`mw-texto fixed inset-0 z-60 ${MARCA.mudwater ? 'bg-black' : 'bg-[#03001e]'} text-mw-mist overflow-hidden select-none touch-none`}
             data-lenis-prevent
             onPointerDown={apretar}
             onPointerMove={mover}

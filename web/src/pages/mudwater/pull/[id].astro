@@ -15,10 +15,13 @@ const backend = backendAbsoluto(Astro.url);
 const respuesta = await fetch(`${backend}/packs/pull/${id}`).catch(() => null);
 if (!respuesta?.ok) return Astro.redirect('/mudwater');
 const pull: {
+    season?: string;
+    seasonName?: string;
     points: number;
     nickname: string | null;
     cards: { id: number; name: string; category: Categoria; rarity: Rareza }[];
 } = await respuesta.json();
+if (pull.season && pull.season !== 'mudwater') return Astro.redirect(`/packs/pull/${id}`);
 
 const tarjeta = `${backend}/packs/og/${id}.jpg`;
 if (!esBuscador(Astro.request)) fetch(tarjeta).catch(() => {});

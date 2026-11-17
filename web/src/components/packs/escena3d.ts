@@ -5,7 +5,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import gsap from 'gsap';
-import type { CartaPack, Rareza } from '@/lib/packs';
+import { MARCA, type CartaPack, type Rareza } from '@/lib/packs';
 import {
     prepararTexturas,
     texturaDorsoGuardada,
@@ -344,7 +344,7 @@ export class Escena3D {
         });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, tactil ? 1.25 : 1.5));
         this.renderer.toneMapping = THREE.NoToneMapping;
-        this.renderer.setClearColor('#000000');
+        this.renderer.setClearColor(MARCA.mudwater ? '#000000' : new THREE.Color().setRGB(0.00007, 0, 0.001005));
         this.renderer.domElement.style.display = 'block';
         contenedor.appendChild(this.renderer.domElement);
 
@@ -358,7 +358,7 @@ export class Escena3D {
 
         const clave = new THREE.DirectionalLight('#fff4d6', 2.2);
         clave.position.set(3, 4, 6);
-        const contra = new THREE.DirectionalLight('#aea35d', 3);
+        const contra = new THREE.DirectionalLight(MARCA.mudwater ? '#aea35d' : '#5b7cff', 3);
         contra.position.set(-4, -2, -3);
         const ambiente = new THREE.AmbientLight('#ffffff', 0.15);
         this.luces = [clave, contra, ambiente];
@@ -454,7 +454,7 @@ export class Escena3D {
 
         const texDorso = lienzoATextura(dorsoCarta, true);
         const lado = new THREE.MeshStandardMaterial({
-            color: '#aea35d',
+            color: MARCA.mudwater ? '#aea35d' : '#dfe8ff',
             metalness: 1,
             roughness: 0.3,
         });

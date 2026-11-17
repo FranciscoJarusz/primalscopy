@@ -35,9 +35,17 @@ type Jugador = {
     adjust?: { points: number; reason: string; at: string } | null;
     solana: { address: string; at: string } | null;
 };
+type Temporada = { id: string; name: string; theme: string; status: Estado; createdAt: string | null; current: boolean };
 type Datos = {
+    season?: string;
+    seasons?: Temporada[];
     status: Estado;
     config: {
+        name?: string;
+        solana?: boolean;
+        chosenPrize?: string | null;
+        specialCard?: boolean;
+        specialName?: string;
         status: Estado;
         endsAt: string | null;
         tiers: { none: number; holder: number; staker: number };
@@ -45,6 +53,7 @@ type Datos = {
         extraMax: number;
         extraBoost?: number;
         winners: number | null;
+        autoDraw?: boolean;
         prizes?: string[];
         collectionPrize?: string | null;
         rarities: Record<Rareza, { chance: number; points: number }>;
@@ -120,19 +129,21 @@ export default function PacksAdmin({ token }: { token: string }) {
     const [datos, setDatos] = useState<Datos | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [ocupado, setOcupado] = useState(false);
+    const [temporada, setTemporada] = useState<string | null>(null);
 
     const pedir = useCallback(
         async (ruta: string, init: RequestInit = {}) => {
             setOcupado(true);
             setError(null);
             try {
-                const r = await fetch(`${BACKEND_URL}/admin/packs${ruta}`, {
+                const r = await fetch(`${BACKEND_URL}/admin/packs${ruta}${temporada ? `?season=${encodeURIComponent(temporada)}` : ''}`, {
                     ...init,
                     headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
                 });
                 const d = await r.json().catch(() => ({}));
                 if (!r.ok) throw new Error(d.error || "Couldn't reach the server.");
                 setDatos(d);
+                if (!temporada && d.season) setTemporada(d.season);
                 return true;
             } catch (e) {
                 setError((e as Error).message);
@@ -141,8 +152,26 @@ export default function PacksAdmin({ token }: { token: string }) {
                 setOcupado(false);
             }
         },
-        [token]
+        [token, temporada]
     );
+    const pedirTemporadas = async (ruta: string, init: RequestInit) => {
+        setOcupado(true);
+        setError(null);
+        try {
+            const r = await fetch(`${BACKEND_URL}/admin/packs/seasons${ruta}`, {
+                ...init,
+                headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.error || "Couldn't reach the server.");
+            return d;
+        } catch (e) {
+            setError((e as Error).message);
+            return null;
+        } finally {
+            setOcupado(false);
+        }
+    };
     const configurar = (cambios: object) =>
         pedir('/config', { method: 'PATCH', body: JSON.stringify(cambios) });
 
@@ -170,8 +199,24 @@ export default function PacksAdmin({ token }: { token: string }) {
                         )}
                     </div>
                     <p className="text-base sm:text-lg text-lightblue mt-3 max-w-2xl">
-                        The Mudwater pack competition: open and close it, set the rules, check the leaderboard and draw the raffles.
+                        The pack competition, one season at a time: open and close it, set the rules, check the leaderboard and draw the raffles.
                     </p>
+                    {datos?.seasons && datos.seasons.length > 1 && (
+                        <div className="flex flex-wrap gap-2 mt-4">
+                            {datos.seasons.map((s) => (
+                                <button
+                                    key={s.id}
+                                    type="button"
+                                    disabled={ocupado}
+                                    onClick={() => setTemporada(s.id)}
+                                    className={`font-accent uppercase rounded-md px-3 pb-1 cursor-pointer transition-all duration-300 ${s.id === datos.season ? 'bg-yellow text-darkblue' : 'bg-lightblue/10 text-lightblue hover:bg-lightblue/20'}`}
+                                >
+                                    {s.name}
+                                    {s.current ? ' · current' : ''}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 <button type="button" disabled={ocupado} onClick={() => pedir('')} className={botonChico}>
                     Refresh
@@ -183,21 +228,23 @@ export default function PacksAdmin({ token }: { token: string }) {
                     { id: 'packs-ranking', nombre: 'Leaderboard' },
                     { id: 'packs-reglas', nombre: 'Rules' },
                     { id: 'packs-chosen', nombre: 'The Chosen' },
+                    { id: 'packs-temporadas', nombre: 'Seasons' },
                 ]}
             />
             {error && <p className="text-red bg-darkblue rounded-xl px-4 py-3">{error}</p>}
             {!datos && !error && <p className="text-lightblue/70">Loading...</p>}
             {datos && (
-                <>
+                <div key={datos.season} className="contents">
                     <div id="packs-resumen" className="flex flex-col gap-4 sm:gap-5">
                         <Numeros datos={datos} />
                         <PorDia datos={datos} />
+                        <DatosTemporada datos={datos} ocupado={ocupado} configurar={configurar} />
                         <Competencia datos={datos} ocupado={ocupado} configurar={configurar} />
                         <PremiosRanking datos={datos} ocupado={ocupado} configurar={configurar} />
                         <PremioColeccion datos={datos} ocupado={ocupado} configurar={configurar} pedir={pedir} />
-                        <MetaComunitaria datos={datos} ocupado={ocupado} configurar={configurar} />
+                        {datos.season !== 'mudwater' && <MetaComunitaria datos={datos} ocupado={ocupado} configurar={configurar} />}
                         <UpgradesAdmin datos={datos} ocupado={ocupado} configurar={configurar} />
-                        <AcreditarExtra datos={datos} ocupado={ocupado} pedir={pedir} />
+                        {datos.season !== 'mudwater' && <AcreditarExtra datos={datos} ocupado={ocupado} pedir={pedir} />}
                     </div>
                     <div id="packs-ranking">
                         <Jugadores datos={datos} ocupado={ocupado} pedir={pedir} />
@@ -208,7 +255,22 @@ export default function PacksAdmin({ token }: { token: string }) {
                     <div id="packs-chosen">
                         <SorteoChosen datos={datos} ocupado={ocupado} pedir={pedir} />
                     </div>
-                </>
+                    <div id="packs-temporadas">
+                        <Temporadas
+                            datos={datos}
+                            ocupado={ocupado}
+                            crear={async (cuerpo) => {
+                                const r = await pedirTemporadas('', { method: 'POST', body: JSON.stringify(cuerpo) });
+                                if (r) await pedir('');
+                                return Boolean(r);
+                            }}
+                            hacerActual={async (id) => {
+                                const r = await pedirTemporadas('/current', { method: 'PUT', body: JSON.stringify({ season: id }) });
+                                if (r) await pedir('');
+                            }}
+                        />
+                    </div>
+                </div>
             )}
         </main>
     );
@@ -353,14 +415,14 @@ function Competencia({ datos, ocupado, configurar }: Props) {
                 </Tarjeta>
                 <Tarjeta
                     nombre="Winners"
-                    texto="How many from the top win. Set it when it ends: they'll be asked for a Solana wallet."
+                    texto={`How many from the top win. Empty means one per leaderboard prize${config.solana ? ". They'll be asked for a Solana wallet." : '.'}`}
                 >
                     <input
                         type="number"
                         min={1}
                         value={ganadores}
                         onChange={(e) => setGanadores(e.target.value)}
-                        placeholder="Not set"
+                        placeholder="Auto"
                         aria-label="Winners"
                         className={`${campo} flex-1 min-w-0`}
                     />
@@ -368,6 +430,27 @@ function Competencia({ datos, ocupado, configurar }: Props) {
                         Save
                     </button>
                 </Tarjeta>
+                <div className="lg:col-span-3">
+                    <Tarjeta
+                        nombre="Raffles"
+                        texto={
+                            config.autoDraw === false
+                                ? 'Automatic draw is off: you draw each raffle yourself from the sections below once the competition ends.'
+                                : 'The raffles draw themselves a few seconds after the competition ends: the winner comes from a future ApeChain block. Turn it off if you want to review the entries first.'
+                        }
+                    >
+                        <label className="flex items-center gap-2 text-lightblue cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={config.autoDraw !== false}
+                                disabled={ocupado}
+                                onChange={(e) => configurar({ autoDraw: e.target.checked })}
+                                className="size-4 accent-yellow"
+                            />
+                            Draw them automatically when it ends
+                        </label>
+                    </Tarjeta>
+                </div>
             </div>
     );
 }
@@ -705,9 +788,12 @@ function SorteoChosen({ datos, ocupado, pedir }: { datos: Datos; ocupado: boolea
     const quien = useQuien();
     return (
         <section className={panel}>
-            <h2 className={titulo}>The Chosen raffle</h2>
+            <h2 className={titulo}>{datos.config.specialName ?? 'The Chosen'} raffle</h2>
+            {!datos.config.specialCard && (
+                <p className="text-yellow text-sm -mt-2">This season has no special card. Turn it on in the Season card.</p>
+            )}
             <p className="text-lightblue/70 text-sm -mt-2">
-                Everyone who pulled The Chosen (#53) gets one entry, no matter how many times they pulled it. Disqualified wallets are left out.
+                Everyone who pulled {datos.config.specialName ?? 'The Chosen'} (#53) gets one entry, no matter how many times they pulled it. Disqualified wallets are left out.
             </p>
             {datos.raffles && <BloqueSorteo sorteo={datos.raffles.chosen} terminada={datos.status === 'ended'} ocupado={ocupado} pedir={pedir} />}
             {entrants.length > 0 && (
@@ -1112,6 +1198,169 @@ function PorDia({ datos }: { datos: Datos }) {
                     </li>
                 ))}
             </ol>
+        </section>
+    );
+}
+
+function DatosTemporada({ datos, ocupado, configurar }: Props) {
+    const [nombre, setNombre] = useState(datos.config.name ?? '');
+    const [chosen, setChosen] = useState(datos.config.chosenPrize ?? '');
+    const [especial, setEspecial] = useState(Boolean(datos.config.specialCard));
+    const [nombreEspecial, setNombreEspecial] = useState(datos.config.specialName ?? 'The Chosen');
+    const sinCambios =
+        nombre.trim() === (datos.config.name ?? '') &&
+        chosen.trim() === (datos.config.chosenPrize ?? '') &&
+        especial === Boolean(datos.config.specialCard) &&
+        nombreEspecial.trim() === (datos.config.specialName ?? 'The Chosen');
+
+    return (
+        <section className={panel}>
+            <div>
+                <h2 className={titulo}>Season</h2>
+                <p className="text-sm text-lightblue/70 mt-1">
+                    The name shows on the packs page and in shared images. The special card is one extra, very rare card (#53) that doesn't count for the collection; whoever pulls it enters a raffle for its prize.
+                </p>
+            </div>
+            <label className="flex flex-col gap-1.5">
+                <span className="text-sm text-lightblue/80">Name</span>
+                <input value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={60} className={campo} />
+            </label>
+            <label className="flex items-center gap-2 text-lightblue cursor-pointer">
+                <input type="checkbox" checked={especial} onChange={(e) => setEspecial(e.target.checked)} className="size-4 accent-yellow" />
+                This season has a special card
+            </label>
+            {especial && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="flex flex-col gap-1.5">
+                        <span className="text-sm text-lightblue/80">Special card name</span>
+                        <input value={nombreEspecial} onChange={(e) => setNombreEspecial(e.target.value)} maxLength={40} className={campo} />
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                        <span className="text-sm text-lightblue/80">Raffle prize (optional: empty means no raffle)</span>
+                        <input value={chosen} onChange={(e) => setChosen(e.target.value)} maxLength={120} placeholder="No raffle" className={campo} />
+                    </label>
+                </div>
+            )}
+            <div className="flex flex-wrap items-center gap-3">
+                <button
+                    type="button"
+                    disabled={ocupado || sinCambios || !nombre.trim() || (especial && !nombreEspecial.trim())}
+                    onClick={() =>
+                        configurar({
+                            name: nombre,
+                            specialCard: especial,
+                            ...(especial ? { specialName: nombreEspecial, chosenPrize: chosen } : {}),
+                        })
+                    }
+                    className={botonGuardar}
+                >
+                    Save
+                </button>
+            </div>
+        </section>
+    );
+}
+
+function Temporadas({
+    datos,
+    ocupado,
+    crear,
+    hacerActual,
+}: {
+    datos: Datos;
+    ocupado: boolean;
+    crear: (cuerpo: { id: string; name: string; copyFrom?: string }) => Promise<boolean>;
+    hacerActual: (id: string) => Promise<void>;
+}) {
+    const temporadas = datos.seasons ?? [];
+    const [id, setId] = useState('');
+    const [nombre, setNombre] = useState('');
+    const [copiar, setCopiar] = useState(datos.season ?? '');
+    const [confirmar, setConfirmar] = useState<string | null>(null);
+
+    return (
+        <section className={panel}>
+            <div>
+                <h2 className={titulo}>Seasons</h2>
+                <p className="text-sm text-lightblue/70 mt-1">
+                    The current season is the one on /packs, the home and the menu. Past seasons keep their leaderboard and raffles. Mudwater always stays on /mudwater.
+                </p>
+            </div>
+            <ol className="flex flex-col gap-2">
+                {temporadas.map((s) => (
+                    <li key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-lightblue/5 px-4 py-3">
+                        <span className="font-accent uppercase text-yellow text-lg pb-1">{s.name}</span>
+                        <span className="text-sm text-lightblue/70">{s.id}</span>
+                        <span className={`text-xs font-bold uppercase rounded-md px-2 py-0.5 ${ESTADOS[s.status].clase}`}>{ESTADOS[s.status].nombre}</span>
+                        <span className="ml-auto flex items-center gap-2">
+                            {s.current ? (
+                                <span className="text-sm font-bold uppercase text-yellow">Current</span>
+                            ) : confirmar === s.id ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        disabled={ocupado}
+                                        onClick={() => hacerActual(s.id).then(() => setConfirmar(null))}
+                                        className={botonGuardar}
+                                    >
+                                        Make it current
+                                    </button>
+                                    <button type="button" onClick={() => setConfirmar(null)} className={botonChico}>
+                                        Cancel
+                                    </button>
+                                </>
+                            ) : (
+                                <button type="button" disabled={ocupado} onClick={() => setConfirmar(s.id)} className={botonChico}>
+                                    Make current
+                                </button>
+                            )}
+                        </span>
+                    </li>
+                ))}
+            </ol>
+            <div className="flex flex-col gap-3 border-t border-lightblue/10 pt-4">
+                <h3 className="font-accent uppercase text-lightblue text-lg">New season</h3>
+                <p className="text-sm text-lightblue/70">
+                    It starts closed, with no prizes, and copies the tiers, extras, odds and upgrade amounts of the season you pick. The id goes in links and can't be changed.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                    <label className="flex flex-col gap-1.5">
+                        <span className="text-sm text-lightblue/80">Id</span>
+                        <input value={id} onChange={(e) => setId(e.target.value.toLowerCase())} maxLength={30} placeholder="season-2" className={campo} />
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                        <span className="text-sm text-lightblue/80">Name</span>
+                        <input value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={60} placeholder="Season 2" className={campo} />
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                        <span className="text-sm text-lightblue/80">Copy rules from</span>
+                        <select value={copiar} onChange={(e) => setCopiar(e.target.value)} className={campo}>
+                            {temporadas.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                    {s.name}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        type="button"
+                        disabled={ocupado || !id.trim() || !nombre.trim()}
+                        onClick={() =>
+                            crear({ id: id.trim(), name: nombre.trim(), copyFrom: copiar || undefined }).then((ok) => {
+                                if (ok) {
+                                    setId('');
+                                    setNombre('');
+                                }
+                            })
+                        }
+                        className={botonGuardar}
+                    >
+                        Create season
+                    </button>
+                </div>
+            </div>
         </section>
     );
 }
