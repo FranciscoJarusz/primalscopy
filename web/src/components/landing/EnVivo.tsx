@@ -13,6 +13,7 @@ type Persona = { wallet: string | null; nickname: string | null };
 
 type Datos = {
     packs: {
+        theme?: 'mudwater' | 'cult';
         status: 'upcoming' | 'open' | 'ended';
         endsAt: string | null;
         players: number;
@@ -163,10 +164,12 @@ function Meta({ meta, ahora }: { meta: NonNullable<Datos['packs']['goal']>; ahor
 function Packs({ packs, ahora }: { packs: Datos['packs']; ahora: number }) {
     const ultimo = packs.pulls[0];
     const abierto = packs.status === 'open';
+    const mudwater = packs.theme !== 'cult';
+    const ruta = mudwater ? '/mudwater' : '/packs';
     return (
         <article className={tarjeta}>
             <div className="flex items-start justify-between gap-3">
-                <h3 className={titulo}>Packs</h3>
+                <h3 className={titulo}>{mudwater ? 'Mudwater' : 'Packs'}</h3>
                 <span className="mt-2 shrink-0 rounded-[10px] bg-lightblue/10 px-3 py-1 text-xs font-bold uppercase text-lightblue">
                     {abierto ? 'Open' : 'Ended'}
                 </span>
@@ -188,7 +191,7 @@ function Packs({ packs, ahora }: { packs: Datos['packs']; ahora: number }) {
             )}
             {ultimo && (
                 <a
-                    href={`/packs/pull/${ultimo.pull}`}
+                    href={`${ruta}/pull/${ultimo.pull}`}
                     className="flex items-center gap-3 rounded-xl sm:rounded-2xl bg-lightblue/5 border border-lightblue/10 p-2.5 hover:border-yellow/60 transition-all duration-300"
                 >
                     <img src={imagenCarta(ultimo.card.id)} alt="" loading="lazy" className="w-11 aspect-1000/1388 rounded-md object-cover shrink-0" />
@@ -199,7 +202,7 @@ function Packs({ packs, ahora }: { packs: Datos['packs']; ahora: number }) {
                     </span>
                 </a>
             )}
-            <a href="/packs" className={`${boton} mt-auto`}>
+            <a href={ruta} className={`${boton} mt-auto`}>
                 {abierto ? 'Rip packs' : 'See leaderboard'}
             </a>
         </article>

@@ -9,14 +9,16 @@ export type Seccion = {
     id: string;
     oculta?: boolean;
     soloConPacks?: boolean;
+    tema?: 'mudwater' | 'cult';
 };
 
 export const SECCIONES: Seccion[] = [
     { id: 'home', nombre: 'Home', href: '/' },
-    { id: 'packs', nombre: 'Packs', href: '/packs', soloConPacks: true },
+    { id: 'mudwater', nombre: 'Mudwater', href: '/mudwater', soloConPacks: true, tema: 'mudwater' },
 ];
 
 export const HUB: Seccion[] = [
+    { id: 'packs', nombre: 'Packs', href: '/packs', tema: 'cult' },
     { id: 'cultomizer', nombre: 'Cultomizer', href: '/cultomizer' },
     { id: 'forge', nombre: 'Forge', href: '/forge' },
     { id: 'shop', nombre: 'Shop', href: '/shop' },
@@ -50,8 +52,10 @@ const clase = (id: string) =>
     id === activo
         ? 'text-yellow'
         : 'text-lightblue hover:text-yellow transition-all duration-300';
-const conPacks = (s: Seccion) =>
-    s.soloConPacks && s.id !== activo ? { 'data-si-packs': '' } : {};
+const conPacks = (s: Seccion) => ({
+    ...(s.soloConPacks && s.id !== activo ? { 'data-si-packs': '' } : {}),
+    ...(s.tema ? { [`data-tema-${s.tema}`]: '' } : {}),
+});
 ---
 
 <header
@@ -132,9 +136,15 @@ const conPacks = (s: Seccion) =>
                             <a
                                 href={s.href}
                                 tabindex="-1"
+                                {...conPacks(s)}
                                 class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
                             >
                                 {s.nombre}
+                                {s.tema === 'cult' && (
+                                    <span data-si-packs class="ml-2 align-middle rounded-full bg-yellow text-darkblue font-sans font-bold text-[10px] leading-none px-1.5 py-0.5 tracking-wider">
+                                        NEW
+                                    </span>
+                                )}
                             </a>
                         ))}
 
@@ -267,9 +277,15 @@ const conPacks = (s: Seccion) =>
                             <a
                                 href={s.href}
                                 tabindex="-1"
+                                {...conPacks(s)}
                                 class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
                             >
                                 {s.nombre}
+                                {s.tema === 'cult' && (
+                                    <span data-si-packs class="ml-2 align-middle rounded-full bg-yellow text-darkblue font-sans font-bold text-[10px] leading-none px-1.5 py-0.5 tracking-wider">
+                                        NEW
+                                    </span>
+                                )}
                             </a>
                         ))}
                     </>
@@ -323,7 +339,35 @@ const conPacks = (s: Seccion) =>
         data-anuncio-packs
         class="relative z-20 mt-3 sm:mt-4"
     >
-        <div class="relative flex sm:flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-2 rounded-2xl sm:rounded-[30px] bg-darkblue ring-1 ring-yellow/60 pl-5 pr-12 py-2.5 sm:py-3 text-center shadow-lg shadow-darkblue/50">
+        <div data-tema-mudwater class="relative flex sm:flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-2 rounded-2xl sm:rounded-[30px] bg-black ring-1 ring-mw-champagne/60 pl-5 pr-12 py-2.5 sm:py-3 text-center shadow-lg shadow-darkblue/50">
+            <p class="text-sm sm:text-base text-mw-mist">
+                <span class="font-accent uppercase text-[#d8cc8c] sm:mr-2">
+                    Primal Cult × Mudwater
+                </span>
+                <span class="hidden sm:inline xl:hidden">
+                    Open free packs every day.
+                </span>
+                <span class="hidden xl:inline">
+                    Open free packs every day. The top of the leaderboard wins
+                    Mudwater packs.
+                </span>
+            </p>
+            <a
+                href="/mudwater"
+                class="shrink-0 bg-[#d8cc8c] text-black font-accent uppercase rounded-md px-3 pb-1.5 hover:bg-[#efe7bd] active:scale-97 transition-all duration-300"
+            >
+                Rip packs
+            </a>
+            <button
+                type="button"
+                data-anuncio-cerrar
+                aria-label="Close"
+                class="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 text-2xl leading-none text-mw-champagne hover:text-[#efe7bd] cursor-pointer transition-all duration-300"
+            >
+                ×
+            </button>
+        </div>
+        <div data-tema-cult class="relative flex sm:flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-2 rounded-2xl sm:rounded-[30px] bg-darkblue ring-1 ring-yellow/60 pl-5 pr-12 py-2.5 sm:py-3 text-center shadow-lg shadow-darkblue/50">
             <p class="text-sm sm:text-base text-lightblue">
                 <span class="font-accent uppercase text-yellow sm:mr-2">
                     Primal Cult packs

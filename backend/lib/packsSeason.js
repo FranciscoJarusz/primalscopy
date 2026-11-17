@@ -1017,6 +1017,9 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
             if (mejor && ORDEN_RAREZA[mejor.rarity] >= ORDEN_RAREZA.epic) grandes.push({ at: a.at, wallet: a.wallet, pull: a.id, card: cartaPublica(mejor) });
         }
         return {
+            season: id,
+            name: config.name,
+            theme: config.theme,
             status: estado(config, now),
             endsAt: config.endsAt,
             players: orden.length,

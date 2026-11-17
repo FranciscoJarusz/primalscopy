@@ -94,7 +94,9 @@ body {
 
 html:not([data-packs]) [data-si-packs],
 html[data-packs] [data-no-packs],
-html[data-anuncio-cerrado] [data-anuncio-packs] {
+html[data-anuncio-cerrado] [data-anuncio-packs],
+html[data-packs-cult] [data-tema-mudwater],
+html:not([data-packs-cult]) [data-tema-cult] {
     display: none !important;
 }
 
