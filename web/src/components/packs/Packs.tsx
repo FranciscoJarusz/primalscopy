@@ -43,6 +43,7 @@ import {
     type Ranking,
     type Nivel,
     type ResultadoUpgrade,
+    type TipoSorteo,
     type TipoUpgrade,
 } from '@/lib/packs';
 import Sobre from './Sobre';
@@ -51,6 +52,15 @@ import DetalleCarta from './DetalleCarta';
 import PacksDesbloqueados from './PacksDesbloqueados';
 import Upgrades from './Upgrades';
 import UpgradeHecho from './UpgradeHecho';
+import {
+    FinEvento,
+    PERSPECTIVAS,
+    PanelRaffles,
+    type Perspectiva,
+    SorteoHecho,
+    TIPOS,
+    resultadosDePrueba,
+} from './Resultados';
 import { despertar } from './sonidos';
 import { CSS } from './cssMudwater';
 
@@ -163,6 +173,39 @@ function marcarIntento(wallet: string, activo: boolean) {
     }
 }
 
+type Vistos = { fin?: boolean } & Partial<Record<TipoSorteo, string>>;
+const claveVistos = (wallet: string) => `packs:resultados:${wallet.toLowerCase()}`;
+
+function leerVistos(wallet: string): Vistos {
+    try {
+        return JSON.parse(localStorage.getItem(claveVistos(wallet)) ?? '{}');
+    } catch {
+        return {};
+    }
+}
+
+function marcarVisto(wallet: string, que: 'fin' | TipoSorteo, ranking: Ranking | null) {
+    const vistos = leerVistos(wallet);
+    if (que === 'fin') vistos.fin = true;
+    else vistos[que] = ranking?.raffles?.[que]?.hash ?? '';
+    try {
+        localStorage.setItem(claveVistos(wallet), JSON.stringify(vistos));
+    } catch {
+        // sin almacenamiento: el popup puede volver a salir, nada mas
+    }
+}
+
+function popupsPendientes(wallet: string, mio: MiPacks, ranking: Ranking) {
+    const vistos = leerVistos(wallet);
+    const cola: ('fin' | TipoSorteo)[] = [];
+    if (!vistos.fin && mio.packs > 0) cola.push('fin');
+    for (const k of TIPOS) {
+        const s = ranking.raffles?.[k];
+        if (s?.status === 'drawn' && mio.raffles?.[k] && vistos[k] !== s.hash) cola.push(k);
+    }
+    return cola;
+}
+
 const PREMIO_META = 'packs:premio-meta';
 const claveMeta = (wallet: string) =>
     `${PREMIO_META}:${wallet.toLowerCase()}:${new Date().toISOString().slice(0, 10)}`;
@@ -206,6 +249,11 @@ export default function Packs() {
     const [comprando, setComprando] = useState<string | null>(null);
     const [extraComprado, setExtraComprado] = useState(false);
     const [premioMeta, setPremioMeta] = useState(false);
+    const [prueba, setPrueba] = useState<ReturnType<
+        typeof resultadosDePrueba
+    > | null>(null);
+    const [cola, setCola] = useState<('fin' | TipoSorteo)[]>([]);
+    const [perspectiva, setPerspectiva] = useState<Perspectiva>('podio');
     const [upgradeHecho, setUpgradeHecho] = useState<{
         carta: CartaPack;
         nueva: boolean;
@@ -249,6 +297,13 @@ export default function Packs() {
             .catch(() => {});
     }, []);
     useEffect(recargarRanking, [recargarRanking]);
+
+    useEffect(() => {
+        if (config?.status !== 'ended' || !address || !mio || !ranking) return;
+        const pendientes = popupsPendientes(address, mio, ranking);
+        if (pendientes.length)
+            setCola((c) => (c.length ? c : pendientes));
+    }, [config?.status, address, mio, ranking]);
 
     useEffect(() => {
         setMio(null);
@@ -441,6 +496,23 @@ export default function Packs() {
     const yo = address?.toLowerCase();
     const conChosen = new Map(ranking?.chosen.map((c) => [c.wallet, c]));
     const premios = config.prizes ?? [];
+    const terminado = !!prueba || config.status === 'ended';
+    const datosRanking = prueba?.ranking ?? ranking;
+    const datosMio: MiPacks | null = prueba
+        ? ({ ...(mio ?? {}), ...prueba.mio } as MiPacks)
+        : mio;
+    const cerrarPopup = () => {
+        const actual = cola[0];
+        if (actual && yo && !prueba) marcarVisto(yo, actual, datosRanking);
+        setCola((c) => c.slice(1));
+    };
+    const formularioSolana = (
+        <Ganador
+            mio={datosMio ?? ({ solana: null } as MiPacks)}
+            token={session.token ?? ''}
+            alGuardar={setMio}
+        />
+    );
     const total = mio ? mio.limit + (mio.bonusPacks ?? 0) : config.tiers.none;
     const extra = config.extra;
     const puedeExtra =
@@ -452,7 +524,10 @@ export default function Packs() {
         mio.extrasToday < extra.max;
 
     let accion: { texto: ReactNode; alTocar?: () => void } | null = null;
-    if (config.status === 'ended') accion = { texto: 'Competition over' };
+    if (terminado)
+        accion = datosMio?.rank
+            ? { texto: 'Your results', alTocar: () => setCola(['fin']) }
+            : { texto: 'Competition over' };
     else if (conectando || session.status === 'signing')
         accion = { texto: 'Check your wallet...' };
     else if (isConnected && session.status === 'needs-signature')
@@ -650,15 +725,44 @@ export default function Packs() {
                         Mudwater pack.
                     </p>
                 )}
-                {(mio?.chosenWinner ||
-                    (config.status === 'ended' && mio?.winner)) &&
-                    session.token && (
-                        <Ganador
-                            mio={mio}
-                            token={session.token}
-                            alGuardar={setMio}
-                        />
-                    )}
+                {import.meta.env.DEV && (
+                    <div className="flex flex-wrap justify-center gap-2">
+                        <select
+                            value={perspectiva}
+                            onChange={(e) =>
+                                setPerspectiva(e.target.value as Perspectiva)
+                            }
+                            className="bg-black text-mw-champagne text-sm rounded-md px-2 py-1.5 border border-dashed border-mw-champagne/40"
+                        >
+                            {Object.entries(PERSPECTIVAS).map(([k, v]) => (
+                                <option key={k} value={k}>
+                                    {v}
+                                </option>
+                            ))}
+                        </select>
+                        {[false, true].map((sorteados) => (
+                            <button
+                                key={String(sorteados)}
+                                type="button"
+                                onClick={() => {
+                                    const d = resultadosDePrueba(
+                                        perspectiva,
+                                        sorteados,
+                                        yo ?? '0xyo',
+                                        premios
+                                    );
+                                    setPrueba(d);
+                                    setCola(d.cola);
+                                }}
+                                className="mw-titulo uppercase text-sm rounded-md px-3 py-1.5 border border-dashed border-mw-champagne/40 text-mw-champagne cursor-pointer hover:border-mw-champagne transition-all duration-300"
+                            >
+                                {sorteados
+                                    ? 'Raffles drawn (dev)'
+                                    : 'Event just ended (dev)'}
+                            </button>
+                        ))}
+                    </div>
+                )}
                 {import.meta.env.DEV && (
                     <button
                         type="button"
@@ -894,7 +998,14 @@ export default function Packs() {
                             </div>
                         </div>
                     )}
-                    {ranking && (
+                    {terminado && datosRanking?.raffles ? (
+                        <div className="border-t border-mw-champagne/20 pt-5">
+                            <PanelRaffles
+                                raffles={datosRanking.raffles}
+                                yo={yo ?? '0xyo'}
+                            />
+                        </div>
+                    ) : ranking && (
                         <div className="border-t border-mw-champagne/20 pt-5">
                             <p className="mw-etiqueta text-[10px] text-mw-fog">
                                 Pulled The Chosen
@@ -1135,6 +1246,28 @@ export default function Packs() {
                     }}
                 />
             )}
+            {cola[0] === 'fin' && datosRanking && datosMio && (
+                <FinEvento
+                    ranking={datosRanking}
+                    mio={datosMio}
+                    formulario={formularioSolana}
+                    sinRevelar={cola.filter(
+                        (k): k is TipoSorteo => k !== 'fin'
+                    )}
+                    onCerrar={cerrarPopup}
+                />
+            )}
+            {cola[0] &&
+                cola[0] !== 'fin' &&
+                datosRanking?.raffles?.[cola[0]] && (
+                    <SorteoHecho
+                        key={cola[0]}
+                        sorteo={datosRanking.raffles[cola[0]]}
+                        yo={yo ?? '0xyo'}
+                        formulario={formularioSolana}
+                        onCerrar={cerrarPopup}
+                    />
+                )}
             {detalle && (
                 <DetalleCarta
                     carta={detalle}
@@ -1272,41 +1405,33 @@ function Ganador({
     return (
         <form
             onSubmit={guardar}
-            className={`${panel} w-full max-w-md flex flex-col gap-4`}
+            className="w-full flex flex-col gap-2"
         >
-            <div>
-                <h2 className={subtitulo}>
-                    {mio.chosenWinner
-                        ? 'You won The Chosen raffle'
-                        : `You placed #${mio.rank}`}
-                </h2>
-                <p className="mt-1 text-mw-mist/70">
-                    Mudwater packs are sent on Solana. Add the Solana wallet
-                    where you want to receive yours.
-                </p>
+            <div className="flex gap-2">
+                <input
+                    aria-label="Solana wallet for the Mudwater prize"
+                    value={direccion}
+                    onChange={(e) => setDireccion(e.target.value)}
+                    placeholder="Solana wallet for the prize"
+                    className={`${entrada} text-base min-w-0 flex-1`}
+                />
+                <button
+                    type="submit"
+                    disabled={guardando || !direccion.trim()}
+                    className="shrink-0 mw-boton-brillo mw-titulo uppercase text-black text-base rounded-md px-5 py-2 tracking-wider cursor-pointer hover:scale-105 active:scale-97 transition-all duration-300 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                    <span className="mw-boton-reflejo" aria-hidden="true" />
+                    <span className="relative">
+                        {guardando ? 'Saving...' : 'Save'}
+                    </span>
+                </button>
             </div>
-            <input
-                value={direccion}
-                onChange={(e) => setDireccion(e.target.value)}
-                placeholder="Solana wallet address"
-                className={`${entrada} text-base`}
-            />
             {error && <p className="text-mw-champagne">{error}</p>}
             {mio.solana && !error && (
                 <p className="text-mw-mist/70">
-                    Saved. You can change it until the packs are sent.
+                    Saved. You can change it until the prizes are sent.
                 </p>
             )}
-            <button
-                type="submit"
-                disabled={guardando || !direccion.trim()}
-                className={`${botonPrincipal} self-center`}
-            >
-                <span className="mw-boton-reflejo" aria-hidden="true" />
-                <span className="relative">
-                    {guardando ? 'Saving...' : 'Save wallet'}
-                </span>
-            </button>
         </form>
     );
 }

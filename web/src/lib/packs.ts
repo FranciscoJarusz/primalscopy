@@ -129,6 +129,26 @@ export interface MiPacks {
     chosenEntered: boolean;
     chosenWinner: boolean;
     solana: string | null;
+    prizes?: PremioGanado[];
+    raffles?: Partial<Record<TipoSorteo, 'entered' | 'won' | 'lost'>>;
+}
+
+export type PremioGanado =
+    | { kind: 'rank'; place: number; prize: string }
+    | { kind: 'chosen'; prize: string }
+    | { kind: 'collection'; prize: string };
+
+export type TipoSorteo = 'chosen' | 'collection';
+
+export interface SorteoPacks {
+    kind: TipoSorteo;
+    prize: string | null;
+    status: 'none' | 'pending' | 'drawing' | 'drawn';
+    entrants: { wallet: string; nickname: string | null }[];
+    block?: number | null;
+    hash?: string | null;
+    index?: number | null;
+    winner?: string | null;
 }
 
 export interface FilaRanking {
@@ -225,6 +245,7 @@ export interface Ranking {
     top: FilaRanking[];
     chosen: FilaChosen[];
     collectors?: FilaColeccionista[];
+    raffles?: Record<TipoSorteo, SorteoPacks>;
 }
 export const leerRanking = () => pedir<Ranking>('/leaderboard');
 export const leerMio = (token: string) => pedir<MiPacks>('/me', token);
