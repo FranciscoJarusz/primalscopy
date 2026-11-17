@@ -107,6 +107,7 @@ export interface ConfigPacks {
         tradeUp: Partial<Record<Rareza, number>>;
         swap: Partial<Record<Rareza, number>>;
     } | null;
+    freeMode?: boolean;
     rarities: Record<Rareza, { chance: number; points: number }>;
     cards: { id: number; name: string; category: Categoria; rarity: Rareza }[];
 }
@@ -137,6 +138,11 @@ export interface MiPacks {
     solana: string | null;
     prizes?: PremioGanado[];
     raffles?: Partial<Record<TipoSorteo, 'entered' | 'won' | 'lost'>>;
+    free?: {
+        packs: number;
+        collection: Record<string, number>;
+        completedAt: string | null;
+    } | null;
 }
 
 export type PremioGanado =
@@ -306,6 +312,11 @@ export const abrirPack = (token: string) =>
         token,
         { method: 'POST', body: '{}' }
     );
+export const abrirLibre = (token: string) =>
+    pedir<{ pack: { cards: number[] }; me: MiPacks }>('/free', token, {
+        method: 'POST',
+        body: '{}',
+    });
 export interface ResultadoUpgrade {
     upgrade: { id: string; kind: TipoUpgrade; rarity: Rareza; card: number; new: boolean };
     me: MiPacks;

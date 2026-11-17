@@ -15,6 +15,8 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
     const EXTRAS_PATH = path.join(PACKS_DIR, 'extras.json');
     const GIFTS_PATH = path.join(PACKS_DIR, 'gifts.json');
     const UPGRADES_PATH = path.join(PACKS_DIR, 'upgrades.jsonl');
+    const FREE_PATH = path.join(PACKS_DIR, 'free.json');
+    const ESPERA_LIBRE_MS = 3000;
 
     const DAY_MS = 24 * 60 * 60 * 1000;
     const CHOSEN_ID = CARTAS.find(c => c.rarity === 'chosen')?.id ?? null;
@@ -43,6 +45,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
         specialName: 'The Chosen',
         winners: null,
         autoDraw: true,
+        freeMode: false,
         prizes: [],
         rarities: {
             common: { chance: 5490, points: 5 },
@@ -309,6 +312,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
             collectionPrize: config.collectionPrize || null,
             chosenPrize: premioSorteo(config, 'chosen'),
             upgrades: config.upgrades.from ? config.upgrades : null,
+            freeMode: libreActivo(config, now),
             rarities: Object.fromEntries(RAREZAS.map(r => [r, {
                 chance: total && activas.some(c => c.rarity === r) ? config.rarities[r].chance / total : 0,
                 points: config.rarities[r].points,
@@ -395,7 +399,48 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
             solana: winner ? jugador.solana?.address ?? null : null,
             prizes,
             raffles,
+            free: libreDe(key),
         };
+    }
+
+    let libres = null;
+
+    function leerLibres() {
+        if (!libres) libres = readJson(FREE_PATH, {});
+        return libres;
+    }
+
+    function libreDe(key) {
+        const l = leerLibres()[key];
+        return l ? { packs: l.packs, collection: { ...l.collection }, completedAt: l.completedAt ?? null } : null;
+    }
+
+    const libreActivo = (config, now) => Boolean(config.freeMode) && estado(config, now) === 'ended';
+
+    function openFree(wallet, now = Date.now()) {
+        const key = wallet.toLowerCase();
+        const config = getConfig();
+        if (!libreActivo(config, now)) return { error: "Free packs aren't open.", reason: 'free-off', status: 409 };
+        if (leerJugadores()[key]?.disqualified) return { error: 'This wallet was disqualified.', reason: 'disqualified', status: 403 };
+        const todos = leerLibres();
+        const antes = todos[key];
+        if (antes?.lastAt && now - Date.parse(antes.lastAt) < ESPERA_LIBRE_MS) {
+            return { error: 'Easy there. Try again in a few seconds.', reason: 'too-soon', status: 429 };
+        }
+        const cartas = Array.from({ length: CARTAS_POR_PACK }, () => sortearCarta(config, false, { sinChosen: true }));
+        const at = new Date(now).toISOString();
+        const l = { packs: 0, collection: {}, completedAt: null, ...antes };
+        l.collection = { ...l.collection };
+        l.packs++;
+        l.lastAt = at;
+        for (const c of cartas) l.collection[c.id] = (l.collection[c.id] || 0) + 1;
+        const delEvento = jugadores().get(key);
+        if (!l.completedAt && !delEvento?.completedAt && COLECCION.length && COLECCION.every(id => delEvento?.collection[id] || l.collection[id])) {
+            l.completedAt = at;
+        }
+        todos[key] = l;
+        writeJson(FREE_PATH, todos);
+        return { pack: { cards: cartas.map(c => c.id) }, me: resumen(key, {}, now) };
     }
 
     const CON_BOOST = ['rare', 'epic', 'legendary'];
@@ -632,6 +677,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
             siguiente.extraBoost = n;
         }
         if ('autoDraw' in cambios) siguiente.autoDraw = cambios.autoDraw !== false && cambios.autoDraw !== 'false';
+        if ('freeMode' in cambios) siguiente.freeMode = cambios.freeMode === true || cambios.freeMode === 'true';
         if ('winners' in cambios) {
             if (cambios.winners === null || cambios.winners === '') siguiente.winners = null;
             else {
@@ -1081,6 +1127,8 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
                 extrasToday: extras.filter(e => e.day === hoy).length,
                 gifted: Object.keys(leerRegalos()).length,
                 upgrades: totalUpgrades,
+                freePacks: Object.values(leerLibres()).reduce((s, l) => s + l.packs, 0),
+                freePlayers: Object.keys(leerLibres()).length,
                 extraApe: formatEther(extras.reduce((s, e) => s + BigInt(e.valueWei || 0), 0n)),
             },
             players: filas,
@@ -1106,6 +1154,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
         pull,
         resumen,
         open,
+        openFree,
         upgrade,
         puedeComprarExtra,
         buyExtra,

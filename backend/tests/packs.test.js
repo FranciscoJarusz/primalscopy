@@ -611,6 +611,48 @@ async function main() {
     check('Mudwater mantiene The Chosen', (await json(await fetch(`${BASE}/api/packs/s/mudwater/config`))).specialCard === 'The Chosen');
     check('y las compras se suman entre temporadas', packs.comprasDeExtras().length === packs.temporada('mudwater').comprasDeExtras().length);
 
+    console.log('\nModo libre');
+    const mw = packs.temporada('mudwater');
+    const configMw = cambios => pedir('PATCH', '/api/admin/packs/config?season=mudwater', cambios, admin);
+    const libre = token => pedir('POST', '/api/packs/s/mudwater/free', {}, como(token));
+    check('arranca apagado', (await json(await fetch(`${BASE}/api/packs/s/mudwater/config`))).freeMode === false);
+    r = await json(await libre(t.beto));
+    check('apagado no se abre', r.http === 409 && r.reason === 'free-off');
+    r = await json(await pedir('POST', '/api/packs/free', {}, como(t.ana)));
+    check('con la temporada abierta tampoco', r.http === 409 && r.reason === 'free-off');
+    await configMw({ freeMode: true });
+    check('prendido y terminada lo anuncia', (await json(await fetch(`${BASE}/api/packs/s/mudwater/config`))).freeMode === true);
+    const opensAntes = fs.readFileSync(path.join(packs.PACKS_DIR, 'opens.jsonl'), 'utf8');
+    const rankingAntes = JSON.stringify(mw.leaderboard());
+    const betoAntes = mw.resumen(beto.address);
+    const { generatePrivateKey } = require('viem/accounts');
+    const dani = privateKeyToAccount(generatePrivateKey());
+    const tDani = await login(dani);
+    r = await json(await libre(tDani));
+    check('abre sin registro ni Primals', r.http === 200 && r.pack.cards.length === 5 && r.me.free.packs === 1 && !r.me.registered, JSON.stringify(r).slice(0, 200));
+    check('sin id para compartir ni puntos', !r.pack.id && r.me.points === 0 && r.me.packs === 0);
+    r = await json(await libre(tDani));
+    check('frena si abre muy seguido', r.http === 429 && r.reason === 'too-soon');
+    await configMw(solo('chosen'));
+    let nunca = true;
+    for (let i = 0; i < 20; i++) nunca = nunca && mw.openFree(beto.address, Date.now() + 10_000 * (i + 1)).pack.cards.every(id => CARTAS.find(c => c.id === id).rarity !== 'chosen');
+    check('la especial nunca sale', nunca);
+    for (const rareza of ['common', 'uncommon', 'rare', 'epic', 'legendary']) {
+        await configMw(solo(rareza));
+        const deEsta = CARTAS.filter(c => c.rarity === rareza);
+        const tiene = id => mw.resumen(beto.address).collection[id] || mw.resumen(beto.address).free?.collection[id];
+        for (let i = 0; i < 600 && deEsta.some(c => !tiene(c.id)); i++) mw.openFree(beto.address, Date.now() + 1_000_000 + 10_000 * i);
+    }
+    me = mw.resumen(beto.address);
+    check('completa en modo libre queda marcada aparte', Boolean(me.free.completedAt) && !me.collectionComplete);
+    check('no cambia puntos, packs ni coleccion del evento', me.points === betoAntes.points && me.packs === betoAntes.packs && JSON.stringify(me.collection) === JSON.stringify(betoAntes.collection));
+    check('ni el ranking, los sorteos ni opens.jsonl', JSON.stringify(mw.leaderboard()) === rankingAntes && fs.readFileSync(path.join(packs.PACKS_DIR, 'opens.jsonl'), 'utf8') === opensAntes);
+    check('se guarda en free.json', fs.existsSync(path.join(packs.PACKS_DIR, 'free.json')));
+    r = await json(await fetch(`${BASE}/api/admin/packs?season=mudwater`, { headers: admin }));
+    check('el admin cuenta los packs libres', r.totals.freePlayers === 2 && r.totals.freePacks > 20);
+    await pedir('PUT', `/api/admin/packs/players/${beto.address}/disqualified?season=mudwater`, { disqualified: true }, admin);
+    check('descalificado no abre', mw.openFree(beto.address, Date.now() + 99_000_000).reason === 'disqualified');
+
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });
     process.exit(fail ? 1 : 0);

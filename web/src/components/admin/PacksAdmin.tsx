@@ -54,6 +54,7 @@ type Datos = {
         extraBoost?: number;
         winners: number | null;
         autoDraw?: boolean;
+        freeMode?: boolean;
         prizes?: string[];
         collectionPrize?: string | null;
         rarities: Record<Rareza, { chance: number; points: number }>;
@@ -61,7 +62,7 @@ type Datos = {
     };
     cardsByRarity: Record<Rareza, number>;
     pulledByRarity?: Record<Rareza, { count: number; expected: number }>;
-    totals: { players: number; packs: number; today: number; playersToday: number; extras: number; extrasToday: number; extraApe: string; gifted?: number; upgrades?: number };
+    totals: { players: number; packs: number; today: number; playersToday: number; extras: number; extrasToday: number; extraApe: string; gifted?: number; upgrades?: number; freePacks?: number; freePlayers?: number };
     players: Jugador[];
     daily?: { day: string; players: number; newPlayers: number; packs: number; extras: number; goalRewards?: number; wallets?: JugadorDia[] }[];
     credited?: { txHash: string; wallet: string; at: string; valueWei: string; source: 'admin' | 'recovered' }[];
@@ -225,9 +226,10 @@ export default function PacksAdmin({ token }: { token: string }) {
             <Indice
                 secciones={[
                     { id: 'packs-resumen', nombre: 'Overview' },
-                    { id: 'packs-ranking', nombre: 'Leaderboard' },
+                    { id: 'packs-jugadores', nombre: 'Players' },
+                    { id: 'packs-competencia', nombre: 'Competition' },
                     { id: 'packs-reglas', nombre: 'Rules' },
-                    { id: 'packs-chosen', nombre: 'The Chosen' },
+                    { id: 'packs-sorteos', nombre: 'Raffles' },
                     { id: 'packs-temporadas', nombre: 'Seasons' },
                 ]}
             />
@@ -238,21 +240,25 @@ export default function PacksAdmin({ token }: { token: string }) {
                     <div id="packs-resumen" className="flex flex-col gap-4 sm:gap-5">
                         <Numeros datos={datos} />
                         <PorDia datos={datos} />
+                    </div>
+                    <div id="packs-jugadores" className="flex flex-col gap-4 sm:gap-5">
+                        <Jugadores datos={datos} ocupado={ocupado} pedir={pedir} />
+                        {datos.season !== 'mudwater' && <AcreditarExtra datos={datos} ocupado={ocupado} pedir={pedir} />}
+                    </div>
+                    <div id="packs-competencia" className="flex flex-col gap-4 sm:gap-5">
                         <DatosTemporada datos={datos} ocupado={ocupado} configurar={configurar} />
                         <Competencia datos={datos} ocupado={ocupado} configurar={configurar} />
                         <PremiosRanking datos={datos} ocupado={ocupado} configurar={configurar} />
-                        <PremioColeccion datos={datos} ocupado={ocupado} configurar={configurar} pedir={pedir} />
+                    </div>
+                    <div id="packs-reglas" className="flex flex-col gap-4 sm:gap-5">
+                        <Reglas datos={datos} ocupado={ocupado} configurar={configurar} />
                         {datos.season !== 'mudwater' && <MetaComunitaria datos={datos} ocupado={ocupado} configurar={configurar} />}
                         <UpgradesAdmin datos={datos} ocupado={ocupado} configurar={configurar} />
-                        {datos.season !== 'mudwater' && <AcreditarExtra datos={datos} ocupado={ocupado} pedir={pedir} />}
+                        <ModoLibre datos={datos} ocupado={ocupado} configurar={configurar} />
                     </div>
-                    <div id="packs-ranking">
-                        <Jugadores datos={datos} ocupado={ocupado} pedir={pedir} />
-                    </div>
-                    <div id="packs-reglas">
-                        <Reglas datos={datos} ocupado={ocupado} configurar={configurar} />
-                    </div>
-                    <div id="packs-chosen">
+                    <div id="packs-sorteos" className="flex flex-col gap-4 sm:gap-5">
+                        <SorteoAutomatico datos={datos} ocupado={ocupado} configurar={configurar} />
+                        <PremioColeccion datos={datos} ocupado={ocupado} configurar={configurar} pedir={pedir} />
                         <SorteoChosen datos={datos} ocupado={ocupado} pedir={pedir} />
                     </div>
                     <div id="packs-temporadas">
@@ -307,6 +313,7 @@ function Numeros({ datos }: { datos: Datos }) {
             ['APE from extras', Number(totals.extraApe).toLocaleString('en-US')],
             ['Packs given', totals.gifted ?? 0],
             ['Upgrades', totals.upgrades ?? 0],
+            ['Free packs', totals.freePacks ?? 0],
         ]],
     ];
     return (
@@ -430,9 +437,15 @@ function Competencia({ datos, ocupado, configurar }: Props) {
                         Save
                     </button>
                 </Tarjeta>
-                <div className="lg:col-span-3">
+            </div>
+    );
+}
+
+function SorteoAutomatico({ datos, ocupado, configurar }: Props) {
+    const { config } = datos;
+    return (
                     <Tarjeta
-                        nombre="Raffles"
+                        nombre="Automatic draw"
                         texto={
                             config.autoDraw === false
                                 ? 'Automatic draw is off: you draw each raffle yourself from the sections below once the competition ends.'
@@ -450,8 +463,32 @@ function Competencia({ datos, ocupado, configurar }: Props) {
                             Draw them automatically when it ends
                         </label>
                     </Tarjeta>
-                </div>
-            </div>
+    );
+}
+
+function ModoLibre({ datos, ocupado, configurar }: Props) {
+    const { config } = datos;
+    return (
+                    <Tarjeta
+                        nombre="Free mode"
+                        texto="Once the competition ends, anyone signed in can rip unlimited packs with no points, only to finish their collection. The special card never drops, and the ranking and raffles don't change."
+                    >
+                        <label className="flex items-center gap-2 text-lightblue cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={config.freeMode === true}
+                                disabled={ocupado}
+                                onChange={(e) => configurar({ freeMode: e.target.checked })}
+                                className="size-4 accent-yellow"
+                            />
+                            Free packs after the competition
+                        </label>
+                        {!!datos.totals.freePacks && (
+                            <span className="text-lightblue/70 text-sm">
+                                {datos.totals.freePacks.toLocaleString('en-US')} free packs · {datos.totals.freePlayers ?? 0} players
+                            </span>
+                        )}
+                    </Tarjeta>
     );
 }
 
@@ -790,7 +827,7 @@ function SorteoChosen({ datos, ocupado, pedir }: { datos: Datos; ocupado: boolea
         <section className={panel}>
             <h2 className={titulo}>{datos.config.specialName ?? 'The Chosen'} raffle</h2>
             {!datos.config.specialCard && (
-                <p className="text-yellow text-sm -mt-2">This season has no special card. Turn it on in the Season card.</p>
+                <p className="text-yellow text-sm -mt-2">This season has no special card. Turn it on in Competition &gt; Season.</p>
             )}
             <p className="text-lightblue/70 text-sm -mt-2">
                 Everyone who pulled {datos.config.specialName ?? 'The Chosen'} (#53) gets one entry, no matter how many times they pulled it. Disqualified wallets are left out.

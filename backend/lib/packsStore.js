@@ -90,7 +90,7 @@ function pull(id) {
 }
 
 const DELEGADAS = [
-    'enVivo', 'getConfig', 'publicConfig', 'leaderboard', 'resumen', 'open', 'upgrade', 'puedeComprarExtra',
+    'enVivo', 'getConfig', 'publicConfig', 'leaderboard', 'resumen', 'open', 'openFree', 'upgrade', 'puedeComprarExtra',
     'buyExtra', 'grantPacks', 'chancesDe', 'comprometerSorteo', 'resolverSorteos', 'sortearAuto', 'deshacerSorteo', 'register',
     'setSolana', 'updateConfig', 'setDisqualified', 'setAdjust', 'adminSummary',
 ];

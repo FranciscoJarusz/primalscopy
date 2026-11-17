@@ -21,6 +21,7 @@ import {
     IMAGEN_PACK,
     ORDEN_RAREZAS,
     RAREZAS,
+    abrirLibre,
     abrirPack,
     acreditarExtra,
     aplicarConfig,
@@ -67,6 +68,13 @@ import { despertar } from './sonidos';
 import { CSS } from './cssMudwater';
 
 const cargar3D = () => import('./Apertura3D');
+
+function coleccionDe(m: MiPacks | null | undefined) {
+    const total: Record<string, number> = { ...m?.collection };
+    for (const [id, n] of Object.entries(m?.free?.collection ?? {}))
+        total[id] = (total[id] || 0) + n;
+    return total;
+}
 const Apertura3D = lazy(cargar3D);
 const precargar3D = () => cargar3D().then((m) => m.precalentar());
 
@@ -319,6 +327,7 @@ export default function Packs({ temporada }: { temporada?: string }) {
         nuevas?: boolean[];
         completo?: boolean;
         prueba?: boolean;
+        libre?: boolean;
     } | null>(null);
     const [abriendo, setAbriendo] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -515,7 +524,7 @@ export default function Packs({ temporada }: { temporada?: string }) {
         setError(null);
         setAbriendo(true);
         try {
-            const antes = mio?.collection ?? {};
+            const antes = coleccionDe(mio);
             const { pack, me } = await abrirPack(session.token);
             const vistas = new Set<number>();
             const nuevas = pack.cards.map((id) => {
@@ -540,6 +549,35 @@ export default function Packs({ temporada }: { temporada?: string }) {
         }
     };
 
+    const abrirGratis = async () => {
+        if (!session.token || abriendo) return;
+        despertar();
+        setError(null);
+        setAbriendo(true);
+        try {
+            const antes = coleccionDe(mio);
+            const { pack, me } = await abrirLibre(session.token);
+            const vistas = new Set<number>();
+            const nuevas = pack.cards.map((id) => {
+                const nueva = !antes[id] && !vistas.has(id);
+                vistas.add(id);
+                return nueva;
+            });
+            setMio(me);
+            setApertura({
+                id: `libre-${Date.now()}`,
+                cartas: pack.cards.map(cartaPorId),
+                nuevas,
+                completo: !!me.free?.completedAt && !mio?.free?.completedAt,
+                libre: true,
+            });
+        } catch (e) {
+            setError((e as Error).message);
+        } finally {
+            setAbriendo(false);
+        }
+    };
+
     const upgradear = (tipo: TipoUpgrade, cartas: number[]) =>
         hacerUpgrade(session.token!, tipo, cartas);
 
@@ -553,9 +591,10 @@ export default function Packs({ temporada }: { temporada?: string }) {
     };
 
     const terminar = (otro: boolean) => {
+        const libre = !!apertura?.libre;
         setApertura(null);
         recargarRanking();
-        if (otro) abrir();
+        if (otro) (libre ? abrirGratis : abrir)();
     };
 
     if (fallo)
@@ -572,7 +611,9 @@ export default function Packs({ temporada }: { temporada?: string }) {
             </main>
         );
 
-    const coleccion = mio?.collection ?? {};
+    const coleccion = coleccionDe(mio);
+    const completaLibre = !mio?.collectionComplete && !!mio?.free?.completedAt;
+    const completa = !!mio?.collectionComplete || completaLibre;
     const paraCompletar = CARTAS.filter((c) => c.rareza !== 'chosen');
     const encontradas = paraCompletar.filter((c) => coleccion[c.id]).length;
     const chosen = CARTAS.filter((c) => c.rareza === 'chosen');
@@ -610,10 +651,13 @@ export default function Packs({ temporada }: { temporada?: string }) {
         restantes === 0 &&
         mio.extrasToday < extra.max;
 
+    const modoLibre = !!config.freeMode && config.status === 'ended' && !prueba;
+    const verResultados =
+        terminado && datosMio?.rank ? () => setCola(['fin']) : null;
     let accion: { texto: ReactNode; alTocar?: () => void } | null = null;
-    if (terminado)
-        accion = datosMio?.rank
-            ? { texto: 'Your results', alTocar: () => setCola(['fin']) }
+    if (terminado && !modoLibre)
+        accion = verResultados
+            ? { texto: 'Your results', alTocar: verResultados }
             : { texto: 'Competition over' };
     else if (conectando || session.status === 'signing')
         accion = { texto: 'Check your wallet...' };
@@ -626,6 +670,11 @@ export default function Packs({ temporada }: { temporada?: string }) {
         accion = { texto: 'Sign in to play', alTocar: entrar };
     else if (!mio) accion = { texto: 'Loading...' };
     else if (mio.disqualified) accion = { texto: 'Wallet disqualified' };
+    else if (modoLibre)
+        accion = {
+            texto: abriendo ? 'Ripping...' : 'Rip a free pack',
+            alTocar: abrirGratis,
+        };
     else if (mio.registered)
         accion =
             restantes === 0
@@ -674,6 +723,7 @@ export default function Packs({ temporada }: { temporada?: string }) {
                             : ' the top of the leaderboard wins prizes.'}
                     </p>
                 </div>
+                {!modoLibre && (
                 <div className={`${panel} flex items-center gap-6 shrink-0`}>
                     <div>
                         <p className="mw-etiqueta text-xs text-mw-fog">
@@ -726,6 +776,7 @@ export default function Packs({ temporada }: { temporada?: string }) {
                         )}
                     </div>
                 </div>
+                )}
             </div>
             </div>
 
@@ -774,6 +825,15 @@ export default function Packs({ temporada }: { temporada?: string }) {
                                         {accion.texto}
                                     </span>
                                 </button>
+                                {modoLibre && verResultados && (
+                                    <button
+                                        type="button"
+                                        onClick={verResultados}
+                                        className="mw-marco mw-titulo uppercase text-mw-champagne text-lg rounded-md px-7 py-3 tracking-wider bg-black cursor-pointer hover:scale-105 active:scale-97 transition-all duration-300"
+                                    >
+                                        Your results
+                                    </button>
+                                )}
                                 {puedeExtra && (
                                     <button
                                         type="button"
@@ -786,6 +846,15 @@ export default function Packs({ temporada }: { temporada?: string }) {
                                     </button>
                                 )}
                             </div>
+                            {modoLibre && (
+                                <p className="text-mw-fog text-center max-w-md">
+                                    The competition is over. Free packs are
+                                    unlimited and give no points: they're only
+                                    to finish your collection.
+                                    {MARCA.especial &&
+                                        ` ${MARCA.especial} doesn't drop.`}
+                                </p>
+                            )}
                             {puedeExtra && (
                                 <p className="text-mw-fog text-center max-w-md">
                                     Extra packs are only for today: they don't
@@ -913,8 +982,13 @@ export default function Packs({ temporada }: { temporada?: string }) {
                             nuevas={apertura.nuevas}
                             completo={apertura.completo}
                             premioColeccion={premioColeccion}
-                            compartir={apertura.prueba ? null : apertura.id}
-                            quedan={restantes}
+                            compartir={
+                                apertura.prueba || apertura.libre
+                                    ? null
+                                    : apertura.id
+                            }
+                            quedan={apertura.libre ? 1 : restantes}
+                            libre={apertura.libre}
                             onFin={terminar}
                         />
                     </Suspense>
@@ -1208,7 +1282,7 @@ export default function Packs({ temporada }: { temporada?: string }) {
             {config.upgrades && config.status !== 'ended' && (
                 <Upgrades
                     upgrades={config.upgrades}
-                    coleccion={coleccion}
+                    coleccion={mio?.collection ?? {}}
                     activo={
                         config.status === 'open' &&
                         !!session.token &&
@@ -1232,16 +1306,27 @@ export default function Packs({ temporada }: { temporada?: string }) {
                         <h2 className="mw-titulo uppercase text-mw-mist text-3xl sm:text-4xl">
                             Collection
                         </h2>
-                        {premioColeccion && (
+                        {completaLibre ? (
                             <p className="text-lg text-mw-mist/75 mt-2">
-                                {mio?.collectionComplete
-                                    ? `Complete! You're in the raffle for ${premioColeccion}.`
-                                    : `Find all ${paraCompletar.length} cards to enter the raffle for ${premioColeccion}.`}
+                                Completed after the event with free packs
+                                {premioColeccion
+                                    ? `, so it doesn't enter the raffle for ${premioColeccion}.`
+                                    : '.'}
                             </p>
+                        ) : (
+                            premioColeccion && (
+                                <p className="text-lg text-mw-mist/75 mt-2">
+                                    {mio?.collectionComplete
+                                        ? `Complete! You're in the raffle for ${premioColeccion}.`
+                                        : modoLibre
+                                          ? `Free packs can finish your collection, but the raffle for ${premioColeccion} only counts cards from the event.`
+                                          : `Find all ${paraCompletar.length} cards to enter the raffle for ${premioColeccion}.`}
+                                </p>
+                            )
                         )}
                     </div>
                     <span className="mw-titulo text-mw-champagne text-xl tabular-nums shrink-0">
-                        {mio?.collectionComplete
+                        {completa
                             ? 'Complete'
                             : `${encontradas}/${paraCompletar.length}`}
                     </span>

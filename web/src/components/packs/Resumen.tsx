@@ -55,6 +55,7 @@ export default function Resumen({
     premioColeccion = null,
     compartir,
     quedan,
+    libre = false,
     onFin,
 }: {
     cartas: CartaPack[];
@@ -63,11 +64,13 @@ export default function Resumen({
     premioColeccion?: string | null;
     compartir: string | null;
     quedan: number;
+    libre?: boolean;
     onFin: (otro: boolean) => void;
 }) {
     const raiz = useRef<HTMLDivElement>(null);
     const contador = useRef<HTMLSpanElement>(null);
-    const total = cartas.reduce((s, c) => s + RAREZAS[c.rareza].puntos, 0);
+    const total = libre ? 0 : cartas.reduce((s, c) => s + RAREZAS[c.rareza].puntos, 0);
+    const premio = libre ? null : premioColeccion;
 
     useLayoutEffect(() => {
         const cuenta = { n: 0 };
@@ -112,22 +115,28 @@ export default function Resumen({
                     </div>
                 ))}
             </div>
-            <p className="mw-titulo text-4xl sm:text-5xl mw-brass-texto">
-                +<span ref={contador}>0</span> points
-            </p>
+            {libre ? (
+                <p className="mw-etiqueta text-sm sm:text-base text-mw-fog">
+                    Free pack · no points
+                </p>
+            ) : (
+                <p className="mw-titulo text-4xl sm:text-5xl mw-brass-texto">
+                    +<span ref={contador}>0</span> points
+                </p>
+            )}
             {completo && (
                 <div className="flex flex-col items-center gap-1 text-center">
                     <p className="mw-titulo uppercase text-xl sm:text-2xl text-mw-champagne">
                         Collection complete: you found every card
                     </p>
-                    {premioColeccion && (
+                    {premio && (
                         <p className="text-lg text-mw-mist/80">
-                            You're in the raffle for {premioColeccion}.
+                            You're in the raffle for {premio}.
                         </p>
                     )}
                 </div>
             )}
-            {cartas.some((c) => c.rareza === 'chosen') && MARCA.premioChosen && (
+            {!libre && cartas.some((c) => c.rareza === 'chosen') && MARCA.premioChosen && (
                 <p className="mw-titulo uppercase text-xl sm:text-2xl text-mw-especial text-center">
                     You pulled {MARCA.especial}: you're in the {MARCA.mudwater ? 'Mudwater pack' : MARCA.premioChosen} raffle
                 </p>
@@ -147,7 +156,7 @@ export default function Resumen({
                     <a
                         href={
                             completo
-                                ? enlaceColeccion(compartir, premioColeccion)
+                                ? enlaceColeccion(compartir, premio)
                                 : enlaceX(compartir!, total)
                         }
                         target="_blank"

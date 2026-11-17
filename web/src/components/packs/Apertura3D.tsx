@@ -48,6 +48,7 @@ export default function Apertura3D({
     premioColeccion = null,
     compartir,
     quedan,
+    libre = false,
     onFin,
 }: {
     cartas: CartaPack[];
@@ -56,6 +57,7 @@ export default function Apertura3D({
     premioColeccion?: string | null;
     compartir: string | null;
     quedan: number;
+    libre?: boolean;
     onFin: (otro: boolean) => void;
 }) {
     const [etapa, setEtapa] = useState<Etapa>('cargando');
@@ -470,6 +472,7 @@ export default function Apertura3D({
                         premioColeccion={premioColeccion}
                         compartir={compartir}
                         quedan={quedan}
+                        libre={libre}
                         onFin={onFin}
                     />
                 </div>

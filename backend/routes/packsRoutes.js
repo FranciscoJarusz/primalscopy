@@ -96,6 +96,10 @@ temporada.post('/open', requireWallet, async (req, res) => {
     responder(res, req.temporada.open(req.walletAddress, { tier }));
 });
 
+temporada.post('/free', requireWallet, (req, res) => {
+    responder(res, req.temporada.openFree(req.walletAddress));
+});
+
 temporada.post('/upgrade', requireWallet, async (req, res) => {
     const tier = await nivel(req);
     if (!tier) return responder(res, sinCadena);
