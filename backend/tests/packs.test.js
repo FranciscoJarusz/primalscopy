@@ -313,7 +313,12 @@ async function main() {
     const ganador = [ana, beto, caro].find(a => a.address.toLowerCase() === primero);
     const perdedor = [ana, beto, caro].find(a => a !== ganador);
     const tokenDe = a => t[a === ana ? 'ana' : a === beto ? 'beto' : 'caro'];
-    check('sin ganadores definidos nadie gana', !(await json(await fetch(`${BASE}/api/packs/me`, { headers: como(tokenDe(ganador)) }))).winner);
+    const meDe = async a => json(await fetch(`${BASE}/api/packs/me`, { headers: como(tokenDe(a)) }));
+    const premiosAntes = (await json(await fetch(`${BASE}/api/packs/config`))).prizes;
+    await config({ prizes: [] });
+    check('sin premios ni ganadores definidos nadie gana', !(await meDe(ganador)).winner);
+    await config({ prizes: premiosAntes });
+    check('sin ganadores definidos ganan tantos como premios', premiosAntes.length > 0 && (await meDe(ganador)).winner === true);
     await config({ winners: 1 });
     me = await json(await fetch(`${BASE}/api/packs/me`, { headers: como(tokenDe(ganador)) }));
     check('el primero es ganador', me.winner && me.rank === 1);
@@ -502,6 +507,24 @@ async function main() {
     check('el sorteo de la Chosen esta pendiente con beto y ana', r.raffles.chosen.status === 'pending' && r.raffles.chosen.entrants.map(e => e.wallet).join() === [anoBeto, anoAna].join() && r.raffles.chosen.prize === 'Mudwater pack', JSON.stringify(r.raffles.chosen));
     check('el de coleccion tiene su premio', r.raffles.collection.status === 'pending' && r.raffles.collection.prize === 'Mudwater cards');
 
+    await config({ autoDraw: false });
+    await packs.sortearAuto();
+    r = await json(await fetch(`${BASE}/api/packs/leaderboard`));
+    check('con el sorteo automatico apagado no se sortea solo', r.raffles.chosen.status === 'pending' && r.raffles.collection.status === 'pending');
+    await config({ autoDraw: true, collectionPrize: '' });
+    await packs.sortearAuto();
+    r = await json(await fetch(`${BASE}/api/packs/leaderboard`));
+    check('encendido sortea la Chosen sola', r.raffles.chosen.status === 'drawing' && r.raffles.chosen.block === bloqueActual + 5, JSON.stringify(r.raffles.chosen));
+    check('y no sortea la coleccion si no tiene premio', r.raffles.collection.status === 'none' || r.raffles.collection.status === 'pending');
+    await config({ collectionPrize: 'Mudwater cards' });
+    await packs.sortearAuto();
+    r = await json(await fetch(`${BASE}/api/packs/leaderboard`));
+    check('con el premio cargado sortea la coleccion', r.raffles.collection.status === 'drawing');
+    await packs.sortearAuto();
+    check('no vuelve a sortear lo ya sorteado', (await json(await fetch(`${BASE}/api/packs/leaderboard`))).raffles.chosen.block === bloqueActual + 5);
+    await pedir('DELETE', '/api/admin/packs/raffles/chosen/draw', undefined, admin);
+    await pedir('DELETE', '/api/admin/packs/raffles/collection/draw', undefined, admin);
+    await config({ autoDraw: false });
     r = await json(await pedir('POST', '/api/admin/packs/raffles/chosen/draw', {}, admin));
     check('al sortear se fija un bloque futuro', r.http === 200 && r.raffles.chosen.status === 'drawing' && r.raffles.chosen.block === bloqueActual + 5, JSON.stringify(r.raffles?.chosen));
     check('no se sortea dos veces', (await pedir('POST', '/api/admin/packs/raffles/chosen/draw', {}, admin)).status === 409);
@@ -577,6 +600,15 @@ async function main() {
     const pagoViejo = packs.temporada('mudwater').comprasDeExtras()[0];
     r = packs.temporada('season-2').buyExtra(pagoViejo.wallet, { txHash: pagoViejo.txHash, valueWei: '1', blockNumber: 1 });
     check('un pago de Mudwater no sirve en otra temporada', r.reason === 'already-used', JSON.stringify(r).slice(0, 120));
+    r = await json(await fetch(`${BASE}/api/packs/config`));
+    check('la temporada nueva arranca sin carta especial', r.specialCard === null && r.cards.every(c => c.rarity !== 'chosen') && r.rarities.chosen.chance === 0);
+    check('y sin sorteo de la especial', !packs.temporada('season-2').leaderboard().raffles.chosen.prize);
+    check('la especial pide nombre', (await config({ specialName: '  ' })).status === 400);
+    await config({ specialCard: true, specialName: 'The Forsaken', chosenPrize: '1 Primal' });
+    r = await json(await fetch(`${BASE}/api/packs/config`));
+    const especial = r.cards.find(c => c.rarity === 'chosen');
+    check('prendida aparece con su nombre', r.specialCard === 'The Forsaken' && especial?.name === 'The Forsaken' && r.rarities.chosen.chance > 0 && r.chosenPrize === '1 Primal');
+    check('Mudwater mantiene The Chosen', (await json(await fetch(`${BASE}/api/packs/s/mudwater/config`))).specialCard === 'The Chosen');
     check('y las compras se suman entre temporadas', packs.comprasDeExtras().length === packs.temporada('mudwater').comprasDeExtras().length);
 
     console.log(`\n${pass} ok, ${fail} fallas`);

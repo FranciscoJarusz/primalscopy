@@ -172,6 +172,7 @@ app.listen(PORT, () => {
     // Igual el chequeo del staking: los tests lo llaman a mano.
     startStakingJob();
     startRaffleJob();
+    require('./lib/packsStore').iniciarSorteosAutomaticos();
     backup.startBackupJob();
     require('./lib/ogCards').startPoda();
     require('./lib/transferIndex').startTransferIndex();

@@ -14,6 +14,7 @@ const DEFAULTS_MUDWATER = {
     theme: 'mudwater',
     solana: true,
     chosenPrize: 'Mudwater pack',
+    specialCard: true,
     prizes: ['Mudwater pack + 5 Primals', '4 Primals', '3 Primals', '2 Primals', '1 Primal'],
 };
 
@@ -90,12 +91,28 @@ function pull(id) {
 
 const DELEGADAS = [
     'enVivo', 'getConfig', 'publicConfig', 'leaderboard', 'resumen', 'open', 'upgrade', 'puedeComprarExtra',
-    'buyExtra', 'grantPacks', 'chancesDe', 'comprometerSorteo', 'resolverSorteos', 'deshacerSorteo', 'register',
+    'buyExtra', 'grantPacks', 'chancesDe', 'comprometerSorteo', 'resolverSorteos', 'sortearAuto', 'deshacerSorteo', 'register',
     'setSolana', 'updateConfig', 'setDisqualified', 'setAdjust', 'adminSummary',
 ];
 
+function iniciarSorteosAutomaticos() {
+    const tick = async () => {
+        for (const t of todas()) {
+            try {
+                await t.sortearAuto();
+                await t.resolverSorteos();
+            } catch (error) {
+                console.error('[packs]', error);
+            }
+        }
+    };
+    setInterval(tick, 5 * 1000).unref();
+    setTimeout(tick, 8000).unref();
+}
+
 module.exports = {
     PACKS_DIR,
+    iniciarSorteosAutomaticos,
     MUDWATER,
     CARTAS_POR_PACK,
     dirDe,

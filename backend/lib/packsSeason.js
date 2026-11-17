@@ -39,7 +39,10 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
         theme: 'cult',
         solana: false,
         chosenPrize: null,
+        specialCard: false,
+        specialName: 'The Chosen',
         winners: null,
+        autoDraw: true,
         prizes: [],
         rarities: {
             common: { chance: 5490, points: 5 },
@@ -196,7 +199,10 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
         return valor;
     }
 
-    function cartaPublica(c) {
+    const especial = config => Boolean(config.specialCard);
+
+    function cartaPublica(c, config = getConfig()) {
+        if (c.rarity === 'chosen' && config.specialName) return { id: c.id, name: config.specialName, category: c.category, rarity: c.rarity };
         return { id: c.id, name: c.name, category: c.category, rarity: c.rarity };
     }
 
@@ -287,7 +293,8 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
 
     function publicConfig(now = Date.now()) {
         const config = getConfig();
-        const total = RAREZAS.reduce((s, r) => s + (CARTAS.some(c => c.rarity === r) ? config.rarities[r].chance : 0), 0);
+        const activas = CARTAS.filter(c => c.rarity !== 'chosen' || especial(config));
+        const total = RAREZAS.reduce((s, r) => s + (activas.some(c => c.rarity === r) ? config.rarities[r].chance : 0), 0);
         return {
             season: id,
             name: config.name,
@@ -300,12 +307,14 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
             packSize: CARTAS_POR_PACK,
             prizes: config.prizes,
             collectionPrize: config.collectionPrize || null,
+            chosenPrize: premioSorteo(config, 'chosen'),
             upgrades: config.upgrades.from ? config.upgrades : null,
             rarities: Object.fromEntries(RAREZAS.map(r => [r, {
-                chance: total && CARTAS.some(c => c.rarity === r) ? config.rarities[r].chance / total : 0,
+                chance: total && activas.some(c => c.rarity === r) ? config.rarities[r].chance / total : 0,
                 points: config.rarities[r].points,
             }])),
-            cards: CARTAS.map(cartaPublica),
+            cards: activas.map(c => cartaPublica(c, config)),
+            specialCard: especial(config) ? config.specialName || 'The Chosen' : null,
         };
     }
 
@@ -342,7 +351,8 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
         const j = jugadores().get(key);
         const jugador = leerJugadores()[key] || {};
         const fila = ranking(now).find(f => f.wallet === key);
-        const ganoRanking = status === 'ended' && Number.isInteger(config.winners) && !!fila && fila.rank <= config.winners;
+        const cupos = Number.isInteger(config.winners) ? config.winners : config.prizes.length;
+        const ganoRanking = status === 'ended' && cupos > 0 && !!fila && fila.rank <= cupos;
         const sorteos = Object.fromEntries(TIPOS_SORTEO.map(t => [t, sorteoGuardado(config, t)]));
         const ganoSorteo = sorteos.chosen?.winner === key;
         const ganoColeccion = sorteos.collection?.winner === key;
@@ -357,7 +367,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
             const s = sorteos[t];
             if (s) {
                 if (s.entrants.includes(key)) raffles[t] = s.winner ? (s.winner === key ? 'won' : 'lost') : 'entered';
-            } else if (!jugador.disqualified && (t === 'chosen' ? CHOSEN_ID && j?.collection[CHOSEN_ID] : j?.completedAt)) {
+            } else if (!jugador.disqualified && (t === 'chosen' ? CHOSEN_ID && especial(config) && j?.collection[CHOSEN_ID] : j?.completedAt)) {
                 raffles[t] = 'entered';
             }
         }
@@ -380,7 +390,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
             completedAt: j?.completedAt ?? null,
             disqualified: Boolean(jugador.disqualified),
             winner,
-            chosenEntered: Boolean(CHOSEN_ID && j?.collection[CHOSEN_ID]),
+            chosenEntered: Boolean(CHOSEN_ID && especial(config) && j?.collection[CHOSEN_ID]),
             chosenWinner: ganoSorteo,
             solana: winner ? jugador.solana?.address ?? null : null,
             prizes,
@@ -392,6 +402,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
 
     function chancesDe(config, extra) {
         const chances = Object.fromEntries(RAREZAS.map(r => [r, config.rarities[r].chance]));
+        if (config.specialCard === false) chances.chosen = 0;
         if (!extra || !(config.extraBoost > 0)) return chances;
         let sumado = 0;
         for (const r of CON_BOOST) {
@@ -620,6 +631,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
             if (n === null) return { error: 'Better odds must be between 0% and 300%.' };
             siguiente.extraBoost = n;
         }
+        if ('autoDraw' in cambios) siguiente.autoDraw = cambios.autoDraw !== false && cambios.autoDraw !== 'false';
         if ('winners' in cambios) {
             if (cambios.winners === null || cambios.winners === '') siguiente.winners = null;
             else {
@@ -641,6 +653,12 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
         }
         if ('chosenPrize' in cambios) {
             siguiente.chosenPrize = String(cambios.chosenPrize ?? '').trim().slice(0, 120) || null;
+        }
+        if ('specialCard' in cambios) siguiente.specialCard = cambios.specialCard === true;
+        if ('specialName' in cambios) {
+            const nombre = String(cambios.specialName ?? '').trim().slice(0, 40);
+            if (!nombre) return { error: 'The special card needs a name.' };
+            siguiente.specialName = nombre;
         }
         if ('name' in cambios) {
             const nombre = String(cambios.name ?? '').trim().slice(0, 60);
@@ -736,7 +754,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
     }
 
     function participantesChosen() {
-        if (!CHOSEN_ID) return [];
+        if (!CHOSEN_ID || !especial(getConfig())) return [];
         jugadores();
         if (cacheChosen?.version !== version) cacheChosen = { version, valor: calcularChosen() };
         const apodos = nicknames.getAllNicknames();
@@ -759,7 +777,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
     }
 
     function premioSorteo(config, tipo) {
-        if (tipo === 'chosen') return CHOSEN_ID ? config.chosenPrize || null : null;
+        if (tipo === 'chosen') return CHOSEN_ID && especial(config) ? config.chosenPrize || null : null;
         return config.collectionPrize || null;
     }
 
@@ -874,6 +892,16 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
             revisando = null;
         });
         return revisando;
+    }
+
+    async function sortearAuto(now = Date.now()) {
+        const config = getConfig();
+        if (!config.autoDraw || estado(config, now) !== 'ended') return;
+        for (const tipo of TIPOS_SORTEO) {
+            const actual = getConfig();
+            if (sorteoGuardado(actual, tipo) || !premioSorteo(actual, tipo)) continue;
+            await comprometerSorteo(tipo, now);
+        }
     }
 
     function deshacerSorteo(tipo) {
@@ -1018,7 +1046,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
             disqualified: fuera[wallet]?.disqualified ?? null,
             solana: fuera[wallet]?.solana ?? null,
         })).sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity) || b.points - a.points);
-        const porRareza = Object.fromEntries(RAREZAS.map(r => [r, CARTAS.filter(c => c.rarity === r).length]));
+        const porRareza = Object.fromEntries(RAREZAS.map(r => [r, r === 'chosen' && !especial(config) ? 0 : CARTAS.filter(c => c.rarity === r).length]));
         const rarezaDe = new Map(CARTAS.map(c => [c.id, c.rarity]));
         const probabilidades = [false, true].map(extra => {
             const chances = chancesDe(config, extra);
@@ -1083,6 +1111,7 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
         chancesDe,
         comprometerSorteo,
         resolverSorteos,
+        sortearAuto,
         deshacerSorteo,
         register,
         setSolana,
