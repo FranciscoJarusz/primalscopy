@@ -58,10 +58,22 @@ type Datos = {
     credited?: { txHash: string; wallet: string; at: string; valueWei: string; source: 'admin' | 'recovered' }[];
     chosen: {
         entrants: { wallet: string; nickname: string | null; pulls: number; firstAt: string }[];
-        raffle: { winner: string; drawnAt: string; entrants: number } | null;
     };
+    raffles?: Record<'chosen' | 'collection', SorteoAdmin>;
     goal?: Meta | null;
     collectors?: { wallet: string; nickname: string | null; at: string; packs: number }[];
+};
+type SorteoAdmin = {
+    kind: 'chosen' | 'collection';
+    prize: string | null;
+    status: 'none' | 'pending' | 'drawing' | 'drawn';
+    entrants: { wallet: string; nickname: string | null }[];
+    block: number | null;
+    hash: string | null;
+    index: number | null;
+    winner: string | null;
+    committedAt: string | null;
+    drawnAt: string | null;
 };
 type Meta = {
     title: string;
@@ -138,6 +150,13 @@ export default function PacksAdmin({ token }: { token: string }) {
         pedir('');
     }, [pedir]);
 
+    const esperandoBloque = Object.values(datos?.raffles ?? {}).some((r) => r.status === 'drawing');
+    useEffect(() => {
+        if (!esperandoBloque) return;
+        const t = setTimeout(() => pedir(''), 4000);
+        return () => clearTimeout(t);
+    }, [esperandoBloque, datos, pedir]);
+
     return (
         <main className="flex flex-col gap-5 sm:gap-8">
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -151,7 +170,7 @@ export default function PacksAdmin({ token }: { token: string }) {
                         )}
                     </div>
                     <p className="text-base sm:text-lg text-lightblue mt-3 max-w-2xl">
-                        The Mudwater pack competition: open and close it, set the rules, check the leaderboard and draw The Chosen.
+                        The Mudwater pack competition: open and close it, set the rules, check the leaderboard and draw the raffles.
                     </p>
                 </div>
                 <button type="button" disabled={ocupado} onClick={() => pedir('')} className={botonChico}>
@@ -175,7 +194,7 @@ export default function PacksAdmin({ token }: { token: string }) {
                         <PorDia datos={datos} />
                         <Competencia datos={datos} ocupado={ocupado} configurar={configurar} />
                         <PremiosRanking datos={datos} ocupado={ocupado} configurar={configurar} />
-                        <PremioColeccion datos={datos} ocupado={ocupado} configurar={configurar} />
+                        <PremioColeccion datos={datos} ocupado={ocupado} configurar={configurar} pedir={pedir} />
                         <MetaComunitaria datos={datos} ocupado={ocupado} configurar={configurar} />
                         <UpgradesAdmin datos={datos} ocupado={ocupado} configurar={configurar} />
                         <AcreditarExtra datos={datos} ocupado={ocupado} pedir={pedir} />
@@ -384,7 +403,7 @@ function PremiosRanking({ datos, ocupado, configurar }: Props) {
     );
 }
 
-function PremioColeccion({ datos, ocupado, configurar }: Props) {
+function PremioColeccion({ datos, ocupado, configurar, pedir }: Props & { pedir: (ruta: string, init?: RequestInit) => Promise<boolean> }) {
     const guardado = datos.config.collectionPrize ?? '';
     const [premio, setPremio] = useState(guardado);
     const lista = datos.collectors ?? [];
@@ -429,7 +448,97 @@ function PremioColeccion({ datos, ocupado, configurar }: Props) {
                     </ol>
                 )}
             </div>
+            {datos.raffles && guardado && <BloqueSorteo sorteo={datos.raffles.collection} terminada={datos.status === 'ended'} ocupado={ocupado} pedir={pedir} />}
         </section>
+    );
+}
+
+const EXPLORADOR = 'https://apechain.calderaexplorer.xyz';
+
+function BloqueSorteo({
+    sorteo,
+    terminada,
+    ocupado,
+    pedir,
+}: {
+    sorteo: SorteoAdmin;
+    terminada: boolean;
+    ocupado: boolean;
+    pedir: (ruta: string, init?: RequestInit) => Promise<boolean>;
+}) {
+    const quien = useQuien();
+    const n = sorteo.entrants.length;
+    const ruta = `/raffles/${sorteo.kind}/draw`;
+    const deshacer = (
+        <button
+            type="button"
+            disabled={ocupado}
+            onClick={() => confirm('Undo the draw and pick again later?') && pedir(ruta, { method: 'DELETE' })}
+            className={botonChico}
+        >
+            Undo draw
+        </button>
+    );
+
+    if (sorteo.status === 'drawing')
+        return (
+            <div className="flex flex-wrap items-center gap-3 text-lightblue">
+                <p>
+                    Waiting for ApeChain block{' '}
+                    <a href={`${EXPLORADOR}/block/${sorteo.block}`} target="_blank" rel="noopener" className="text-yellow underline">
+                        #{sorteo.block?.toLocaleString('en-US')}
+                    </a>{' '}
+                    among {n} {n === 1 ? 'entry' : 'entries'}. It takes a few seconds.
+                </p>
+                {deshacer}
+            </div>
+        );
+
+    if (sorteo.status === 'drawn')
+        return (
+            <div className="flex flex-col gap-1.5 text-lightblue">
+                <p>
+                    Winner: <span className="text-yellow">{sorteo.winner ? quien(sorteo.winner) : '—'}</span>
+                    {sorteo.drawnAt && ` · drawn ${fecha(sorteo.drawnAt)}`} among {n} {n === 1 ? 'entry' : 'entries'}
+                </p>
+                {sorteo.hash ? (
+                    <p className="text-sm text-lightblue/70 break-all">
+                        Block{' '}
+                        <a href={`${EXPLORADOR}/block/${sorteo.block}`} target="_blank" rel="noopener" className="text-yellow underline">
+                            #{sorteo.block?.toLocaleString('en-US')}
+                        </a>{' '}
+                        · hash {sorteo.hash} · hash mod {n} = {sorteo.index}. Final: it can't be undone.
+                    </p>
+                ) : (
+                    <div className="flex flex-wrap items-center gap-3">
+                        <p className="text-sm text-lightblue/70">Drawn before raffles used ApeChain blocks.</p>
+                        {deshacer}
+                    </div>
+                )}
+            </div>
+        );
+
+    return (
+        <div className="flex flex-col gap-2">
+            <button
+                type="button"
+                disabled={ocupado || !terminada || n === 0}
+                onClick={() =>
+                    confirm(`Draw the winner among ${n} ${n === 1 ? 'entry' : 'entries'}? The list is locked now and the winner comes from an ApeChain block a few seconds later.`) &&
+                    pedir(ruta, { method: 'POST' })
+                }
+                className={`${botonGuardar} self-start`}
+            >
+                Draw a winner ({n} {n === 1 ? 'entry' : 'entries'})
+            </button>
+            <p className="text-sm text-lightblue/70">
+                {!terminada
+                    ? 'Available when the competition ends.'
+                    : n === 0
+                      ? 'Nobody is in this raffle.'
+                      : 'The winner is picked from the hash of a future ApeChain block, so anyone can check it on the results page.'}
+            </p>
+        </div>
     );
 }
 
@@ -592,7 +701,7 @@ function UpgradesAdmin({ datos, ocupado, configurar }: Props) {
 }
 
 function SorteoChosen({ datos, ocupado, pedir }: { datos: Datos; ocupado: boolean; pedir: (ruta: string, init?: RequestInit) => Promise<boolean> }) {
-    const { entrants, raffle } = datos.chosen;
+    const { entrants } = datos.chosen;
     const quien = useQuien();
     return (
         <section className={panel}>
@@ -600,30 +709,7 @@ function SorteoChosen({ datos, ocupado, pedir }: { datos: Datos; ocupado: boolea
             <p className="text-lightblue/70 text-sm -mt-2">
                 Everyone who pulled The Chosen (#53) gets one entry, no matter how many times they pulled it. Disqualified wallets are left out.
             </p>
-            {raffle ? (
-                <div className="flex flex-wrap items-center gap-3">
-                    <p className="text-lightblue">
-                        Winner: <span className="text-yellow">{quien(raffle.winner)}</span> · drawn {fecha(raffle.drawnAt)} among {raffle.entrants}
-                    </p>
-                    <button
-                        type="button"
-                        disabled={ocupado}
-                        onClick={() => confirm('Undo the draw and pick again later?') && pedir('/chosen/draw', { method: 'DELETE' })}
-                        className={botonChico}
-                    >
-                        Undo draw
-                    </button>
-                </div>
-            ) : (
-                <button
-                    type="button"
-                    disabled={ocupado || entrants.length === 0}
-                    onClick={() => pedir('/chosen/draw', { method: 'POST' })}
-                    className={`${botonGuardar} self-start`}
-                >
-                    Draw a winner ({entrants.length} {entrants.length === 1 ? 'entry' : 'entries'})
-                </button>
-            )}
+            {datos.raffles && <BloqueSorteo sorteo={datos.raffles.chosen} terminada={datos.status === 'ended'} ocupado={ocupado} pedir={pedir} />}
             {entrants.length > 0 && (
                 <ul className={lista}>
                     {entrants.map((e) => (

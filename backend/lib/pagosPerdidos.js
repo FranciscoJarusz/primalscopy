@@ -25,14 +25,15 @@ async function pagosAlTesoro(wallet, treasury, desdeMs = null) {
     return pagos;
 }
 
-async function recuperarExtras(wallet, tesoro, { tier = null } = {}) {
-    const packs = require('./packsStore');
+async function recuperarExtras(wallet, tesoro, { tier = null, temporada = null } = {}) {
+    const todas = require('./packsStore');
+    const packs = temporada || todas.actual();
     const config = packs.getConfig();
     const desde = config.openedAt ? Date.parse(config.openedAt) : null;
     const minWei = parseEther(String(config.extraPrice));
     const candidatos = (await module.exports.pagosAlTesoro(wallet, tesoro.treasury, desde)).filter(p =>
         BigInt(p.valueWei || 0) >= minWei
-        && !packs.isExtraPayment(p.txHash)
+        && !todas.isExtraPayment(p.txHash)
         && !require('./forgeStore').getPayment(p.txHash)
         && !require('./stakingStore').isPurchase(p.txHash));
 

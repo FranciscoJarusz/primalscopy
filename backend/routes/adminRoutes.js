@@ -293,11 +293,31 @@ router.put('/trait-drops/:id', (req, res) => conDrop(res, traitShop.update(req.p
 router.post('/trait-drops/:id/end', (req, res) => conDrop(res, traitShop.end(req.params.id)));
 router.delete('/trait-drops/:id', (req, res) => conDrop(res, traitShop.remove(req.params.id)));
 
-router.get('/packs', (req, res) => res.json(packs.adminSummary()));
-router.patch('/packs/config', (req, res) => {
-    const result = packs.updateConfig(req.body || {});
+router.use('/packs', (req, res, next) => {
+    req.temporada = req.query.season ? packs.temporada(String(req.query.season)) : packs.actual();
+    if (!req.temporada) return res.status(404).json({ error: 'Season not found.' });
+    next();
+});
+const resumenPacks = req => ({ ...req.temporada.adminSummary(), season: req.temporada.id, seasons: packs.listarTemporadas() });
+router.get('/packs/seasons', (req, res) => res.json(packs.listarTemporadas()));
+router.post('/packs/seasons', (req, res) => {
+    const result = packs.crearNueva(req.body || {});
     if (result.error) return res.status(400).json({ error: result.error });
-    res.json(packs.adminSummary());
+    res.status(201).json({ ...result, seasons: packs.listarTemporadas() });
+});
+router.put('/packs/seasons/current', (req, res) => {
+    const result = packs.elegirActual(String(req.body?.season || ''));
+    if (result.error) return res.status(result.status || 400).json({ error: result.error });
+    res.json(packs.listarTemporadas());
+});
+router.get('/packs', async (req, res) => {
+    await req.temporada.resolverSorteos().catch(() => {});
+    res.json(resumenPacks(req));
+});
+router.patch('/packs/config', (req, res) => {
+    const result = req.temporada.updateConfig(req.body || {});
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json(resumenPacks(req));
 });
 router.post('/packs/extras', async (req, res) => {
     const txHash = String(req.body?.txHash || '').trim().toLowerCase();
@@ -307,38 +327,40 @@ router.post('/packs/extras', async (req, res) => {
     if (!tesoro) return res.status(503).json({ error: "Payments aren't set up." });
     try {
         const payment = await verifyPayment(txHash, wallet, tesoro, {
-            minWei: parseEther(String(packs.getConfig().extraPrice)),
+            minWei: parseEther(String(req.temporada.getConfig().extraPrice)),
             what: 'an extra pack',
         });
-        const result = packs.buyExtra(wallet, payment, { source: 'admin' });
+        const result = req.temporada.buyExtra(wallet, payment, { source: 'admin' });
         if (result.error) return res.status(result.status || 400).json({ error: result.error });
-        res.status(result.created ? 201 : 200).json({ ...packs.adminSummary(), credited: result.created ? 'new' : 'already' });
+        res.status(result.created ? 201 : 200).json({ ...resumenPacks(req), credited: result.created ? 'new' : 'already' });
     } catch (error) {
         res.status(error.status || 500).json({ error: error.status ? error.message : "Couldn't check the payment." });
     }
 });
-router.post('/packs/chosen/draw', (req, res) => {
-    const result = packs.sortearChosen();
+router.post('/packs/raffles/:tipo/draw', async (req, res) => {
+    const result = await req.temporada.comprometerSorteo(req.params.tipo);
     if (result.error) return res.status(result.status || 400).json({ error: result.error });
-    res.json(packs.adminSummary());
+    await req.temporada.resolverSorteos().catch(() => {});
+    res.json(resumenPacks(req));
 });
-router.delete('/packs/chosen/draw', (req, res) => {
-    packs.reiniciarSorteoChosen();
-    res.json(packs.adminSummary());
+router.delete('/packs/raffles/:tipo/draw', (req, res) => {
+    const result = req.temporada.deshacerSorteo(req.params.tipo);
+    if (result.error) return res.status(result.status || 400).json({ error: result.error });
+    res.json(resumenPacks(req));
 });
 router.put('/packs/players/:wallet/disqualified', (req, res) => {
-    const result = packs.setDisqualified(req.params.wallet, req.body?.disqualified !== false, req.body?.reason);
+    const result = req.temporada.setDisqualified(req.params.wallet, req.body?.disqualified !== false, req.body?.reason);
     if (result.error) return res.status(400).json({ error: result.error });
-    res.json(packs.adminSummary());
+    res.json(resumenPacks(req));
 });
 router.put('/packs/players/:wallet/adjust', (req, res) => {
-    const result = packs.setAdjust(req.params.wallet, req.body?.points, req.body?.reason);
+    const result = req.temporada.setAdjust(req.params.wallet, req.body?.points, req.body?.reason);
     if (result.error) return res.status(400).json({ error: result.error });
-    res.json(packs.adminSummary());
+    res.json(resumenPacks(req));
 });
 router.delete('/packs/players/:wallet/social', (req, res) => {
     if (!profiles.clearSocial(req.params.wallet)) return res.status(404).json({ error: 'That wallet has no X or Discord.' });
-    res.json(packs.adminSummary());
+    res.json(resumenPacks(req));
 });
 
 router.get('/raffles', (req, res) => res.json(raffles.adminList()));

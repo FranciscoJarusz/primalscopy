@@ -184,10 +184,12 @@ function leerVistos(wallet: string): Vistos {
     }
 }
 
+const marcaDe = (s?: { hash?: string | null; winner?: string | null }) => s?.hash ?? s?.winner ?? '';
+
 function marcarVisto(wallet: string, que: 'fin' | TipoSorteo, ranking: Ranking | null) {
     const vistos = leerVistos(wallet);
     if (que === 'fin') vistos.fin = true;
-    else vistos[que] = ranking?.raffles?.[que]?.hash ?? '';
+    else vistos[que] = marcaDe(ranking?.raffles?.[que]);
     try {
         localStorage.setItem(claveVistos(wallet), JSON.stringify(vistos));
     } catch {
@@ -201,7 +203,7 @@ function popupsPendientes(wallet: string, mio: MiPacks, ranking: Ranking) {
     if (!vistos.fin && mio.packs > 0) cola.push('fin');
     for (const k of TIPOS) {
         const s = ranking.raffles?.[k];
-        if (s?.status === 'drawn' && mio.raffles?.[k] && vistos[k] !== s.hash) cola.push(k);
+        if (s?.status === 'drawn' && mio.raffles?.[k] && vistos[k] !== marcaDe(s)) cola.push(k);
     }
     return cola;
 }

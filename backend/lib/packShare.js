@@ -132,13 +132,16 @@ async function generar(pull) {
     const mitad = Math.ceil(conteo.length / 2);
     const columnas = [conteo.slice(0, mitad), conteo.slice(mitad)].filter(c => c.length);
     const nombre = pull.nickname ? pull.nickname.toUpperCase() : null;
+    const esMudwater = !pull.season || pull.season === 'mudwater';
+    const evento = esMudwater ? 'PRIMAL CULT × MUDWATER' : `PRIMAL CULT · ${String(pull.seasonName || 'PACKS').toUpperCase()}`;
+    const url = esMudwater ? 'PRIMALCULT.XYZ/MUDWATER' : 'PRIMALCULT.XYZ/PACKS';
 
     const [etiqueta, titulo, puntos, firma, sitio, ...listas] = await Promise.all([
-        texto(color('PRIMAL CULT × MUDWATER', CHAMPAGNE, 4), { fuente: ETIQUETA, size: 22, width: anchoTexto }),
+        texto(color(evento, CHAMPAGNE, 4), { fuente: ETIQUETA, size: 22, width: anchoTexto }),
         texto(color(mejor.titulo, CREMA), { fuente: TITULO, size: 62, width: anchoTexto, spacing: -8 }),
         texto(color(`+${pull.points} POINTS`, mejor.color), { fuente: TITULO, size: 40, width: anchoTexto }),
         nombre ? texto(color(`RIPPED BY ${nombre}`, MIST, 2), { fuente: ETIQUETA, size: 22, width: anchoTexto }) : null,
-        texto(color('PRIMALCULT.XYZ/MUDWATER', CHAMPAGNE, 3), { fuente: ETIQUETA, size: 22, width: anchoTexto }),
+        texto(color(url, CHAMPAGNE, 3), { fuente: ETIQUETA, size: 22, width: anchoTexto }),
         ...columnas.map(c => texto(c.map(linea).join('\n'), { fuente: ETIQUETA, size: 22, width: 200, spacing: 8 })),
     ]);
     const altosListas = await Promise.all(listas.map(l => medidas(l).then(m => m.height)));
@@ -175,6 +178,7 @@ async function generar(pull) {
 
 function tarjetaPack(pull) {
     const datos = { v: 1, cards: pull.cards.map(c => [c.id, c.rarity]), points: pull.points, nickname: pull.nickname };
+    if (pull.season && pull.season !== 'mudwater') Object.assign(datos, { season: pull.season, seasonName: pull.seasonName });
     return guardar(`pack-${pull.id}`, datos, () => generar(pull));
 }
 

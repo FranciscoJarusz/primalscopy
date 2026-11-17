@@ -10,6 +10,7 @@ const { treasuryConfig, verifyPayment } = require('../lib/forgePayments');
 const pagosPerdidos = require('../lib/pagosPerdidos');
 
 const router = express.Router();
+const temporada = express.Router({ mergeParams: true });
 
 function responder(res, result) {
     if (result.error) {
@@ -47,24 +48,25 @@ async function nivel(req) {
 
 const sinCadena = { error: "Couldn't check your Primals right now. Try again in a few seconds.", reason: 'rpc-error', status: 503 };
 
-router.get('/config', (req, res) => {
+temporada.get('/config', (req, res) => {
     res.set('Cache-Control', 'no-cache');
-    res.json(packs.publicConfig());
+    res.json(req.temporada.publicConfig());
 });
 
-router.get('/leaderboard', (req, res) => {
+temporada.get('/leaderboard', async (req, res) => {
     res.set('Cache-Control', 'no-cache');
-    res.json(packs.leaderboard());
+    await req.temporada.resolverSorteos().catch(() => {});
+    res.json(req.temporada.leaderboard());
 });
 
-router.get('/pull/:id', (req, res) => {
+temporada.get('/pull/:id', (req, res) => {
     const datos = packs.pull(req.params.id);
     if (!datos) return res.status(404).json({ error: 'Pack not found.' });
     res.set('Cache-Control', 'public, max-age=300');
     res.json(datos);
 });
 
-router.get(['/og/:id.jpg', '/og/:id.png'], async (req, res) => {
+temporada.get(['/og/:id.jpg', '/og/:id.png'], async (req, res) => {
     const datos = packs.pull(req.params.id);
     if (!datos) return res.status(404).end();
     try {
@@ -76,46 +78,47 @@ router.get(['/og/:id.jpg', '/og/:id.png'], async (req, res) => {
     }
 });
 
-router.get('/me', requireWallet, async (req, res) => {
+temporada.get('/me', requireWallet, async (req, res) => {
     res.set('Cache-Control', 'no-store');
-    res.json(packs.resumen(req.walletAddress, { tier: await nivel(req) }));
+    await req.temporada.resolverSorteos().catch(() => {});
+    res.json(req.temporada.resumen(req.walletAddress, { tier: await nivel(req) }));
 });
 
-router.post('/register', requireWallet, async (req, res) => {
-    const result = packs.register(req.walletAddress, req.body || {});
+temporada.post('/register', requireWallet, async (req, res) => {
+    const result = req.temporada.register(req.walletAddress, req.body || {});
     if (result.error) return responder(res, result);
-    res.json(packs.resumen(req.walletAddress, { tier: await nivel(req) }));
+    res.json(req.temporada.resumen(req.walletAddress, { tier: await nivel(req) }));
 });
 
-router.post('/open', requireWallet, async (req, res) => {
+temporada.post('/open', requireWallet, async (req, res) => {
     const tier = await nivel(req);
     if (!tier) return responder(res, sinCadena);
-    responder(res, packs.open(req.walletAddress, { tier }));
+    responder(res, req.temporada.open(req.walletAddress, { tier }));
 });
 
-router.post('/upgrade', requireWallet, async (req, res) => {
+temporada.post('/upgrade', requireWallet, async (req, res) => {
     const tier = await nivel(req);
     if (!tier) return responder(res, sinCadena);
-    responder(res, packs.upgrade(req.walletAddress, { kind: String(req.body?.kind || ''), cards: req.body?.cards }, { tier }));
+    responder(res, req.temporada.upgrade(req.walletAddress, { kind: String(req.body?.kind || ''), cards: req.body?.cards }, { tier }));
 });
 
-router.post('/extra', requireWallet, async (req, res) => {
+temporada.post('/extra', requireWallet, async (req, res) => {
     const txHash = String(req.body?.txHash || '').toLowerCase();
     try {
         const tesoro = treasuryConfig();
         if (!tesoro) return res.status(503).json({ error: "Payments aren't set up.", reason: 'not-configured' });
         let payment = { txHash };
         if (!packs.isExtraPayment(txHash)) {
-            const puede = packs.puedeComprarExtra(req.walletAddress);
+            const puede = req.temporada.puedeComprarExtra(req.walletAddress);
             if (puede.error) return responder(res, puede);
-            const config = packs.getConfig();
+            const config = req.temporada.getConfig();
             payment = await verifyPayment(txHash, req.walletAddress, tesoro, {
                 minWei: parseEther(String(config.extraPrice)),
                 what: 'an extra pack',
                 notBefore: config.openedAt ? Date.parse(config.openedAt) : null,
             });
         }
-        const result = packs.buyExtra(req.walletAddress, payment, { tier: await nivel(req) });
+        const result = req.temporada.buyExtra(req.walletAddress, payment, { tier: await nivel(req) });
         if (result.error) return responder(res, result);
         res.status(result.created ? 201 : 200).json({ me: result.me });
     } catch (error) {
@@ -126,11 +129,11 @@ router.post('/extra', requireWallet, async (req, res) => {
 const ultimaBusqueda = new Map();
 const ESPERA_BUSQUEDA = 20_000;
 
-router.post('/extra/recover', requireWallet, async (req, res) => {
+temporada.post('/extra/recover', requireWallet, async (req, res) => {
     const wallet = req.walletAddress.toLowerCase();
     const tesoro = treasuryConfig();
     if (!tesoro) return res.status(503).json({ error: "Payments aren't set up.", reason: 'not-configured' });
-    const puede = packs.puedeComprarExtra(wallet);
+    const puede = req.temporada.puedeComprarExtra(wallet);
     if (puede.error && puede.reason !== 'max-extras') return responder(res, puede);
     const antes = ultimaBusqueda.get(wallet) || 0;
     if (Date.now() - antes < ESPERA_BUSQUEDA) {
@@ -139,16 +142,26 @@ router.post('/extra/recover', requireWallet, async (req, res) => {
     ultimaBusqueda.set(wallet, Date.now());
     const tier = await nivel(req);
     try {
-        const recovered = await pagosPerdidos.recuperarExtras(wallet, tesoro, { tier });
-        res.json({ recovered, me: packs.resumen(wallet, { tier }) });
+        const recovered = await pagosPerdidos.recuperarExtras(wallet, tesoro, { tier, temporada: req.temporada });
+        res.json({ recovered, me: req.temporada.resumen(wallet, { tier }) });
     } catch {
         ultimaBusqueda.delete(wallet);
         res.status(503).json({ error: "Couldn't check your payments right now. Try again in a minute.", reason: 'rpc-error' });
     }
 });
 
-router.put('/solana', requireWallet, (req, res) => {
-    responder(res, packs.setSolana(req.walletAddress, req.body?.address));
+temporada.put('/solana', requireWallet, (req, res) => {
+    responder(res, req.temporada.setSolana(req.walletAddress, req.body?.address));
 });
+
+router.use('/s/:season', (req, res, next) => {
+    req.temporada = packs.temporada(String(req.params.season));
+    if (!req.temporada) return res.status(404).json({ error: 'Season not found.' });
+    next();
+}, temporada);
+router.use((req, res, next) => {
+    req.temporada = packs.actual();
+    next();
+}, temporada);
 
 module.exports = router;

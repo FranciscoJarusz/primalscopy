@@ -33,6 +33,17 @@ require.cache[ownershipPath] = {
     }
 };
 
+const minados = new Map();
+let bloqueActual = 1000;
+const cliente = require('../lib/cadena').client;
+cliente.getBlockNumber = async () => BigInt(bloqueActual);
+cliente.getBlock = async ({ blockNumber }) => {
+    const hash = minados.get(Number(blockNumber));
+    if (!hash) throw new Error('Block not found');
+    return { hash, timestamp: 1900000000n };
+};
+const esperar = ms => new Promise(ok => setTimeout(ok, ms));
+
 let pass = 0;
 let fail = 0;
 const check = (name, ok, detail = '') => ok
@@ -255,17 +266,8 @@ async function main() {
     const sacadas = r.pulledByRarity;
     check('el admin cuenta las cartas sacadas por rareza', sacadas.chosen.count === 1 && Object.values(sacadas).reduce((s, x) => s + x.count, 0) === r.totals.packs * 5, JSON.stringify(sacadas));
     check('y cuantas se esperaban segun las chances', sacadas.chosen.expected === r.totals.packs * 5 && sacadas.common.expected === 0, JSON.stringify(sacadas));
-    r = await json(await pedir('POST', '/api/admin/packs/chosen/draw', {}, admin));
-    check('el sorteo elige a beto', r.http === 200 && r.chosen.raffle.winner === beto.address.toLowerCase());
-    r = await json(await fetch(`${BASE}/api/packs/leaderboard`));
-    check('el ranking publico muestra a beto como ganador de The Chosen', r.chosen.length === 1 && r.chosen[0].nickname === 'Beto' && r.chosen[0].winner === true);
-    check('no se sortea dos veces', (await pedir('POST', '/api/admin/packs/chosen/draw', {}, admin)).status === 409);
-    me = await json(await fetch(`${BASE}/api/packs/me`, { headers: como(t.beto) }));
-    check('beto figura como ganador del sorteo', me.chosenWinner && me.winner);
-    r = await json(await pedir('PUT', '/api/packs/solana', { address: 'DRpbCBMxVnDK7maPM5tGv6MvB3v1sRMC86PZ8okm21hy' }, como(t.beto)));
-    check('y puede dejar su Solana aunque la competencia siga', r.http === 200);
-    r = await json(await pedir('DELETE', '/api/admin/packs/chosen/draw', undefined, admin));
-    check('el admin puede rehacer el sorteo', r.http === 200 && r.chosen.raffle === null);
+    r = await json(await pedir('POST', '/api/admin/packs/raffles/chosen/draw', {}, admin));
+    check('con la competencia abierta no se sortea', r.http === 409);
     await config({ rarities: { common: { chance: 5490, points: 5 }, uncommon: { chance: 2500, points: 10 }, rare: { chance: 1200, points: 25 }, epic: { chance: 600, points: 60 }, legendary: { chance: 200, points: 200 }, chosen: { chance: 10, points: 500 } } });
 
     console.log('\nRanking');
@@ -471,6 +473,111 @@ async function main() {
     check('el admin cuenta los upgrades', r.totals.upgrades === lineas.length);
     await config({ status: 'ended' });
     check('terminada la competencia no hay upgrades', (await json(await upgradear('caro', 'up', 'common'))).reason === 'closed');
+
+    console.log('\nSorteos verificables');
+    await config({ status: 'open' });
+    const RAREZAS_TEST = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'chosen'];
+    const PUNTOS = { common: 5, uncommon: 10, rare: 25, epic: 60, legendary: 200, chosen: 500 };
+    const solo = rareza => ({ rarities: Object.fromEntries(RAREZAS_TEST.map(x => [x, { chance: x === rareza ? 10000 : 0, points: PUNTOS[x] }])) });
+    for (const rareza of ['common', 'uncommon', 'rare', 'epic', 'legendary']) {
+        await config(solo(rareza));
+        const deEsta = CARTAS.filter(c => c.rarity === rareza);
+        for (let i = 0; i < 600 && deEsta.some(c => !packs.resumen(caro.address).collection[c.id]); i++) {
+            packs.grantPacks(caro.address, 1, `test:coleccion:${rareza}:${i}`);
+            packs.open(caro.address);
+        }
+    }
+    check('caro completa la coleccion', packs.resumen(caro.address).collectionComplete === true);
+    await config(solo('chosen'));
+    packs.grantPacks(ana.address, 1, 'test:chosen-ana');
+    packs.open(ana.address);
+    await config({ rarities: { common: { chance: 5490, points: 5 }, uncommon: { chance: 2500, points: 10 }, rare: { chance: 1200, points: 25 }, epic: { chance: 600, points: 60 }, legendary: { chance: 200, points: 200 }, chosen: { chance: 10, points: 500 } } });
+    check('sin premio de coleccion no hay sorteo de coleccion', !packs.resumen(caro.address).raffles.collection);
+    await config({ collectionPrize: 'Mudwater cards', status: 'ended' });
+    me = await json(await fetch(`${BASE}/api/packs/me`, { headers: como(t.caro) }));
+    check('caro queda anotada en el sorteo de coleccion', me.raffles.collection === 'entered');
+    r = await json(await fetch(`${BASE}/api/packs/leaderboard`));
+    const anoAna = ana.address.toLowerCase();
+    const anoBeto = beto.address.toLowerCase();
+    check('el sorteo de la Chosen esta pendiente con beto y ana', r.raffles.chosen.status === 'pending' && r.raffles.chosen.entrants.map(e => e.wallet).join() === [anoBeto, anoAna].join() && r.raffles.chosen.prize === 'Mudwater pack', JSON.stringify(r.raffles.chosen));
+    check('el de coleccion tiene su premio', r.raffles.collection.status === 'pending' && r.raffles.collection.prize === 'Mudwater cards');
+
+    r = await json(await pedir('POST', '/api/admin/packs/raffles/chosen/draw', {}, admin));
+    check('al sortear se fija un bloque futuro', r.http === 200 && r.raffles.chosen.status === 'drawing' && r.raffles.chosen.block === bloqueActual + 5, JSON.stringify(r.raffles?.chosen));
+    check('no se sortea dos veces', (await pedir('POST', '/api/admin/packs/raffles/chosen/draw', {}, admin)).status === 409);
+    r = await json(await pedir('DELETE', '/api/admin/packs/raffles/chosen/draw', undefined, admin));
+    check('antes del bloque se puede deshacer', r.http === 200 && r.raffles.chosen.status === 'pending');
+    r = await json(await pedir('POST', '/api/admin/packs/raffles/chosen/draw', {}, admin));
+    const bloqueChosen = r.raffles.chosen.block;
+    me = await json(await fetch(`${BASE}/api/packs/me`, { headers: como(t.ana) }));
+    check('mientras se espera el bloque nadie gano', me.raffles.chosen === 'entered' && !me.chosenWinner);
+    const hashImpar = '0x' + 'ab'.repeat(31) + '01';
+    minados.set(bloqueChosen, hashImpar);
+    await esperar(2100);
+    r = await json(await fetch(`${BASE}/api/packs/leaderboard`));
+    const ch = r.raffles.chosen;
+    check('el ganador sale del hash del bloque', ch.status === 'drawn' && ch.hash === hashImpar && ch.index === Number(BigInt(hashImpar) % 2n) && ch.winner === anoAna, JSON.stringify(ch));
+    check('y el ranking publico lo marca', r.chosen.find(c => c.wallet === anoAna)?.winner === true);
+    check('con hash ya no se puede deshacer', (await pedir('DELETE', '/api/admin/packs/raffles/chosen/draw', undefined, admin)).status === 409);
+    me = await json(await fetch(`${BASE}/api/packs/me`, { headers: como(t.ana) }));
+    check('ana gano el sorteo de la Chosen', me.chosenWinner && me.winner && me.raffles.chosen === 'won' && me.prizes.some(p => p.kind === 'chosen' && p.prize === 'Mudwater pack'), JSON.stringify(me.prizes));
+    me = await json(await fetch(`${BASE}/api/packs/me`, { headers: como(t.beto) }));
+    check('beto lo perdio', me.raffles.chosen === 'lost' && !me.chosenWinner);
+
+    bloqueActual = 2000;
+    minados.set(2005, '0x' + '12'.repeat(32));
+    r = await json(await pedir('POST', '/api/admin/packs/raffles/collection/draw', {}, admin));
+    check('el de coleccion sale en el momento si el bloque ya esta', r.http === 200 && r.raffles.collection.status === 'drawn' && r.raffles.collection.winner === caro.address.toLowerCase(), JSON.stringify(r.raffles?.collection));
+    me = await json(await fetch(`${BASE}/api/packs/me`, { headers: como(t.caro) }));
+    check('caro gano las cartas de Mudwater', me.winner && me.raffles.collection === 'won' && me.prizes.some(p => p.kind === 'collection' && p.prize === 'Mudwater cards'), JSON.stringify(me.prizes));
+    r = await json(await pedir('PUT', '/api/packs/solana', { address: 'DRpbCBMxVnDK7maPM5tGv6MvB3v1sRMC86PZ8okm21hy' }, como(t.caro)));
+    check('y puede dejar su Solana', r.http === 200);
+    const lider = (await json(await fetch(`${BASE}/api/packs/leaderboard`))).top[0].wallet;
+    const tokenLider = t[[['ana', ana], ['beto', beto], ['caro', caro]].find(([, a]) => a.address.toLowerCase() === lider)[0]];
+    me = await json(await fetch(`${BASE}/api/packs/me`, { headers: como(tokenLider) }));
+    const premioPrimero = (await json(await fetch(`${BASE}/api/packs/config`))).prizes[0];
+    check('el primero tiene su premio de puesto', me.prizes.some(p => p.kind === 'rank' && p.place === 1 && p.prize === premioPrimero), JSON.stringify(me.prizes));
+    check('y los premios se suman', me.prizes.length === 1 + (lider === anoAna ? 1 : 0) + (lider === caro.address.toLowerCase() ? 1 : 0));
+
+    console.log('\nTemporadas');
+    const rankingMudwater = JSON.stringify((await json(await fetch(`${BASE}/api/packs/leaderboard`))).top);
+    const nueva = body => pedir('POST', '/api/admin/packs/seasons', body, admin);
+    check('un id invalido no crea temporada', (await nueva({ id: 'Season 2!', name: 'S2' })).status === 400);
+    check('sin nombre tampoco', (await nueva({ id: 'season-2' })).status === 400);
+    r = await json(await nueva({ id: 'season-2', name: 'Season 2' }));
+    check('se crea la temporada', r.http === 201 && r.seasons.length === 2 && r.seasons.find(s => s.id === 'mudwater').current, JSON.stringify(r));
+    check('no se crea dos veces', (await nueva({ id: 'season-2', name: 'Otra' })).status === 400);
+    check('crear no la hace actual', (await json(await fetch(`${BASE}/api/packs/config`))).season === 'mudwater');
+    check('una temporada que no existe da 404', (await fetch(`${BASE}/api/packs/s/nope/config`)).status === 404);
+    r = await (await pedir('PUT', '/api/admin/packs/seasons/current', { season: 'season-2' }, admin)).json();
+    check('se elige como actual', r.find(s => s.id === 'season-2')?.current === true);
+    r = await json(await fetch(`${BASE}/api/packs/config`));
+    check('la actual arranca cerrada, sin premios ni Solana', r.season === 'season-2' && r.name === 'Season 2' && r.status === 'upcoming' && r.theme === 'cult' && !r.solana && r.prizes.length === 0, JSON.stringify(r).slice(0, 200));
+    r = await json(await fetch(`${BASE}/api/packs/s/mudwater/config`));
+    check('Mudwater sigue terminada y con su tema', r.status === 'ended' && r.theme === 'mudwater' && r.solana && r.prizes[0] === premioPrimero);
+    await config({ status: 'open' });
+    check('el admin sin season toca la actual', (await json(await fetch(`${BASE}/api/packs/s/mudwater/config`))).status === 'ended');
+    r = await json(await abrir('ana'));
+    check('se abre en la temporada nueva desde cero', r.http === 200 && r.me.points === r.pack.points && r.me.packs === 1 && r.me.rank === 1, JSON.stringify(r.me || r).slice(0, 200));
+    check('y se guarda en su carpeta', fs.existsSync(path.join(packs.dirDe('season-2'), 'opens.jsonl')));
+    check('el ranking de Mudwater no cambia', JSON.stringify((await json(await fetch(`${BASE}/api/packs/s/mudwater/leaderboard`))).top) === rankingMudwater);
+    r = await json(await pedir('POST', '/api/packs/s/mudwater/open', {}, como(t.ana)));
+    check('Mudwater no se puede abrir', r.reason === 'ended');
+    r = await json(await fetch(`${BASE}/api/packs/pull/${compartido.id}`));
+    check('un pack viejo de Mudwater se sigue viendo', r.http === 200 && r.season === 'mudwater' && r.seasonName === 'Primal Cult × Mudwater');
+    me = await json(await fetch(`${BASE}/api/packs/s/mudwater/me`, { headers: como(t.caro) }));
+    check('en Mudwater caro sigue siendo ganadora', me.winner && me.raffles.collection === 'won');
+    r = await json(await fetch(`${BASE}/api/admin/packs?season=mudwater`, { headers: admin }));
+    check('el admin ve Mudwater con sus sorteos', r.season === 'mudwater' && r.raffles.collection.status === 'drawn' && r.seasons.length === 2);
+    r = await json(await pedir('PUT', '/api/packs/solana', { address: 'DRpbCBMxVnDK7maPM5tGv6MvB3v1sRMC86PZ8okm21hy' }, como(t.ana)));
+    check('la temporada nueva no pide Solana', r.http === 403);
+    const regalosMudwater = packs.temporada('mudwater').resumen(beto.address).bonusPacks;
+    packs.grantPacks(beto.address, 1, 'test:season-2');
+    check('los packs de regalo van a la actual', packs.temporada('season-2').resumen(beto.address).bonusPacks === 1 && packs.temporada('mudwater').resumen(beto.address).bonusPacks === regalosMudwater);
+    const pagoViejo = packs.temporada('mudwater').comprasDeExtras()[0];
+    r = packs.temporada('season-2').buyExtra(pagoViejo.wallet, { txHash: pagoViejo.txHash, valueWei: '1', blockNumber: 1 });
+    check('un pago de Mudwater no sirve en otra temporada', r.reason === 'already-used', JSON.stringify(r).slice(0, 120));
+    check('y las compras se suman entre temporadas', packs.comprasDeExtras().length === packs.temporada('mudwater').comprasDeExtras().length);
 
     console.log(`\n${pass} ok, ${fail} fallas`);
     fs.rmSync(TMP, { recursive: true, force: true });
