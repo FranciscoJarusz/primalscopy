@@ -32,7 +32,7 @@ const nombre = (p: { wallet: string; nickname: string | null }) => p.nickname ??
 const entradas = (n: number) => `${n} ${n === 1 ? 'entry' : 'entries'}`;
 const ganadorDe = (s: SorteoPacks) => s.entrants.find((e) => e.wallet === s.winner);
 
-export const vaPorSolana = (p: PremioGanado) => MARCA.solana && /mudwater/i.test(p.prize);
+export const vaPorSolana = (p: PremioGanado) => MARCA.solana && (p.kind !== 'rank' || /mudwater/i.test(p.prize));
 
 function destino(p: PremioGanado) {
     const solana = vaPorSolana(p);
@@ -648,7 +648,7 @@ function Cinta({
 
     return (
         <div
-            className="relative w-full overflow-hidden py-8 -my-5"
+            className="relative w-full overflow-hidden py-5"
             style={{ maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)' }}
         >
             <div
@@ -698,7 +698,9 @@ const FALSAS = [
 
 export const PERSPECTIVAS = {
     top1: '1st place',
+    segundo: '2nd place (Primals only)',
     podio: '3rd place + wins The Chosen',
+    carta: '8th place (Mudwater card)',
     raffle: 'No rank prize, wins the collection raffle',
     pierde: 'In both raffles, wins nothing',
     nada: 'Played, no raffles, no prize',
@@ -710,9 +712,19 @@ function hashCon(base: string, n: number, index: number) {
     return '0x' + (b - (b % BigInt(n)) + BigInt(index)).toString(16).padStart(64, '0');
 }
 
-export function resultadosDePrueba(perspectiva: Perspectiva, sorteados: boolean, yo: string, premios: string[]) {
+const PREMIOS_PRUEBA = [
+    'Mudwater pack + 5 Primals',
+    '4 Primals',
+    '3 Primals',
+    '2 Primals',
+    '1 Primal',
+    ...Array(15).fill('1 Random Mudwater Card'),
+];
+
+export function resultadosDePrueba(perspectiva: Perspectiva, sorteados: boolean, yo: string) {
+    const premios = PREMIOS_PRUEBA;
     const gente = FALSAS.map(([w, n]) => ({ wallet: w as string, nickname: n as string | null }));
-    const puestoMio = { top1: 1, podio: 3, raffle: 23, pierde: 41, nada: 57 }[perspectiva];
+    const puestoMio = { top1: 1, segundo: 2, podio: 3, carta: 8, raffle: 23, pierde: 41, nada: 57 }[perspectiva];
     const yoFila = { wallet: yo, nickname: 'fransz' };
     const otros = gente.filter((g) => g.nickname !== 'fransz');
     const top = Array.from({ length: 5 }, (_, i) => (i + 1 === puestoMio ? yoFila : otros[i])).map((g, i) => ({
@@ -737,7 +749,7 @@ export function resultadosDePrueba(perspectiva: Perspectiva, sorteados: boolean,
     };
     const raffles = {
         chosen: sorteo('chosen', 'Mudwater pack', chosen, ganaChosen, '0x9c3e5b0a7f12d4e8b61a0c93f5d27e4a8b1c06f39d2e75a4c8b0f1e3d6a92b55', 31_402_118),
-        collection: sorteo('collection', 'Mudwater cards', coleccion, ganaColeccion, '0x4f81a2c9e07d3b65f1a8c4e20b97d6f3a5e1c08b72d94f6e3a1b5c7d09e2f4a8', 31_402_907),
+        collection: sorteo('collection', '#77 Half-Mutated Foil', coleccion, ganaColeccion, '0x4f81a2c9e07d3b65f1a8c4e20b97d6f3a5e1c08b72d94f6e3a1b5c7d09e2f4a8', 31_402_907),
     };
     const ganados: PremioGanado[] = puestoMio <= premios.length ? [{ kind: 'rank', place: puestoMio, prize: premios[puestoMio - 1] }] : [];
     const estados: MiPacks['raffles'] = {};

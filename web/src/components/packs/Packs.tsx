@@ -849,8 +849,7 @@ export default function Packs({ temporada }: { temporada?: string }) {
                                     const d = resultadosDePrueba(
                                         perspectiva,
                                         sorteados,
-                                        yo ?? '0xyo',
-                                        premios
+                                        yo ?? '0xyo'
                                     );
                                     setPrueba(d);
                                     setCola(d.cola);
