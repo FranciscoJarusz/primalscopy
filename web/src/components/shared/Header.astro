@@ -18,7 +18,7 @@ export const SECCIONES: Seccion[] = [
 ];
 
 export const HUB: Seccion[] = [
-    { id: 'packs', nombre: 'Packs', href: '/packs', tema: 'cult' },
+    { id: 'packs', nombre: 'Packs', href: '/packs' },
     { id: 'cultomizer', nombre: 'Cultomizer', href: '/cultomizer' },
     { id: 'forge', nombre: 'Forge', href: '/forge' },
     { id: 'shop', nombre: 'Shop', href: '/shop' },
@@ -53,8 +53,9 @@ const clase = (id: string) =>
         ? 'text-yellow'
         : 'text-lightblue hover:text-yellow transition-all duration-300';
 const conPacks = (s: Seccion) => ({
-    ...(s.soloConPacks && s.id !== activo ? { 'data-si-packs': '' } : {}),
+    ...(s.soloConPacks ? { 'data-si-packs': '' } : {}),
     ...(s.tema ? { [`data-tema-${s.tema}`]: '' } : {}),
+    ...(s.id === 'packs' ? { 'data-packs-ruta': '' } : {}),
 });
 ---
 
@@ -140,8 +141,8 @@ const conPacks = (s: Seccion) => ({
                                 class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
                             >
                                 {s.nombre}
-                                {s.tema === 'cult' && (
-                                    <span data-si-packs class="ml-2 align-middle rounded-full bg-yellow text-darkblue font-sans font-bold text-[10px] leading-none px-1.5 py-0.5 tracking-wider">
+                                {s.id === 'packs' && (
+                                    <span data-si-packs data-tema-cult class="ml-2 align-middle rounded-full bg-yellow text-darkblue font-sans font-bold text-[10px] leading-none px-1.5 py-0.5 tracking-wider">
                                         NEW
                                     </span>
                                 )}
@@ -281,8 +282,8 @@ const conPacks = (s: Seccion) => ({
                                 class={`rounded-lg px-3 pt-1.5 pb-2.5 ${clase(s.id)}`}
                             >
                                 {s.nombre}
-                                {s.tema === 'cult' && (
-                                    <span data-si-packs class="ml-2 align-middle rounded-full bg-yellow text-darkblue font-sans font-bold text-[10px] leading-none px-1.5 py-0.5 tracking-wider">
+                                {s.id === 'packs' && (
+                                    <span data-si-packs data-tema-cult class="ml-2 align-middle rounded-full bg-yellow text-darkblue font-sans font-bold text-[10px] leading-none px-1.5 py-0.5 tracking-wider">
                                         NEW
                                     </span>
                                 )}

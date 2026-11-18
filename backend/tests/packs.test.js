@@ -478,6 +478,12 @@ async function main() {
     check('el admin cuenta los upgrades', r.totals.upgrades === lineas.length);
     await config({ status: 'ended' });
     check('terminada la competencia no hay upgrades', (await json(await upgradear('caro', 'up', 'common'))).reason === 'closed');
+    await config({ goal: { target: 100, reward: 'Un Primal Event Pack', daily: true } });
+    const terminada = packs.enVivo();
+    const abiertos = packs.leaderboard().top.reduce((s, f) => s + f.packs, 0);
+    check('terminada la competencia la home no muestra la meta', terminada.goal === null, JSON.stringify(terminada.goal));
+    check('la home recibe el total de packs abiertos', terminada.packs >= abiertos && terminada.packs > 0, `${terminada.packs} / ${abiertos}`);
+    await config({ goal: null });
 
     console.log('\nSorteos verificables');
     await config({ status: 'open' });

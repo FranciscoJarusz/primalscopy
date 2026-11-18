@@ -253,7 +253,7 @@ export default function PacksAdmin({ token }: { token: string }) {
                     </div>
                     <div id="packs-reglas" className="flex flex-col gap-4 sm:gap-5">
                         <Reglas datos={datos} ocupado={ocupado} configurar={configurar} />
-                        {datos.season !== 'mudwater' && <MetaComunitaria datos={datos} ocupado={ocupado} configurar={configurar} />}
+                        <MetaComunitaria datos={datos} ocupado={ocupado} configurar={configurar} />
                         <UpgradesAdmin datos={datos} ocupado={ocupado} configurar={configurar} />
                         <ModoLibre datos={datos} ocupado={ocupado} configurar={configurar} />
                     </div>

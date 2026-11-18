@@ -655,12 +655,15 @@ export default function Packs({ temporada }: { temporada?: string }) {
     const verResultados =
         terminado && datosMio?.rank ? () => setCola(['fin']) : null;
     let accion: { texto: ReactNode; alTocar?: () => void } | null = null;
-    if (terminado && !modoLibre)
+    const sinFirmar = isConnected && session.status === 'needs-signature';
+    if (conectando || session.status === 'signing')
+        accion = { texto: 'Check your wallet...' };
+    else if (terminado && !modoLibre)
         accion = verResultados
             ? { texto: 'Your results', alTocar: verResultados }
-            : { texto: 'Competition over' };
-    else if (conectando || session.status === 'signing')
-        accion = { texto: 'Check your wallet...' };
+            : sinFirmar && !prueba
+              ? { texto: 'Sign in to see your results', alTocar: entrar }
+              : { texto: 'Competition over' };
     else if (isConnected && session.status === 'needs-signature')
         accion = { texto: 'Sign in', alTocar: entrar };
     else if (config.status === 'upcoming') accion = { texto: 'Opening soon' };
@@ -723,7 +726,7 @@ export default function Packs({ temporada }: { temporada?: string }) {
                             : ' the top of the leaderboard wins prizes.'}
                     </p>
                 </div>
-                {!modoLibre && (
+                {!terminado && (
                 <div className={`${panel} flex items-center gap-6 shrink-0`}>
                     <div>
                         <p className="mw-etiqueta text-xs text-mw-fog">
@@ -994,8 +997,8 @@ export default function Packs({ temporada }: { temporada?: string }) {
                 )}
             </section>
 
-            <div className="grid lg:grid-cols-3 gap-6">
-                <section className={`${panel} lg:col-span-2 flex flex-col`}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <section className={`${panel} lg:col-span-2 flex flex-col min-w-0`}>
                     <div className="flex items-baseline justify-between gap-4">
                         <h2 className={subtitulo}>Leaderboard</h2>
                         {ranking && ranking.players > 0 && (
@@ -1138,7 +1141,7 @@ export default function Packs({ temporada }: { temporada?: string }) {
                     )}
                 </section>
 
-                <section className={`${panel} flex flex-col gap-6`}>
+                <section className={`${panel} flex flex-col gap-6 min-w-0`}>
                     <h2 className={subtitulo}>Your run</h2>
                     {mio ? (
                         <dl className="grid grid-cols-2 gap-5">
@@ -1163,11 +1166,25 @@ export default function Packs({ temporada }: { temporada?: string }) {
                                 </div>
                             ))}
                         </dl>
-                    ) : (
-                        <p className="text-lg text-mw-mist/70">
-                            Connect your wallet to see your points, rank and
-                            collection.
-                        </p>
+                    ) : session.token ? null : (
+                        <div className="flex flex-col items-start gap-4">
+                            <p className="text-lg text-mw-mist/70">
+                                {isConnected ? 'Sign in' : 'Connect your wallet'}{' '}
+                                to see your points, rank and collection.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={entrar}
+                                disabled={conectando || session.status === 'signing'}
+                                className={botonPrincipal}
+                            >
+                                {conectando || session.status === 'signing'
+                                    ? 'Check your wallet...'
+                                    : isConnected
+                                      ? 'Sign in'
+                                      : 'Connect wallet'}
+                            </button>
+                        </div>
                     )}
                     {mejor && (
                         <div className="flex items-center gap-4">

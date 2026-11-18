@@ -18,6 +18,7 @@ type Datos = {
         endsAt: string | null;
         players: number;
         today: number;
+        packs?: number;
         top: (Persona & { rank: number; points: number })[];
         goal: {
             title: string;
@@ -106,7 +107,7 @@ export default function EnVivo() {
                 Live in the Cult
             </h2>
 
-            {datos.packs.goal && datos.packs.status !== 'upcoming' && <Meta meta={datos.packs.goal} ahora={ahora} />}
+            {datos.packs.goal && datos.packs.status === 'open' && <Meta meta={datos.packs.goal} ahora={ahora} />}
 
             <div
                 data-anim-stagger
@@ -176,7 +177,11 @@ function Packs({ packs, ahora }: { packs: Datos['packs']; ahora: number }) {
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <Dato label="Players" valor={fog(packs.players)} />
-                <Dato label="Packs today" valor={fog(packs.today)} />
+                {abierto || packs.packs === undefined ? (
+                    <Dato label="Packs today" valor={fog(packs.today)} />
+                ) : (
+                    <Dato label="Packs opened" valor={fog(packs.packs)} />
+                )}
             </div>
             {packs.top.length > 0 && (
                 <ol className="flex flex-col gap-2">

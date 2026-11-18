@@ -1052,8 +1052,13 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
         const hoy = dia(now);
         const orden = ranking(now);
         const apodos = nicknames.getAllNicknames();
+        const status = estado(config, now);
         let deHoy = 0;
-        for (const j of todos.values()) deHoy += j.days[hoy] || 0;
+        let total = 0;
+        for (const j of todos.values()) {
+            deHoy += j.days[hoy] || 0;
+            total += j.packs;
+        }
         const grandes = [];
         for (const a of aperturas.values()) {
             const mejor = a.cards
@@ -1066,12 +1071,13 @@ function crearTemporada({ id, dir, defaults = {}, pagoUsado = () => false }) {
             season: id,
             name: config.name,
             theme: config.theme,
-            status: estado(config, now),
+            status,
             endsAt: config.endsAt,
             players: orden.length,
             today: deHoy,
+            packs: total,
             top: orden.slice(0, 3).map(f => ({ rank: f.rank, wallet: f.wallet, nickname: apodos[f.wallet] ?? null, points: f.points })),
-            goal: metaPublica(config, now),
+            goal: status === 'open' ? metaPublica(config, now) : null,
             pulls: grandes.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12),
         };
     }
