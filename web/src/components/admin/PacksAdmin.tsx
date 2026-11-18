@@ -246,7 +246,8 @@ export default function PacksAdmin({ token }: { token: string }) {
                         <UpgradesAdmin datos={datos} ocupado={ocupado} configurar={configurar} />
                         {datos.season !== 'mudwater' && <AcreditarExtra datos={datos} ocupado={ocupado} pedir={pedir} />}
                     </div>
-                    <div id="packs-ranking">
+                    <div id="packs-ranking" className="flex flex-col gap-6">
+                        <Ganadores datos={datos} />
                         <Jugadores datos={datos} ocupado={ocupado} pedir={pedir} />
                     </div>
                     <div id="packs-reglas">
@@ -921,6 +922,92 @@ function Reglas({ datos, ocupado, configurar }: Props) {
     );
 }
 
+type Ganador = { clave: string; lugar: string; jugador: Jugador | undefined; wallet: string; premio: string; solana: boolean };
+
+function ganadoresDe(datos: Datos): Ganador[] {
+    const conSolana = (premio: string, rango: boolean) => Boolean(datos.config.solana) && (!rango || /mudwater/i.test(premio));
+    const porWallet = new Map(datos.players.map((p) => [p.wallet, p]));
+    const prizes = datos.config.prizes ?? [];
+    const cupos = datos.config.winners ?? prizes.length;
+    const lista: Ganador[] = datos.players
+        .filter((p) => !p.disqualified && p.rank !== null && p.rank <= cupos)
+        .sort((a, b) => a.rank! - b.rank!)
+        .map((p) => {
+            const premio = prizes[p.rank! - 1] ?? `Prize for place ${p.rank}`;
+            return { clave: `rank-${p.wallet}`, lugar: `#${p.rank}`, jugador: p, wallet: p.wallet, premio, solana: conSolana(premio, true) };
+        });
+    for (const s of Object.values(datos.raffles ?? {})) {
+        if (!s.winner) continue;
+        const premio = s.prize ?? '';
+        lista.push({
+            clave: `${s.kind}-${s.winner}`,
+            lugar: s.kind === 'chosen' ? 'Chosen raffle' : 'Collection raffle',
+            jugador: porWallet.get(s.winner),
+            wallet: s.winner,
+            premio,
+            solana: conSolana(premio, false),
+        });
+    }
+    return lista;
+}
+
+function Ganadores({ datos }: { datos: Datos }) {
+    const quien = useQuien();
+    const [copiado, setCopiado] = useState(false);
+    const ganadores = useMemo(() => ganadoresDe(datos), [datos]);
+    if (datos.status !== 'ended' || !ganadores.length) return null;
+    const faltan = ganadores.filter((g) => g.solana && !g.jugador?.solana).length;
+
+    const copiar = async () => {
+        const texto = ganadores
+            .map((g) =>
+                [g.lugar, g.jugador?.x ? `@${g.jugador.x}` : g.jugador?.nickname ?? g.wallet, g.premio, g.wallet, g.solana ? g.jugador?.solana?.address ?? 'pending' : ''].join('\t')
+            )
+            .join('\n');
+        try {
+            await navigator.clipboard.writeText(texto);
+            setCopiado(true);
+            setTimeout(() => setCopiado(false), 1500);
+        } catch {}
+    };
+
+    return (
+        <section className={panel}>
+            <h2 className={titulo}>Winners</h2>
+            <p className="text-lightblue/70 text-sm -mt-2">
+                Who gets what. Mudwater prizes go to the Solana wallet each winner adds on the site; everything else goes to their ApeChain wallet.
+                {faltan > 0 && ` ${faltan} still ${faltan === 1 ? 'has' : 'have'} to add a Solana wallet.`}
+            </p>
+            <div className="flex">
+                <button type="button" onClick={copiar} className={`${botonChico} sm:ml-auto`}>
+                    {copiado ? 'Copied' : 'Copy list'}
+                </button>
+            </div>
+            <ol className={`${lista} flex flex-col gap-2`} data-scroll-propio>
+                {ganadores.map((g) => (
+                    <li key={g.clave} className="rounded-xl px-4 py-3 bg-blue flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span className="font-accent text-yellow w-36 shrink-0">{g.lugar}</span>
+                        <span className="flex-1 min-w-48 text-lightblue">
+                            {quien(g.wallet)}
+                            {g.jugador?.x && <span className="text-lightblue/70"> · X @{g.jugador.x}</span>}
+                            <span className="block text-sm text-lightblue/70">{g.premio}</span>
+                        </span>
+                        <span className="text-sm break-all sm:text-right sm:max-w-sm">
+                            {!g.solana ? (
+                                <span className="text-lightblue/70">ApeChain</span>
+                            ) : g.jugador?.solana ? (
+                                <span className="text-lightblue">Solana: {g.jugador.solana.address}</span>
+                            ) : (
+                                <span className="rounded-md bg-red text-white px-2 py-0.5">Solana pending</span>
+                            )}
+                        </span>
+                    </li>
+                ))}
+            </ol>
+        </section>
+    );
+}
+
 function Jugadores({
     datos,
     ocupado,
@@ -938,7 +1025,7 @@ function Jugadores({
             ? datos.players.filter((p) => [p.wallet, p.nickname, p.x, p.discord].some((v) => v?.toLowerCase().includes(q)))
             : datos.players;
     }, [datos.players, buscar]);
-    const corte = datos.config.winners;
+    const corte = datos.config.winners ?? datos.config.prizes?.length ?? null;
 
     return (
         <section className={panel}>
